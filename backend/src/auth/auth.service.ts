@@ -302,7 +302,7 @@ export class AuthService {
         data: {
           phone: dto.phone,
           userType: 'driver', // 默認值，後續 onboarding 可以修改
-          points: 10, // 註冊獎勵點數
+          points: 8, // 註冊獎勵點數
           hasCompletedOnboarding: false,
         },
       });
@@ -312,7 +312,7 @@ export class AuthService {
         data: {
           userId: user.id,
           type: 'bonus',
-          amount: 10,
+          amount: 8,
           description: '註冊獎勵點數',
         },
       });
