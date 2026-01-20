@@ -812,8 +812,13 @@ const SendPage = React.memo(() => {
               <div className="text-xs text-muted-foreground">原本的版本</div>
               <Card className="p-4 bg-muted/30 border-border">
                 <p className="text-sm text-muted-foreground line-through">
-                  {generatedMessage}
-                  {customText && <><br />{customText}</>}
+                  {(selectedCategory === '讚美感謝' && selectedSituation === 'other-praise') || selectedCategory === '其他情況'
+                    ? customText
+                    : <>
+                        {generatedMessage}
+                        {customText && <><br />{customText}</>}
+                      </>
+                  }
                 </p>
               </Card>
             </div>
