@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -38,13 +38,7 @@ export class UploadController {
   })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: join(process.cwd(), 'uploads'),
-        filename: (req, file, callback) => {
-          const uniqueName = `${uuidv4()}${extname(file.originalname)}`;
-          callback(null, uniqueName);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: MAX_FILE_SIZE,
       },
@@ -62,12 +56,14 @@ export class UploadController {
       throw new BadRequestException('請選擇要上傳的圖片');
     }
 
-    // 返回檔案的相對路徑
-    const fileUrl = `/uploads/${file.filename}`;
+    // 將圖片轉換為 base64 data URL
+    const base64 = file.buffer.toString('base64');
+    const dataUrl = `data:${file.mimetype};base64,${base64}`;
+    const filename = `${uuidv4()}${extname(file.originalname)}`;
 
     return {
-      url: fileUrl,
-      filename: file.filename,
+      url: dataUrl,
+      filename: filename,
       originalname: file.originalname,
       size: file.size,
     };
