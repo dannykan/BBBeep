@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 使用静态导出以兼容 Cloudflare Pages
+  // 注意：这会禁用 SSR 和 API routes，但所有页面都是客户端组件，所以可以使用
+  output: 'export',
+  // 禁用图片优化（静态导出不支持）
+  images: {
+    unoptimized: true,
+  },
   // 禁用 webpack 缓存以解决 Cloudflare Pages 文件大小限制
   webpack: (config, { dev, isServer }) => {
     // 完全禁用缓存以避免生成大型缓存文件
@@ -17,11 +24,6 @@ const nextConfig = {
   experimental: {
     // 优化 HMR
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-  },
-  // 在构建后清理缓存
-  onDemandEntries: {
-    maxInactiveAge: 25 * 1000,
-    pagesBufferLength: 2,
   },
 };
 

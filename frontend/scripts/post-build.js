@@ -11,23 +11,33 @@ const path = require('path');
 const cacheDirs = [
   path.join(__dirname, '..', '.next', 'cache'),
   path.join(__dirname, '..', '.next', 'standalone'),
+  // 静态导出时不需要 .next 目录
+  path.join(__dirname, '..', '.next'),
 ];
 
 console.log('🧹 Cleaning up cache directories...');
 console.log('Current working directory:', process.cwd());
 
-cacheDirs.forEach((dir) => {
-  if (fs.existsSync(dir)) {
-    try {
-      fs.rmSync(dir, { recursive: true, force: true });
-      console.log(`✅ Removed: ${dir}`);
-    } catch (error) {
-      console.error(`❌ Failed to remove ${dir}:`, error.message);
+// 检查是否使用静态导出（output: 'export'）
+const outDir = path.join(__dirname, '..', 'out');
+const isStaticExport = fs.existsSync(outDir);
+
+if (isStaticExport) {
+  console.log('ℹ️  Static export detected, skipping .next cleanup');
+} else {
+  cacheDirs.forEach((dir) => {
+    if (fs.existsSync(dir)) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log(`✅ Removed: ${dir}`);
+      } catch (error) {
+        console.error(`❌ Failed to remove ${dir}:`, error.message);
+      }
+    } else {
+      console.log(`ℹ️  Directory does not exist: ${dir}`);
     }
-  } else {
-    console.log(`ℹ️  Directory does not exist: ${dir}`);
-  }
-});
+  });
+}
 
 // Also remove large cache files recursively
 const nextDir = path.join(__dirname, '..', '.next');
