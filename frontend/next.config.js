@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 不使用静态导出，使用 Cloudflare Pages 的 Next.js 运行时支持
-  // Cloudflare Pages 现在支持 Next.js SSR
+  // 使用静态导出以兼容 Cloudflare Pages
+  // 这会生成静态 HTML 文件到 out 目录
+  output: 'export',
+  // 禁用图片优化（静态导出不支持）
+  images: {
+    unoptimized: true,
+  },
   // 禁用 webpack 缓存以解决 Cloudflare Pages 文件大小限制
   webpack: (config, { dev, isServer }) => {
     // 完全禁用缓存以避免生成大型缓存文件
