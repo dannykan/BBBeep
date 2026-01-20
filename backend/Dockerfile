@@ -5,8 +5,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+COPY package.json ./
+# Try to copy package-lock.json if it exists, otherwise use npm install
+COPY package-lock.json* ./
+RUN npm install --production=false
 
 # Rebuild the source code only when needed
 FROM base AS builder
