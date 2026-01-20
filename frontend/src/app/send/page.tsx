@@ -119,6 +119,12 @@ const SendPage = React.memo(() => {
       return;
     }
 
+    // 驗證字數（5-30字）
+    if (customText.trim().length < 5) {
+      toast.error('補充文字至少需要 5 個字');
+      return;
+    }
+
     // 讚美類不進AI
     if (selectedCategory === '讚美感謝') {
       setStep('confirm');
@@ -168,9 +174,21 @@ const SendPage = React.memo(() => {
       return;
     }
 
-    // "其他情況"必須有 customText
-    if (selectedCategory === '其他情況' && !customText.trim()) {
-      toast.error('請輸入說明內容');
+    // "其他情況"必須有 customText，且字數符合要求
+    if (selectedCategory === '其他情況') {
+      if (!customText.trim()) {
+        toast.error('請輸入說明內容');
+        return;
+      }
+      if (customText.trim().length < 5) {
+        toast.error('說明內容至少需要 5 個字');
+        return;
+      }
+    }
+
+    // 如果有補充文字，驗證字數
+    if (customText.trim() && customText.trim().length < 5) {
+      toast.error('補充文字至少需要 5 個字');
       return;
     }
 
@@ -186,7 +204,7 @@ const SendPage = React.memo(() => {
       
       await messagesApi.create({
         licensePlate: normalizedPlate, // 使用格式化後的車牌（不含分隔符）
-        type: selectedCategory === '其他情況' ? '行車安全提醒' : (selectedCategory as MessageType),
+        type: selectedCategory === '其他情況' ? '行車安全提醒' : (selectedCategory === '行車安全' ? '行車安全提醒' : (selectedCategory as MessageType)),
         template: selectedCategory === '其他情況' ? customText : (generatedMessage || customText), // "其他情況"使用 customText 作為 template
         customText: selectedCategory === '其他情況' ? undefined : (customText || undefined),
         useAiRewrite: usedAi,
@@ -586,7 +604,7 @@ const SendPage = React.memo(() => {
                 {selectedCategory === '其他情況' ? '請簡單說明' : '想補充一句'}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {selectedCategory === '其他情況' ? '20字內' : '可選，最多20字'}
+                {selectedCategory === '其他情況' ? '5-30字' : '可選，5-30字'}
               </p>
             </div>
 
@@ -609,13 +627,15 @@ const SendPage = React.memo(() => {
                 <Input
                   id="custom-text"
                   value={customText}
-                  onChange={(e) => setCustomText(e.target.value.slice(0, 20))}
+                  onChange={(e) => setCustomText(e.target.value.slice(0, 30))}
                   placeholder={selectedCategory === '其他情況' ? '例如：擋到出口了' : '例如：快到學校了'}
                   className="pr-12 h-11"
-                  maxLength={20}
+                  maxLength={30}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums">
-                  {customText.length}/20
+                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums ${
+                  customText.length < 5 && customText.length > 0 ? 'text-destructive' : 'text-muted-foreground'
+                }`}>
+                  {customText.length}/30
                 </span>
               </div>
             </div>
@@ -651,6 +671,16 @@ const SendPage = React.memo(() => {
                 >
                   直接送出
                 </button>
+              ) : customText.trim().length < 5 ? (
+                <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium text-destructive">字數不足</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    補充文字至少需要 5 個字
+                  </p>
+                </div>
               ) : (
                 /* 有補充文字 - 兩個選項 */
                 <>
