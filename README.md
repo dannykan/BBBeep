@@ -108,10 +108,12 @@ npm run migration:run
 - ✅ Home Page（首頁）
 - ✅ Send Page（發送提醒）- 完整流程，含AI改寫
 - ✅ Inbox Page（收件箱）- 含封鎖/拒收功能
+- ✅ Sent Page（已發送訊息）- 完整實現
+- ✅ Wallet Page（錢包）- 完整實現，含儲值、點數歷史
+- ✅ Settings Page（設置）- 完整實現，含用戶信息編輯
+- ✅ Block List Page（封鎖列表）- 完整實現
+- ✅ Notification Settings Page（通知設置）- 完整實現
 - ✅ 底部導航欄
-- ⏳ Wallet Page（錢包）- 待實現
-- ⏳ Settings Page（設置）- 待實現
-- ⏳ 其他輔助頁面 - 待實現
 
 ## 設計系統
 
@@ -138,11 +140,10 @@ API 文檔將在後端啟動後可於 `http://localhost:3001/api` 查看（如�
 - ✅ Docker 配置
 - ✅ CI/CD 配置
 
-### ⏳ 待實現（輔助功能）
-- ⏳ Wallet Page（錢包頁）
-- ⏳ Settings Page（設置頁）
-- ⏳ Block List Page（封鎖列表）
-- ⏳ 其他輔助頁面（參考 `NEXT_STEPS.md`）
+### ⏳ 待實現（擴展功能）
+- ⏳ 儲值支付功能整合（目前顯示「尚未開通」）
+- ⏳ 刪除帳號功能（後端 API 待實現）
+- ⏳ 其他功能優化（參考 `NEXT_STEPS.md`）
 
 ## 文檔
 
