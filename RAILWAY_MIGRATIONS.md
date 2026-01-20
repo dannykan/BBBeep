@@ -97,7 +97,34 @@ railway run npx prisma studio
 - ✅ 确保 `DATABASE_URL` 环境变量已正确设置
 - ⚠️ 方法 1（Railway CLI）是最推荐的方法，因为它最可靠
 
-## 推荐流程
+## 推荐流程（最简单的方法）⭐
+
+由于 Prisma migrations 在 Railway 上遇到权限问题，最简单的方法是**直接运行 SQL 脚本**：
+
+### 方法 5：通过 Railway Dashboard 运行 SQL 脚本（最简单）⭐⭐⭐
+
+1. **登录 Railway Dashboard**
+2. **进入项目** → `bbbeeep-backend-production`
+3. **点击 PostgreSQL 服务**（不是后端服务）
+4. **点击 "Data" 标签**或 "Query" 标签
+5. **复制 `backend/prisma/init-database.sql` 文件的内容**
+6. **粘贴到 SQL 查询框并执行**
+
+这个 SQL 脚本会：
+- 创建所有必要的枚举类型
+- 创建所有表（使用 `IF NOT EXISTS`，可以安全地重复运行）
+- 创建所有索引和外键约束
+
+### 验证
+
+运行 SQL 脚本后，测试 API：
+```bash
+curl https://bbbeep-backend-production.up.railway.app/auth/check-phone/0966685928
+```
+
+如果返回 `{"exists":false,"hasPassword":false}` 而不是 500 错误，说明成功了！
+
+## 其他方法（如果方法 5 不可用）
 
 1. **使用 Railway CLI（方法 1）**运行 migrations
 2. **验证**：测试 API 端点是否正常工作
