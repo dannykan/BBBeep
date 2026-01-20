@@ -2,23 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  // 確保 uploads 資料夾存在
-  const uploadsPath = join(process.cwd(), 'uploads');
-  if (!existsSync(uploadsPath)) {
-    mkdirSync(uploadsPath, { recursive: true });
-  }
-
-  // 設定靜態檔案服務
-  app.useStaticAssets(uploadsPath, {
-    prefix: '/uploads/',
-  });
 
   // Enable CORS
   const allowedOrigins = process.env.FRONTEND_URL
