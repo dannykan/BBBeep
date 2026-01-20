@@ -26,38 +26,39 @@ cacheDirs.forEach((dir) => {
   }
 });
 
-// Also remove large cache files
+// Also remove large cache files recursively
 const nextDir = path.join(__dirname, '..', '.next');
 if (fs.existsSync(nextDir)) {
   const removeLargeCacheFiles = (dir) => {
-    const files = fs.readdirSync(dir, { withFileTypes: true });
-    files.forEach((file) => {
-      const filePath = path.join(dir, file.name);
-      if (file.isDirectory()) {
-        if (file.name === 'cache' || file.name === 'standalone') {
-          try {
-            fs.rmSync(filePath, { recursive: true, force: true });
-            console.log(`✅ Removed directory: ${filePath}`);
-          } catch (error) {
-            console.error(`❌ Failed to remove ${filePath}:`, error.message);
-          }
-        } else {
-          removeLargeCacheFiles(filePath);
-        }
-      } else if (file.isFile() && file.name.endsWith('.pack')) {
-        // Remove webpack cache pack files
+    try {
+      const files = fs.readdirSync(dir, { withFileTypes: true });
+      files.forEach((file) => {
+        const filePath = path.join(dir, file.name);
         try {
-          const stats = fs.statSync(filePath);
-          if (stats.size > 20 * 1024 * 1024) {
-            // Files larger than 20MB
-            fs.unlinkSync(filePath);
-            console.log(`✅ Removed large cache file: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+          if (file.isDirectory()) {
+            if (file.name === 'cache' || file.name === 'standalone') {
+              fs.rmSync(filePath, { recursive: true, force: true });
+              console.log(`✅ Removed directory: ${filePath}`);
+            } else {
+              // Recursively check subdirectories
+              removeLargeCacheFiles(filePath);
+            }
+          } else if (file.isFile()) {
+            // Remove all .pack files (webpack cache files)
+            if (file.name.endsWith('.pack')) {
+              const stats = fs.statSync(filePath);
+              fs.unlinkSync(filePath);
+              console.log(`✅ Removed cache file: ${filePath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+            }
           }
         } catch (error) {
-          console.error(`❌ Failed to remove ${filePath}:`, error.message);
+          // Ignore errors for individual files/directories
+          console.warn(`⚠️  Warning: ${error.message}`);
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error(`❌ Error reading directory ${dir}:`, error.message);
+    }
   };
 
   try {
