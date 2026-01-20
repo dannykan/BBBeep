@@ -1,4 +1,6 @@
 .next/cache/
+.next/standalone/
 node_modules/.cache/
 *.log
 .DS_Store
+.cache/

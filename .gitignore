@@ -11,6 +11,7 @@ dist/
 build/
 .next/
 .next/cache/
+.next/standalone/
 out/
 
 # Environment variables
