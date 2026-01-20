@@ -1,5 +1,14 @@
 # 部署环境变量配置
 
+## 部署 URL
+
+### 前端（Cloudflare Pages）
+- **生产环境**: https://bbbeep.pages.dev
+
+### 后端（Railway）
+- **生产环境**: https://bbbeep-backend-production.up.railway.app
+- **API 文档**: https://bbbeep-backend-production.up.railway.app/api
+
 ## JWT_SECRET
 
 已为您生成一个强密钥：
@@ -13,40 +22,40 @@ JWT_SECRET=3a15928276b20dda60a870ac847dcef999972eefe0b20ad4cdc7470e2fcc40f60605c
 - 在生产环境中使用此密钥
 - 如果密钥泄露，请立即生成新的密钥并更新所有环境变量
 
-## Railway 环境变量（Backend）
+## Railway 环境变量（Backend）✅ 已配置
 
-在 Railway 项目设置中添加以下环境变量：
+以下环境变量已在 Railway 项目中配置：
 
 ```env
-# Database (Railway 会自动提供)
-DATABASE_URL=postgresql://user:password@host:port/dbname
+# Database (Railway PostgreSQL)
+DATABASE_URL=postgresql://postgres:***@postgres.railway.internal:5432/railway
 
-# Redis (使用 Railway Redis 或 Upstash)
-REDIS_URL=redis://default:password@host:port
+# Redis (Railway Redis)
+REDIS_URL=redis://default:***@redis.railway.internal:6379
 
 # JWT
 JWT_SECRET=3a15928276b20dda60a870ac847dcef999972eefe0b20ad4cdc7470e2fcc40f60605cb6f06ed690379171ebef42db412f17a448b17de41c691d4a56865cb2459
-JWT_EXPIRES_IN=7d
+JWT_EXPIRES_IN=30d
 
 # AI Service
-OPENAI_API_KEY=your-openai-api-key
-# 或
-GOOGLE_AI_API_KEY=your-google-ai-key
+OPENAI_API_KEY=sk-proj-***
 
 # Server
 PORT=3001
 NODE_ENV=production
 
-# CORS (部署前端后更新为实际 URL)
-FRONTEND_URL=https://your-cloudflare-pages-url.pages.dev
+# CORS
+FRONTEND_URL=bbbeep.pages.dev
 ```
 
-## Cloudflare Pages 环境变量（Frontend）
+**注意**: 实际敏感值（密码、密钥）请查看 Railway Dashboard 或 `DEPLOYMENT_CONFIG.md`（本地文件，已加入 .gitignore）
 
-在 Cloudflare Pages 项目设置中添加：
+## Cloudflare Pages 环境变量（Frontend）✅ 已配置
+
+以下环境变量已在 Cloudflare Pages 项目中配置：
 
 ```env
-NEXT_PUBLIC_API_URL=https://your-railway-backend-url.railway.app
+NEXT_PUBLIC_API_URL=https://bbbeep-backend-production.up.railway.app
 ```
 
 ## 生成新的 JWT_SECRET（如果需要）
