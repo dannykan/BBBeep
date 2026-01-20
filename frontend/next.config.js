@@ -14,6 +14,10 @@ const nextConfig = {
         compression: false,
       };
     }
+    // 生产环境：禁用缓存以避免 Cloudflare Pages 文件大小限制
+    if (!dev) {
+      config.cache = false;
+    }
     return config;
   },
   // 实验性功能：改进的 Fast Refresh
