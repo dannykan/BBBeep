@@ -1,0 +1,192 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Seed configuration
+// Run: npm run prisma:seed
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  driver
+  pedestrian
+}
+
+enum VehicleType {
+  car
+  scooter
+}
+
+enum MessageType {
+  VEHICLE_REMINDER      // 車況提醒
+  SAFETY_REMINDER       // 行車安全提醒
+  PRAISE                // 讚美感謝
+}
+
+enum PointHistoryType {
+  recharge
+  spend
+  earn
+  bonus
+}
+
+enum ApplicationStatus {
+  pending    // 待審核
+  approved   // 已通過
+  rejected   // 已拒絕
+}
+
+enum ReportStatus {
+  pending    // 待審核
+  reviewed   // 已審核
+  resolved   // 已處理
+}
+
+model User {
+  id                    String   @id @default(cuid())
+  phone                 String   @unique
+  password              String?  // 密碼（可選，用於已註冊用戶）
+  nickname              String?
+  licensePlate          String?
+  userType              UserType
+  vehicleType           VehicleType?
+  points                Int      @default(0)
+  hasCompletedOnboarding Boolean  @default(false)
+  email                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  sentMessages          Message[]           @relation("Sender")
+  receivedMessages      Message[]           @relation("Receiver")
+  pointHistory          PointHistory[]
+  blockedUsers          BlockedUser[]       @relation("Blocker")
+  blockedByUsers        BlockedUser[]       @relation("Blocked")
+  rejectedUsers         RejectedUser[]      @relation("Rejecter")
+  rejectedByUsers       RejectedUser[]      @relation("Rejected")
+  messageReports        MessageReport[]     @relation("Reporter")
+  aiUsageLogs           AIUsageLog[]
+  licensePlateApplications LicensePlateApplication[]
+
+  @@index([phone])
+  @@index([licensePlate])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  type        MessageType
+  template    String
+  customText  String?
+  replyText   String?     // 接收者回覆內容（僅供記錄，不會通知發送者）
+  read        Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  senderId    String
+  sender      User        @relation("Sender", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User        @relation("Receiver", fields: [receiverId], references: [id])
+  reports     MessageReport[] // 檢舉記錄
+
+  @@index([receiverId, createdAt])
+  @@index([senderId])
+}
+
+model PointHistory {
+  id          String            @id @default(cuid())
+  type        PointHistoryType
+  amount      Int
+  description String
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model BlockedUser {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  blockerId   String
+  blocker     User     @relation("Blocker", fields: [blockerId], references: [id])
+  blockedId   String
+  blocked     User     @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model RejectedUser {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  rejecterId  String
+  rejecter    User     @relation("Rejecter", fields: [rejecterId], references: [id])
+  rejectedId  String
+  rejected    User     @relation("Rejected", fields: [rejectedId], references: [id])
+
+  @@unique([rejecterId, rejectedId])
+  @@index([rejecterId])
+  @@index([rejectedId])
+}
+
+model AIUsageLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  usedAt      DateTime @default(now())
+  resetDate   DateTime // 用於追蹤每日重置
+
+  @@index([userId, resetDate])
+  @@index([resetDate])
+}
+
+model LicensePlateApplication {
+  id            String            @id @default(cuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id])
+  licensePlate  String
+  vehicleType   VehicleType?
+  status        ApplicationStatus @default(pending)
+  licenseImage  String?           // 行照照片 URL
+  adminNote     String?           // 管理員備註
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  reviewedAt    DateTime?
+  reviewedBy    String?           // 審核管理員 ID
+
+  @@index([userId])
+  @@index([licensePlate])
+  @@index([status])
+}
+
+model MessageReport {
+  id          String       @id @default(cuid())
+  messageId   String
+  message     Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporterId  String
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+  reason      String?      // 檢舉原因
+  status      ReportStatus @default(pending)
+  adminNote   String?      // 管理員備註
+  createdAt   DateTime     @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?      // 審核管理員 ID
+
+  @@unique([messageId, reporterId]) // 同一用戶對同一訊息只能檢舉一次
+  @@index([messageId])
+  @@index([reporterId])
+  @@index([status])
+}
