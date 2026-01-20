@@ -2,11 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-
-// 为静态生成提供空数组（运行时动态处理）
-export async function generateStaticParams() {
-  return [];
-}
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
