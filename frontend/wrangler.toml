@@ -3,5 +3,5 @@ compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
-[build]
-command = "npm run pages:build"
+# 注意：Cloudflare Pages 不支持 [build] 配置段
+# 构建配置应在 cloudflare.json 中设置
