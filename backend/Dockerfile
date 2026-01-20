@@ -5,9 +5,8 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json ./
-# Try to copy package-lock.json if it exists, otherwise use npm install
-COPY package-lock.json* ./
-RUN npm install --production=false
+COPY package-lock.json ./
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
