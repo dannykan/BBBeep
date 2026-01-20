@@ -14,6 +14,7 @@ const cacheDirs = [
 ];
 
 console.log('🧹 Cleaning up cache directories...');
+console.log('Current working directory:', process.cwd());
 
 cacheDirs.forEach((dir) => {
   if (fs.existsSync(dir)) {
@@ -23,6 +24,8 @@ cacheDirs.forEach((dir) => {
     } catch (error) {
       console.error(`❌ Failed to remove ${dir}:`, error.message);
     }
+  } else {
+    console.log(`ℹ️  Directory does not exist: ${dir}`);
   }
 });
 
