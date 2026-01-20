@@ -18,7 +18,14 @@ export class AuthController {
   @ApiOperation({ summary: '檢查手機號碼是否已註冊' })
   @ApiResponse({ status: 200, description: '檢查結果' })
   async checkPhone(@Param('phone') phone: string) {
-    return this.authService.checkPhone(phone);
+    try {
+      // 解码 URL 编码的手机号码
+      const decodedPhone = decodeURIComponent(phone);
+      return await this.authService.checkPhone(decodedPhone);
+    } catch (error) {
+      console.error('Error in checkPhone controller:', error);
+      throw error;
+    }
   }
 
   @Public()
