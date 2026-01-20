@@ -17,13 +17,20 @@ export class AuthController {
   @Get('check-phone/:phone')
   @ApiOperation({ summary: '檢查手機號碼是否已註冊' })
   @ApiResponse({ status: 200, description: '檢查結果' })
+  @ApiResponse({ status: 500, description: '伺服器錯誤' })
   async checkPhone(@Param('phone') phone: string) {
     try {
       // 解码 URL 编码的手机号码
       const decodedPhone = decodeURIComponent(phone);
+      console.log(`[checkPhone] Received phone: ${phone}, decoded: ${decodedPhone}`);
       return await this.authService.checkPhone(decodedPhone);
     } catch (error) {
-      console.error('Error in checkPhone controller:', error);
+      console.error('[checkPhone] Error in controller:', {
+        error: error.message,
+        stack: error.stack,
+        phone: phone,
+      });
+      // 重新抛出错误，让 NestJS 的异常过滤器处理
       throw error;
     }
   }

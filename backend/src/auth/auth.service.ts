@@ -54,17 +54,43 @@ export class AuthService {
 
   async checkPhone(phone: string) {
     try {
+      console.log(`[checkPhone] Service: Checking phone: ${phone}`);
+      
+      // 验证手机号码格式
+      if (!phone || typeof phone !== 'string') {
+        throw new BadRequestException('手機號碼格式錯誤');
+      }
+
+      // 清理手机号码（移除空格等）
+      const cleanPhone = phone.trim();
+      
+      console.log(`[checkPhone] Service: Clean phone: ${cleanPhone}`);
+      
       const user = await this.prisma.user.findUnique({
-        where: { phone },
+        where: { phone: cleanPhone },
         select: { id: true, password: true },
       });
+
+      console.log(`[checkPhone] Service: User found: ${!!user}, hasPassword: ${!!user?.password}`);
 
       return {
         exists: !!user,
         hasPassword: !!user?.password,
       };
     } catch (error) {
-      console.error('Error checking phone:', error);
+      console.error('[checkPhone] Service error:', {
+        error: error.message,
+        stack: error.stack,
+        phone: phone,
+        errorName: error.constructor.name,
+      });
+      
+      // 如果是 Prisma 错误，记录更多信息
+      if (error.code) {
+        console.error('[checkPhone] Prisma error code:', error.code);
+      }
+      
+      // 重新抛出错误
       throw error;
     }
   }
