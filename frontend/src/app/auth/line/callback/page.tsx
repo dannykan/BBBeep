@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { authApi } from '@/lib/api-services';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-export default function LineCallbackPage() {
+function LineCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUser, refreshMessages, refreshPointHistory } = useApp();
@@ -100,5 +100,22 @@ export default function LineCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LineCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">載入中...</p>
+          </div>
+        </div>
+      }
+    >
+      <LineCallbackContent />
+    </Suspense>
   );
 }
