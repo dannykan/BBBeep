@@ -1,7 +1,12 @@
-'use client';
+import { generateStaticParams } from './generateStaticParams';
+import UserDetailClient from './UserDetailClient';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+// 为静态导出提供 generateStaticParams
+export { generateStaticParams };
+
+export default function UserDetailPage({ params }: { params: { id: string } }) {
+  return <UserDetailClient userId={params.id} />;
+}
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
