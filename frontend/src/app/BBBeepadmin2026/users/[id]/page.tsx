@@ -2,12 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-
-// 为静态导出提供 generateStaticParams
-// 返回空数组，让 Next.js 在运行时处理动态路由
-export async function generateStaticParams() {
-  return [];
-}
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
