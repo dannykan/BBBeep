@@ -243,7 +243,11 @@ const SendPage = React.memo(() => {
       'category': 'plate-input',
       'situation': 'category',
       'review': 'situation',
-      'custom': selectedCategory === '其他情況' ? 'category' : 'review',
+      'custom': selectedCategory === '其他情況' 
+        ? 'category' 
+        : (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
+          ? 'situation'
+          : 'review',
       'ai-suggest': 'custom',
       'confirm': aiSuggestion ? 'ai-suggest' : (customText ? 'custom' : 'review'),
       'success': null,
@@ -762,7 +766,7 @@ const SendPage = React.memo(() => {
                 </>
               )}
 
-              {selectedCategory !== '其他情況' && (
+              {selectedCategory !== '其他情況' && !(selectedCategory === '讚美感謝' && selectedSituation === 'other-praise') && (
                 <button
                   onClick={() => setStep('review')}
                   className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
