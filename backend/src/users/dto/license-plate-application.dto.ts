@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { VehicleType } from '@prisma/client';
 
@@ -17,4 +17,9 @@ export class CreateLicensePlateApplicationDto {
   @IsString()
   @IsOptional()
   licenseImage?: string;
+
+  @ApiProperty({ required: false, example: 'user@example.com', description: '申請人 Email（用於通知審核結果）' })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
 }

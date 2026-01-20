@@ -235,6 +235,8 @@ export class AdminService {
             id: true,
             phone: true,
             nickname: true,
+            lineDisplayName: true,
+            linePictureUrl: true,
           },
         },
       },
@@ -387,6 +389,75 @@ export class AdminService {
           },
         },
       },
+    });
+  }
+
+  // 官方封鎖用戶
+  async blockUser(userId: string, reason?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    if (user.isBlockedByAdmin) {
+      throw new BadRequestException('該用戶已被封鎖');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isBlockedByAdmin: true,
+        blockedByAdminAt: new Date(),
+        blockedByAdminReason: reason || null,
+      },
+    });
+  }
+
+  // 解除官方封鎖
+  async unblockUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    if (!user.isBlockedByAdmin) {
+      throw new BadRequestException('該用戶未被封鎖');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isBlockedByAdmin: false,
+        blockedByAdminAt: null,
+        blockedByAdminReason: null,
+      },
+    });
+  }
+
+  // 取得所有被封鎖的用戶
+  async getBlockedUsers() {
+    return this.prisma.user.findMany({
+      where: { isBlockedByAdmin: true },
+      select: {
+        id: true,
+        phone: true,
+        nickname: true,
+        licensePlate: true,
+        lineUserId: true,
+        lineDisplayName: true,
+        linePictureUrl: true,
+        isBlockedByAdmin: true,
+        blockedByAdminAt: true,
+        blockedByAdminReason: true,
+        createdAt: true,
+      },
+      orderBy: { blockedByAdminAt: 'desc' },
     });
   }
 }

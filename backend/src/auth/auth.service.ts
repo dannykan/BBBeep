@@ -160,18 +160,8 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           phone: dto.phone,
-          points: 8, // 新手禮包
           userType: 'driver', // 預設值，會在 onboarding 時更新
-        },
-      });
-
-      // 記錄新手禮包點數
-      await this.prisma.pointHistory.create({
-        data: {
-          userId: user.id,
-          type: 'bonus',
-          amount: 8,
-          description: '新手體驗點數',
+          lastFreePointsReset: new Date(), // 初始化免費點數重置時間
         },
       });
     }
@@ -304,18 +294,8 @@ export class AuthService {
         data: {
           phone: dto.phone,
           userType: 'driver', // 默認值，後續 onboarding 可以修改
-          points: 8, // 註冊獎勵點數
           hasCompletedOnboarding: false,
-        },
-      });
-
-      // 記錄新手禮包點數
-      await this.prisma.pointHistory.create({
-        data: {
-          userId: user.id,
-          type: 'bonus',
-          amount: 8,
-          description: '註冊獎勵點數',
+          lastFreePointsReset: new Date(), // 初始化免費點數重置時間
         },
       });
     }
@@ -435,30 +415,25 @@ export class AuthService {
       });
 
       if (!user) {
-        // 新用戶，創建帳號
+        // 新用戶，創建帳號（freePoints 會自動設為 2）
         user = await this.prisma.user.create({
           data: {
             lineUserId: lineProfile.userId,
             lineDisplayName: lineProfile.displayName,
             linePictureUrl: lineProfile.pictureUrl,
             nickname: lineProfile.displayName,
-            points: 8, // 新手禮包
             userType: 'driver', // 預設值，會在 onboarding 時更新
-          },
-        });
-
-        // 記錄新手禮包點數
-        await this.prisma.pointHistory.create({
-          data: {
-            userId: user.id,
-            type: 'bonus',
-            amount: 8,
-            description: '新手體驗點數',
+            lastFreePointsReset: new Date(), // 設定今天已重置
           },
         });
 
         console.log(`[LINE_LOGIN] New user created: ${user.id}`);
       } else {
+        // 檢查用戶是否被封鎖
+        if (user.isBlockedByAdmin) {
+          throw new UnauthorizedException('您的帳號已被停用，如有疑問請聯繫客服');
+        }
+
         // 更新 LINE 資料
         user = await this.prisma.user.update({
           where: { id: user.id },

@@ -26,9 +26,9 @@
     "prisma:seed-bbp2999": "ts-node prisma/seed-bbp2999.ts",
     "prisma:reset-users": "ts-node prisma/reset-users.ts",
     "prisma:reset-redis": "ts-node prisma/reset-redis.ts",
-        "prisma:reset-all": "npm run prisma:reset-users && npm run prisma:reset-redis",
-        "prisma:normalize-plates": "ts-node prisma/normalize-license-plates.ts",
-        "migration:run": "prisma migrate deploy"
+    "prisma:reset-all": "npm run prisma:reset-users && npm run prisma:reset-redis",
+    "prisma:normalize-plates": "ts-node prisma/normalize-license-plates.ts",
+    "migration:run": "prisma migrate deploy"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
@@ -41,6 +41,7 @@
     "@nestjs/swagger": "^7.1.17",
     "@prisma/client": "^5.9.1",
     "@types/bcryptjs": "^2.4.6",
+    "@types/multer": "^2.0.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
@@ -51,7 +52,8 @@
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.1.14",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",
@@ -63,6 +65,7 @@
     "@types/node": "^20.11.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.0",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "eslint": "^8.56.0",

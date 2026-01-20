@@ -27,13 +27,16 @@ interface Application {
   vehicleType?: 'car' | 'scooter';
   status: 'pending' | 'approved' | 'rejected';
   licenseImage?: string;
+  email?: string;
   adminNote?: string;
   createdAt: string;
   reviewedAt?: string;
   user: {
     id: string;
-    phone: string;
+    phone?: string;
     nickname?: string;
+    lineDisplayName?: string;
+    linePictureUrl?: string;
   };
 }
 
@@ -156,6 +159,15 @@ const ApplicationsPage = React.memo(() => {
       default:
         return status;
     }
+  };
+
+  const getImageUrl = (url?: string) => {
+    if (!url) return '';
+    // 如果是相對路徑（以 /uploads 開頭），加上後端 URL
+    if (url.startsWith('/uploads')) {
+      return `${API_URL}${url}`;
+    }
+    return url;
   };
 
   if (isLoading) {
@@ -286,10 +298,23 @@ const ApplicationsPage = React.memo(() => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-xs text-muted-foreground">申請人</p>
-                        <p className="text-foreground">{application.user.phone}</p>
-                        {application.user.nickname && (
-                          <p className="text-xs text-muted-foreground">{application.user.nickname}</p>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {application.user.linePictureUrl && (
+                            <img src={application.user.linePictureUrl} alt="" className="w-6 h-6 rounded-full" />
+                          )}
+                          <div>
+                            <p className="text-foreground">
+                              {application.user.lineDisplayName || application.user.phone || '未知用戶'}
+                            </p>
+                            {application.user.nickname && (
+                              <p className="text-xs text-muted-foreground">{application.user.nickname}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">聯絡 Email</p>
+                        <p className="text-foreground">{application.email || '未提供'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">車輛類型</p>
@@ -328,13 +353,13 @@ const ApplicationsPage = React.memo(() => {
                   <div className="mb-4">
                     <p className="text-xs text-muted-foreground mb-2">行照照片</p>
                     <a
-                      href={application.licenseImage}
+                      href={getImageUrl(application.licenseImage)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block"
                     >
                       <img
-                        src={application.licenseImage}
+                        src={getImageUrl(application.licenseImage)}
                         alt="行照"
                         className="max-w-full h-auto max-h-48 rounded-lg border border-border"
                       />
@@ -368,11 +393,17 @@ const ApplicationsPage = React.memo(() => {
               <div>
                 <Label>行照照片</Label>
                 <div className="mt-2">
-                  <img
-                    src={selectedApplication.licenseImage}
-                    alt="行照"
-                    className="max-w-full h-auto max-h-64 rounded-lg border border-border"
-                  />
+                  <a
+                    href={getImageUrl(selectedApplication.licenseImage)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      src={getImageUrl(selectedApplication.licenseImage)}
+                      alt="行照"
+                      className="max-w-full h-auto max-h-64 rounded-lg border border-border cursor-pointer hover:opacity-90"
+                    />
+                  </a>
                 </div>
               </div>
             )}
@@ -413,7 +444,16 @@ const ApplicationsPage = React.memo(() => {
             <div className="p-4 bg-muted/30 rounded-lg">
               <p className="text-xs text-muted-foreground mb-2">申請資訊</p>
               <div className="space-y-1 text-sm text-foreground">
-                <p>申請人：{selectedApplication?.user.phone}</p>
+                <div className="flex items-center gap-2">
+                  <span>申請人：</span>
+                  {selectedApplication?.user.linePictureUrl && (
+                    <img src={selectedApplication.user.linePictureUrl} alt="" className="w-5 h-5 rounded-full" />
+                  )}
+                  <span>
+                    {selectedApplication?.user.lineDisplayName || selectedApplication?.user.phone || '未知用戶'}
+                  </span>
+                </div>
+                {selectedApplication?.email && <p>聯絡 Email：{selectedApplication.email}</p>}
                 <p>車牌號碼：{selectedApplication?.licensePlate}</p>
                 <p>車輛類型：{selectedApplication?.vehicleType === 'car' ? '汽車' : '機車'}</p>
               </div>

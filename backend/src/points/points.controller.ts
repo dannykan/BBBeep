@@ -11,10 +11,13 @@ export class PointsController {
   constructor(private readonly pointsService: PointsService) {}
 
   @Get('balance')
-  @ApiOperation({ summary: '獲取當前點數' })
+  @ApiOperation({ summary: '獲取當前點數（含免費點數和購買點數明細）' })
   async getBalance(@CurrentUser() user: any) {
+    const detail = await this.pointsService.getPointsDetail(user.userId);
     return {
-      points: await this.pointsService.getPoints(user.userId),
+      points: detail.total,        // 總點數（向下相容）
+      freePoints: detail.free,     // 每日免費點數
+      purchasedPoints: detail.purchased, // 購買點數
     };
   }
 

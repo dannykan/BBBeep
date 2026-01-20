@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Car, Bike, User, ChevronLeft } from 'lucide-react';
+import { Car, Bike, User, ChevronLeft, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { usersApi, licensePlateApi } from '@/lib/api-services';
+import { usersApi, licensePlateApi, uploadApi } from '@/lib/api-services';
 import type { UserType } from '@/types';
 import { normalizeLicensePlate, displayLicensePlate } from '@/lib/license-plate-format';
 import {
@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
+type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
 const OnboardingPage = React.memo(() => {
   const router = useRouter();
@@ -40,13 +40,16 @@ const OnboardingPage = React.memo(() => {
   } | null>(null);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
   const [licenseImage, setLicenseImage] = useState<string>('');
+  const [licenseImageFile, setLicenseImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [applicationEmail, setApplicationEmail] = useState<string>('');
 
   const handleUserTypeSelect = (type: UserType, vehicle?: 'car' | 'scooter') => {
     setUserType(type);
     if (vehicle) {
       setVehicleType(vehicle);
     }
-    setStep(3);
+    setStep(2);
   };
 
   const handleNicknameSubmit = async () => {
@@ -60,9 +63,9 @@ const OnboardingPage = React.memo(() => {
     }
 
     if (userType === 'pedestrian') {
-      setStep(5);
-    } else {
       setStep(4);
+    } else {
+      setStep(3);
     }
   };
 
@@ -101,7 +104,7 @@ const OnboardingPage = React.memo(() => {
       } catch (error) {
         console.error('Failed to update license plate:', error);
       }
-      setStep(5);
+      setStep(4);
     } catch (error: any) {
       toast.error(error.response?.data?.message || '檢查車牌失敗');
     } finally {
@@ -112,6 +115,42 @@ const OnboardingPage = React.memo(() => {
   const handleConfirmApplication = () => {
     setShowLicensePlateDialog(false);
     setShowApplicationDialog(true);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 檢查檔案類型
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+      toast.error('只允許上傳圖片檔案（JPG、PNG、GIF、WebP）');
+      return;
+    }
+
+    // 檢查檔案大小（10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('檔案大小不能超過 10MB');
+      return;
+    }
+
+    setLicenseImageFile(file);
+    setIsUploading(true);
+
+    try {
+      const result = await uploadApi.uploadImage(file);
+      setLicenseImage(result.url);
+      toast.success('圖片上傳成功');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '圖片上傳失敗');
+      setLicenseImageFile(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setLicenseImageFile(null);
+    setLicenseImage('');
   };
 
   const handleSubmitApplication = async () => {
@@ -131,11 +170,12 @@ const OnboardingPage = React.memo(() => {
         licensePlate: normalizedPlate,
         vehicleType: vehicleType || undefined,
         licenseImage: licenseImage || undefined,
+        email: applicationEmail || undefined,
       });
-      toast.success('申請已提交，我們會在 1-2 個工作天內以簡訊回覆');
+      toast.success('申請已提交，我們會在 1-2 個工作天內以 Email 通知');
       setShowApplicationDialog(false);
       // 跳過車牌步驟，繼續完成註冊（不綁定車牌）
-      setStep(5);
+      setStep(4);
     } catch (error: any) {
       toast.error(error.response?.data?.message || '提交申請失敗');
     } finally {
@@ -180,20 +220,18 @@ const OnboardingPage = React.memo(() => {
     } else if (step === 3) {
       setStep(2);
     } else if (step === 4) {
-      setStep(3);
-    } else if (step === 5) {
       if (userType === 'pedestrian') {
-        setStep(3);
+        setStep(2);
       } else {
-        setStep(4);
+        setStep(3);
       }
-    } else if (step === 6) {
-      setStep(5);
+    } else if (step === 5) {
+      setStep(4);
     }
   };
 
-  const totalSteps = userType === 'pedestrian' ? 5 : 6;
-  const currentStep = userType === 'pedestrian' && step > 4 ? step - 1 : step;
+  const totalSteps = userType === 'pedestrian' ? 4 : 5;
+  const currentStep = userType === 'pedestrian' && step > 3 ? step - 1 : step;
 
   return (
     <div className="min-h-screen bg-background">
@@ -228,28 +266,10 @@ const OnboardingPage = React.memo(() => {
         </div>
 
         {step === 1 && (
-          <Card className="p-6 space-y-6 bg-card border-border shadow-none">
-            <div className="space-y-3 text-center">
-              <h2 className="text-xl text-foreground">這不是聊天平台</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                我們希望把路上的衝突<br />
-                變成私密、短暫、不擴散的提醒
-              </p>
-            </div>
-            <Button
-              className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
-              onClick={() => setStep(2)}
-            >
-              下一步
-            </Button>
-          </Card>
-        )}
-
-        {step === 2 && (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-xl font-medium mb-2">你是哪一種用路人？</h2>
-              <p className="text-sm text-muted-foreground">選擇你的身分</p>
+              <h2 className="text-xl font-medium mb-2">你今天是用什麼方式在路上？</h2>
+              <p className="text-sm text-muted-foreground">不同身分，能使用的功能會不一樣</p>
             </div>
 
             <div className="space-y-3">
@@ -262,7 +282,7 @@ const OnboardingPage = React.memo(() => {
                   <div className="flex-1 text-left">
                     <p className="font-medium text-foreground">汽車駕駛</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      需填寫車牌｜可發送、可接收提醒
+                      填寫車牌｜可以發送，也可以接收提醒
                     </p>
                   </div>
                 </div>
@@ -277,7 +297,7 @@ const OnboardingPage = React.memo(() => {
                   <div className="flex-1 text-left">
                     <p className="font-medium text-foreground">機車騎士</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      需填寫車牌｜可發送、可接收提醒
+                      填寫車牌｜可以發送，也可以接收提醒
                     </p>
                   </div>
                 </div>
@@ -290,7 +310,7 @@ const OnboardingPage = React.memo(() => {
                 <div className="flex items-center gap-4">
                   <User className="h-8 w-8 text-primary" strokeWidth={1.5} />
                   <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground">行人/腳踏車</p>
+                    <p className="font-medium text-foreground">行人 / 腳踏車</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       不需車牌｜只能發送提醒
                     </p>
@@ -301,19 +321,19 @@ const OnboardingPage = React.memo(() => {
 
             <Card className="p-4 bg-muted/30 border-border">
               <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                💡 行人/腳踏車用戶因沒有車牌，無法接收其他人的提醒
+                💡 行人 / 腳踏車沒有車牌，因此不會收到別人的提醒
               </p>
             </Card>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
             <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-3 text-center">
-              <h2 className="text-xl text-foreground">設定暱稱（可選）</h2>
+              <h2 className="text-xl text-foreground">設定一個暱稱（可跳過）</h2>
               <p className="text-sm text-muted-foreground">
-                暱稱會在訊息中以匿名方式顯示<br />
-                不設定也可以使用所有功能
+                暱稱只會以匿名方式顯示<br />
+                不設定也能完整使用所有功能
               </p>
             </div>
 
@@ -324,12 +344,12 @@ const OnboardingPage = React.memo(() => {
               <Input
                 id="nickname"
                 type="text"
-                placeholder="例如：熱心駕駛"
+                placeholder="例如：熱心駕駛、路過提醒一下"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 maxLength={12}
               />
-              <p className="text-xs text-muted-foreground">最多 12 個字元</p>
+              <p className="text-xs text-muted-foreground">最多 12 個字</p>
             </div>
 
             <div className="space-y-2">
@@ -347,14 +367,14 @@ const OnboardingPage = React.memo(() => {
                   }}
                   className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                 >
-                  跳過暱稱設定
+                  跳過
                 </button>
               )}
             </div>
           </Card>
         )}
 
-        {step === 4 && userType === 'driver' && (
+        {step === 3 && userType === 'driver' && (
             <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-3 text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
@@ -367,9 +387,10 @@ const OnboardingPage = React.memo(() => {
                   {vehicleType === 'car' ? '汽車駕駛' : '機車騎士'}
                 </span>
               </div>
-              <h2 className="text-xl text-foreground">填寫車牌號碼</h2>
+              <h2 className="text-xl text-foreground">填寫你的車牌</h2>
               <p className="text-sm text-muted-foreground">
-                僅用於接收提醒，不會公開顯示
+                只用來接收提醒<br />
+                不會公開、不會被其他人看到
               </p>
             </div>
 
@@ -391,7 +412,7 @@ const OnboardingPage = React.memo(() => {
                 className="text-center font-mono tracking-wider"
               />
               <p className="text-xs text-muted-foreground text-center">
-                {vehicleType === 'car' ? '格式範例：ABC1234（可不輸入連字符）' : '格式範例：ABC123（可不輸入連字符）'}
+                {vehicleType === 'car' ? '格式範例：ABC1234 或 ABC-1234（可不輸入連字符）' : '格式範例：ABC123 或 ABC-123（可不輸入連字符）'}
               </p>
             </div>
 
@@ -405,45 +426,45 @@ const OnboardingPage = React.memo(() => {
           </Card>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <Card className="p-6 space-y-6 bg-card border-border shadow-none">
-            <div className="space-y-4">
+            <div className="space-y-4 text-center">
               <h2 className="text-xl text-foreground">
-                這裡的每一次提醒<br />都需要點數
+                每一次提醒<br />都需要一點點點數
               </h2>
 
               <div className="space-y-2 text-sm text-left bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-foreground">提醒會消耗點數</span>
+                  <span className="text-muted-foreground">📩</span>
+                  <span className="text-foreground">發送提醒會消耗點數</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-foreground">讚美可以獲得少量點數</span>
+                  <span className="text-muted-foreground">👍</span>
+                  <span className="text-foreground">收到讚美，可以獲得少量點數</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-muted-foreground">•</span>
-                  <span className="text-foreground">不公開車牌、不公開個人資訊</span>
+                  <span className="text-muted-foreground">🔒</span>
+                  <span className="text-foreground">車牌與個人資訊都不會公開</span>
                 </div>
               </div>
 
               <div className="bg-primary/5 border-2 border-primary/30 rounded-lg p-4">
                 <p className="text-sm font-medium text-primary-dark">
-                  🎁 新手禮包：8 點免費體驗
+                  🎁 每天免費 2 點，用完隔天自動補滿
                 </p>
               </div>
             </div>
 
             <Button
               className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
-              onClick={() => setStep(6)}
+              onClick={() => setStep(5)}
             >
               下一步
             </Button>
           </Card>
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-4">
               <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto flex items-center justify-center">
@@ -456,24 +477,27 @@ const OnboardingPage = React.memo(() => {
                 )}
               </div>
 
-              <div>
+              <div className="text-center">
                 <h2 className="text-xl text-foreground mb-2">
-                  {userType === 'pedestrian' ? '歡迎加入！' : '歡迎上路！'}
+                  {userType === 'pedestrian' ? '🙌 歡迎加入！' : '🚦 歡迎上路！'}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {userType === 'pedestrian'
-                    ? '你可以開始發送提醒給其他用路人'
-                    : '你已獲得 8 點免費體驗點數'}
+                    ? '你可以開始提醒路上的汽車與機車'
+                    : '每天都有 2 點免費額度，用一個更文明的方式提醒彼此'}
                 </p>
               </div>
 
+              <p className="text-xs text-muted-foreground text-center italic">
+                我們相信，多數人不是故意的，只是沒被提醒。
+              </p>
+
               {userType === 'pedestrian' && (
                 <div className="bg-muted/30 border border-border rounded-lg p-4 text-left">
-                  <p className="text-xs text-muted-foreground mb-2">行人用戶說明：</p>
                   <ul className="space-y-1 text-xs text-foreground">
-                    <li>✅ 可以發送提醒給汽車/機車駕駛</li>
-                    <li>✅ 獲得 8 點新手禮包</li>
-                    <li>⚠️ 無法收到提醒（因為沒有車牌）</li>
+                    <li>✅ 可以發送提醒</li>
+                    <li>✅ 每天免費 2 點</li>
+                    <li>⚠️ 因沒有車牌，無法接收提醒</li>
                   </ul>
                 </div>
               )}
@@ -504,17 +528,18 @@ const OnboardingPage = React.memo(() => {
               這是否為您的車輛？
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex-wrap">
             <Button
               variant="outline"
               onClick={() => {
                 setShowLicensePlateDialog(false);
                 setLicensePlate('');
               }}
+              className="flex-1 min-w-0 shrink"
             >
               不是，重新輸入
             </Button>
-            <Button onClick={handleConfirmApplication}>
+            <Button onClick={handleConfirmApplication} className="flex-1 min-w-0 shrink">
               是，提交申請
             </Button>
           </DialogFooter>
@@ -523,40 +548,85 @@ const OnboardingPage = React.memo(() => {
 
       {/* 車牌申請對話框 */}
       <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>提交車牌申請</DialogTitle>
             <DialogDescription>
-              請上傳行照照片（需包含車牌資料），我們會在 1-2 個工作天內審核並以簡訊回覆。
+              請上傳行照照片（需包含車牌資料），我們會在 1-2 個工作天內審核並以 Email 通知。
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
             <div className="space-y-2">
-              <Label htmlFor="licenseImage">行照照片</Label>
+              <Label htmlFor="applicationEmail">Email（用於接收審核通知）</Label>
               <Input
-                id="licenseImage"
-                type="text"
-                placeholder="請輸入圖片 URL（或使用圖片上傳服務）"
-                value={licenseImage}
-                onChange={(e) => setLicenseImage(e.target.value)}
+                id="applicationEmail"
+                type="email"
+                placeholder="請輸入您的 Email"
+                value={applicationEmail}
+                onChange={(e) => setApplicationEmail(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                提示：您可以先將照片上傳到圖床服務（如 imgur），然後貼上 URL
-              </p>
             </div>
-            <div className="p-4 bg-muted/30 rounded-lg">
-              <p className="text-sm text-foreground font-medium mb-2">申請資訊</p>
-              <div className="space-y-1 text-sm text-muted-foreground">
+            <div className="space-y-2">
+              <Label>行照照片</Label>
+              {licenseImage ? (
+                <div className="relative">
+                  <div className="border border-border rounded-lg p-2 sm:p-3 flex items-center gap-2 sm:gap-3 bg-muted/30">
+                    <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-foreground flex-1 truncate min-w-0">
+                      {licenseImageFile?.name || '已上傳圖片'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="p-1 hover:bg-muted rounded-full flex-shrink-0"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="cursor-pointer block">
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 sm:p-6 text-center hover:border-primary hover:bg-primary/5 transition-colors">
+                    {isUploading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs sm:text-sm text-muted-foreground">上傳中...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 sm:gap-2">
+                        <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                        <span className="text-xs sm:text-sm text-muted-foreground">
+                          點擊選擇圖片
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">
+                          支援 JPG、PNG、GIF、WebP（最大 10MB）
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="p-3 sm:p-4 bg-muted/30 rounded-lg">
+              <p className="text-xs sm:text-sm text-foreground font-medium mb-1 sm:mb-2">申請資訊</p>
+              <div className="space-y-0.5 sm:space-y-1 text-xs sm:text-sm text-muted-foreground">
                 <p>車牌號碼：{licensePlate.toUpperCase()}</p>
                 <p>車輛類型：{vehicleType === 'car' ? '汽車' : '機車'}</p>
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowApplicationDialog(false)}>
+          <DialogFooter className="flex-wrap">
+            <Button variant="outline" onClick={() => setShowApplicationDialog(false)} className="flex-1 min-w-0 shrink">
               取消
             </Button>
-            <Button onClick={handleSubmitApplication} disabled={isLoading}>
+            <Button onClick={handleSubmitApplication} disabled={isLoading || isUploading} className="flex-1 min-w-0 shrink">
               {isLoading ? '提交中...' : '提交申請'}
             </Button>
           </DialogFooter>

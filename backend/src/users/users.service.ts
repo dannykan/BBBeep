@@ -397,12 +397,6 @@ export class UsersService {
     if (!normalizedPlate) {
       throw new BadRequestException('車牌號碼格式無效');
     }
-    
-    // 檢查車牌是否已被綁定
-    const checkResult = await this.checkLicensePlateAvailability(normalizedPlate);
-    if (checkResult.isBound) {
-      throw new BadRequestException('該車牌已被綁定，無法申請');
-    }
 
     // 檢查是否已有待審核的申請
     const existingApplication = await this.prisma.licensePlateApplication.findFirst({
@@ -423,6 +417,7 @@ export class UsersService {
         licensePlate: normalizedPlate, // 使用格式化後的車牌（不含分隔符）
         vehicleType: dto.vehicleType,
         licenseImage: dto.licenseImage,
+        email: dto.email,
       },
     });
   }

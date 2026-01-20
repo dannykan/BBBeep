@@ -45,7 +45,7 @@ const LandingPage = React.memo(() => {
               <Coins className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" strokeWidth={1.5} />
               <div className="text-sm space-y-0.5">
                 <p className="text-foreground">使用需點數</p>
-                <p className="text-muted-foreground text-xs">註冊即贈 8 點免費體驗</p>
+                <p className="text-muted-foreground text-xs">每天免費 2 點，用完隔天補滿</p>
               </div>
             </div>
           </Card>
@@ -57,7 +57,7 @@ const LandingPage = React.memo(() => {
             onClick={() => router.push('/login')}
           >
             <UserPlus className="h-4 w-4 mr-2" />
-            立即註冊（送 8 點）
+            立即註冊
           </Button>
 
           <button

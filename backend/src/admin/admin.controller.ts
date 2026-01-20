@@ -223,4 +223,46 @@ export class AdminController {
     }
     return this.aiPromptService.updatePrompt(dto.vehicleType, dto.category, dto.prompt);
   }
+
+  // ========== 用戶封鎖管理 ==========
+
+  @Get('blocked-users')
+  @ApiOperation({ summary: '獲取所有被封鎖的用戶' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getBlockedUsers(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getBlockedUsers();
+  }
+
+  @Put('users/:id/block')
+  @ApiOperation({ summary: '封鎖用戶' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async blockUser(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+    @Body() data: { reason?: string },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.blockUser(id, data.reason);
+  }
+
+  @Put('users/:id/unblock')
+  @ApiOperation({ summary: '解除封鎖用戶' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async unblockUser(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.unblockUser(id);
+  }
 }

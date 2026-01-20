@@ -97,13 +97,30 @@ export const aiApi = {
     api.post<{ rewritten: string }>('/ai/rewrite', { text, vehicleType, category }).then((res) => res.data),
 };
 
+// Upload
+export const uploadApi = {
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ url: string; filename: string; originalname: string; size: number }>(
+      '/upload/image',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    ).then((res) => res.data);
+  },
+};
+
 // License Plate
 export const licensePlateApi = {
   checkAvailability: (plate: string) =>
     api.get<{ available: boolean; isBound: boolean; boundPhone?: string; boundNickname?: string; hasPendingApplication?: boolean }>(
       `/users/check-license-plate/${plate}`
     ).then((res) => res.data),
-  createApplication: (data: { licensePlate: string; vehicleType?: 'car' | 'scooter'; licenseImage?: string }) =>
+  createApplication: (data: { licensePlate: string; vehicleType?: 'car' | 'scooter'; licenseImage?: string; email?: string }) =>
     api.post('/users/license-plate-application', data).then((res) => res.data),
   getMyApplications: () =>
     api.get('/users/license-plate-application').then((res) => res.data),

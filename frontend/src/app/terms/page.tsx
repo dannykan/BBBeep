@@ -57,7 +57,7 @@ const TermsPage = React.memo(() => {
           <section className="space-y-3">
             <h2 className="text-base text-foreground font-medium">3. 點數規則</h2>
             <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-              <p>• 新用戶註冊即獲得 8 點體驗點數</p>
+              <p>• 每日免費獲得 2 點，用完隔天自動補滿</p>
               <p>• 發送基本提醒消耗 1 點，附加補充說明消耗額外 3 點</p>
               <p>• 收到讚美並回應可獲得 1 點回饋</p>
               <p>• 點數不可退款或轉讓</p>

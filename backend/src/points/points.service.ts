@@ -7,25 +7,92 @@ interface AddPointHistoryParams {
   description: string;
 }
 
+const DAILY_FREE_POINTS = 2;
+const TAIPEI_TIMEZONE = 'Asia/Taipei';
+
 @Injectable()
 export class PointsService {
   constructor(private prisma: PrismaService) {}
 
-  async getPoints(userId: string): Promise<number> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { points: true },
-    });
-    return user?.points || 0;
+  // 取得台北時間的今天日期字串 (YYYY-MM-DD)
+  private getTaipeiDateString(): string {
+    const now = new Date();
+    const taipeiTime = new Date(now.toLocaleString('en-US', { timeZone: TAIPEI_TIMEZONE }));
+    return taipeiTime.toISOString().split('T')[0];
   }
 
+  // 檢查並重置免費點數（如果是新的一天）
+  async checkAndResetFreePoints(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { freePoints: true, lastFreePointsReset: true },
+    });
+
+    if (!user) return;
+
+    const todayStr = this.getTaipeiDateString();
+
+    // 如果從未重置過，或者上次重置不是今天，則重置
+    let shouldReset = false;
+    if (!user.lastFreePointsReset) {
+      shouldReset = true;
+    } else {
+      const lastResetDate = new Date(user.lastFreePointsReset.toLocaleString('en-US', { timeZone: TAIPEI_TIMEZONE }));
+      const lastResetStr = lastResetDate.toISOString().split('T')[0];
+      shouldReset = lastResetStr !== todayStr;
+    }
+
+    if (shouldReset) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          freePoints: DAILY_FREE_POINTS,
+          lastFreePointsReset: new Date(),
+        },
+      });
+    }
+  }
+
+  // 取得總點數（免費點數 + 購買點數）
+  async getPoints(userId: string): Promise<number> {
+    // 先檢查並重置免費點數
+    await this.checkAndResetFreePoints(userId);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { points: true, freePoints: true },
+    });
+    return (user?.points || 0) + (user?.freePoints || 0);
+  }
+
+  // 取得詳細點數資訊
+  async getPointsDetail(userId: string): Promise<{ total: number; free: number; purchased: number }> {
+    // 先檢查並重置免費點數
+    await this.checkAndResetFreePoints(userId);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { points: true, freePoints: true },
+    });
+
+    const free = user?.freePoints || 0;
+    const purchased = user?.points || 0;
+
+    return {
+      total: free + purchased,
+      free,
+      purchased,
+    };
+  }
+
+  // 新增購買點數
   async addPoints(
     userId: string,
     amount: number,
     history: AddPointHistoryParams,
   ) {
     await this.prisma.$transaction(async (tx) => {
-      // 更新點數
+      // 更新購買點數
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -47,32 +114,48 @@ export class PointsService {
     });
   }
 
+  // 扣除點數（先扣免費點數，再扣購買點數）
   async deductPoints(
     userId: string,
     amount: number,
     history: AddPointHistoryParams,
   ) {
+    // 先檢查並重置免費點數
+    await this.checkAndResetFreePoints(userId);
+
     await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { points: true },
+        select: { points: true, freePoints: true },
       });
 
-      if (!user || user.points < amount) {
+      if (!user) {
+        throw new Error('用戶不存在');
+      }
+
+      const totalPoints = (user.points || 0) + (user.freePoints || 0);
+      if (totalPoints < amount) {
         throw new Error('點數不足');
       }
+
+      // 計算如何扣除：先扣免費點數，再扣購買點數
+      let freePointsToDeduct = Math.min(user.freePoints || 0, amount);
+      let purchasedPointsToDeduct = amount - freePointsToDeduct;
 
       // 更新點數
       await tx.user.update({
         where: { id: userId },
         data: {
+          freePoints: {
+            decrement: freePointsToDeduct,
+          },
           points: {
-            decrement: amount,
+            decrement: purchasedPointsToDeduct,
           },
         },
       });
 
-      // 記錄歷史
+      // 記錄歷史（記錄總扣除數）
       await tx.pointHistory.create({
         data: {
           userId,
@@ -84,8 +167,8 @@ export class PointsService {
     });
   }
 
+  // 儲值（只增加購買點數）
   async recharge(userId: string, amount: number) {
-    // 模擬支付流程（實際應該整合支付系統）
     await this.addPoints(userId, amount, {
       type: 'recharge',
       description: `儲值 ${amount} 點`,

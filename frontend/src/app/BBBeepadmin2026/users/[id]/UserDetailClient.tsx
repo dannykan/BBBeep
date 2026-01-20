@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare, Ban, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import {
@@ -28,7 +28,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface UserDetail {
   id: string;
-  phone: string;
+  phone?: string;
   nickname?: string;
   licensePlate?: string;
   userType: 'driver' | 'pedestrian';
@@ -36,6 +36,14 @@ interface UserDetail {
   points: number;
   hasCompletedOnboarding: boolean;
   email?: string;
+  // LINE Login 相關
+  lineUserId?: string;
+  lineDisplayName?: string;
+  linePictureUrl?: string;
+  // 官方封鎖相關
+  isBlockedByAdmin?: boolean;
+  blockedByAdminAt?: string;
+  blockedByAdminReason?: string;
   createdAt: string;
   _count: {
     receivedMessages: number;
@@ -78,6 +86,8 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showEditMessageDialog, setShowEditMessageDialog] = useState(false);
   const [editMessageData, setEditMessageData] = useState<{ template?: string; customText?: string; read?: boolean }>({});
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -210,6 +220,44 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
     }
   };
 
+  const handleBlockUser = async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      await axios.put(
+        `${API_URL}/admin/users/${userId}/block`,
+        { reason: blockReason || undefined },
+        { headers: { 'x-admin-token': token } }
+      );
+      toast.success('用戶已封鎖');
+      setShowBlockDialog(false);
+      setBlockReason('');
+      loadUserData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '封鎖失敗');
+    }
+  };
+
+  const handleUnblockUser = async () => {
+    if (!confirm('確定要解除封鎖此用戶嗎？')) return;
+
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      await axios.put(
+        `${API_URL}/admin/users/${userId}/unblock`,
+        {},
+        { headers: { 'x-admin-token': token } }
+      );
+      toast.success('已解除封鎖');
+      loadUserData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '解除封鎖失敗');
+    }
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -256,10 +304,64 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
           <TabsContent value="info" className="space-y-4">
             <Card className="p-6 bg-card border-border shadow-none">
               <div className="space-y-4">
+                {/* 封鎖狀態警告 */}
+                {user.isBlockedByAdmin && (
+                  <div className="flex items-center justify-between p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <div className="flex items-center gap-3">
+                      <Ban className="h-6 w-6 text-red-600" />
+                      <div>
+                        <p className="text-sm text-red-600 font-medium">此用戶已被封鎖</p>
+                        {user.blockedByAdminReason && (
+                          <p className="text-xs text-red-500">原因：{user.blockedByAdminReason}</p>
+                        )}
+                        {user.blockedByAdminAt && (
+                          <p className="text-xs text-red-400">
+                            封鎖時間：{new Date(user.blockedByAdminAt).toLocaleString('zh-TW')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUnblockUser}
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <ShieldOff className="h-4 w-4 mr-2" />
+                      解除封鎖
+                    </Button>
+                  </div>
+                )}
+
+                {/* LINE 頭像和名稱 */}
+                {user.lineUserId && (
+                  <div className="flex items-center gap-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                    {user.linePictureUrl && (
+                      <img
+                        src={user.linePictureUrl}
+                        alt="LINE 頭像"
+                        className="w-12 h-12 rounded-full"
+                      />
+                    )}
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">LINE 用戶</p>
+                      <p className="text-foreground">{user.lineDisplayName || 'LINE 用戶'}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* LINE ID */}
+                  {user.lineUserId && (
+                    <div className="space-y-2">
+                      <Label>LINE User ID</Label>
+                      <Input value={user.lineUserId} disabled className="bg-muted font-mono text-xs" />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>手機號碼</Label>
-                    <Input value={user.phone} disabled className="bg-muted" />
+                    <Input value={user.phone || '未綁定'} disabled className="bg-muted" />
                   </div>
 
                   <div className="space-y-2">
@@ -349,6 +451,20 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
                     }}>
                       <X className="h-4 w-4 mr-2" />
                       取消
+                    </Button>
+                  </div>
+                )}
+
+                {/* 封鎖用戶按鈕 */}
+                {!isEditing && !user.isBlockedByAdmin && (
+                  <div className="pt-4 border-t border-border">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowBlockDialog(true)}
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      封鎖此用戶
                     </Button>
                   </div>
                 )}
@@ -552,6 +668,51 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
               取消
             </Button>
             <Button onClick={handleSaveMessage}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 封鎖用戶對話框 */}
+      <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>封鎖用戶</DialogTitle>
+            <DialogDescription>
+              封鎖後，此用戶將無法登入使用服務。確定要封鎖此用戶嗎？
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-muted/30 rounded-lg">
+              <p className="text-sm text-foreground font-medium mb-2">用戶資訊</p>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {user?.lineDisplayName && <p>LINE 名稱：{user.lineDisplayName}</p>}
+                {user?.phone && <p>手機號碼：{user.phone}</p>}
+                {user?.nickname && <p>暱稱：{user.nickname}</p>}
+                {user?.licensePlate && <p>車牌號碼：{user.licensePlate}</p>}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="blockReason">封鎖原因（可選）</Label>
+              <textarea
+                id="blockReason"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="輸入封鎖原因..."
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowBlockDialog(false);
+              setBlockReason('');
+            }}>
+              取消
+            </Button>
+            <Button onClick={handleBlockUser} className="bg-red-600 hover:bg-red-700 text-white">
+              <Ban className="h-4 w-4 mr-2" />
+              確認封鎖
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

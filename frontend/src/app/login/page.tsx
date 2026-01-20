@@ -18,7 +18,18 @@ type Step = 'phone' | 'otp' | 'password' | 'login';
 
 const OTP_COUNTDOWN_SECONDS = 180;
 
+// 解析啟用的登入方式
+const getEnabledLoginMethods = () => {
+  const methods = process.env.NEXT_PUBLIC_LOGIN_METHODS || 'phone,line';
+  return methods.split(',').map((m) => m.trim().toLowerCase());
+};
+
 const LoginPage = React.memo(() => {
+  // 登入方式設定
+  const enabledMethods = getEnabledLoginMethods();
+  const isPhoneEnabled = enabledMethods.includes('phone');
+  const isLineEnabled = enabledMethods.includes('line');
+  const isLineOnly = isLineEnabled && !isPhoneEnabled;
   const router = useRouter();
   const { login: loginContext, refreshUser, refreshMessages, refreshPointHistory } = useApp();
   const [step, setStep] = useState<Step>('phone');
@@ -390,70 +401,91 @@ const LoginPage = React.memo(() => {
         <Card className="p-6 space-y-6 bg-card border-border shadow-none">
           {step === 'phone' && (
             <>
-              <div className="space-y-1">
-                <h2 className="text-xl text-foreground">註冊/登入</h2>
-                <p className="text-sm text-muted-foreground">請輸入手機號碼</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-sm text-foreground">
-                    手機號碼
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="0912345678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                    className="h-11 bg-input-background border-border"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && phone.length === 10) {
-                        handlePhoneCheck();
-                      }
-                    }}
-                  />
-                </div>
-
-                <Button
-                  className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
-                  onClick={handlePhoneCheck}
-                  disabled={phone.length !== 10 || isCheckingPhone}
-                >
-                  {isCheckingPhone ? '檢查中...' : '下一步'}
-                </Button>
-
-                {process.env.NODE_ENV === 'development' && phone.length === 10 && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await authApi.resetVerifyCount(phone);
-                        toast.success('驗證碼發送次數已重置');
-                        setRemainingAttempts(5);
-                      } catch (error: any) {
-                        toast.error(error.response?.data?.message || '重置失敗');
-                      }
-                    }}
-                    className="w-full text-xs text-muted-foreground hover:text-foreground underline text-center mt-2"
-                  >
-                    [開發] 重置發送次數
-                  </button>
-                )}
-
-                {/* LINE 登入分隔線 */}
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
+              {/* LINE Only 模式 */}
+              {isLineOnly && (
+                <>
+                  <div className="space-y-1">
+                    <h2 className="text-xl text-foreground">註冊/登入</h2>
+                    <p className="text-sm text-muted-foreground">使用 LINE 帳號註冊或登入</p>
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">或</span>
-                  </div>
-                </div>
 
-                {/* LINE 登入按鈕 */}
-                <LineLoginButton disabled={isCheckingPhone} />
-              </div>
+                  <div className="space-y-4">
+                    <LineLoginButton />
+                  </div>
+                </>
+              )}
+
+              {/* 手機登入模式（含可選 LINE 登入） */}
+              {isPhoneEnabled && (
+                <>
+                  <div className="space-y-1">
+                    <h2 className="text-xl text-foreground">註冊/登入</h2>
+                    <p className="text-sm text-muted-foreground">請輸入手機號碼</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm text-foreground">
+                        手機號碼
+                      </Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="0912345678"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        maxLength={10}
+                        className="h-11 bg-input-background border-border"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && phone.length === 10) {
+                            handlePhoneCheck();
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <Button
+                      className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
+                      onClick={handlePhoneCheck}
+                      disabled={phone.length !== 10 || isCheckingPhone}
+                    >
+                      {isCheckingPhone ? '檢查中...' : '下一步'}
+                    </Button>
+
+                    {process.env.NODE_ENV === 'development' && phone.length === 10 && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await authApi.resetVerifyCount(phone);
+                            toast.success('驗證碼發送次數已重置');
+                            setRemainingAttempts(5);
+                          } catch (error: any) {
+                            toast.error(error.response?.data?.message || '重置失敗');
+                          }
+                        }}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground underline text-center mt-2"
+                      >
+                        [開發] 重置發送次數
+                      </button>
+                    )}
+
+                    {/* LINE 登入（如果啟用） */}
+                    {isLineEnabled && (
+                      <>
+                        <div className="relative my-4">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-border" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">或</span>
+                          </div>
+                        </div>
+                        <LineLoginButton disabled={isCheckingPhone} />
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
 
