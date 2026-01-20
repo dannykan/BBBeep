@@ -90,8 +90,8 @@ export const pointsApi = {
 export const aiApi = {
   checkLimit: () =>
     api.get<{ canUse: boolean; remaining: number }>('/ai/rewrite/limit').then((res) => res.data),
-  rewrite: (text: string) =>
-    api.post<{ rewritten: string }>('/ai/rewrite', { text }).then((res) => res.data),
+  rewrite: (text: string, vehicleType?: 'car' | 'scooter', category?: string) =>
+    api.post<{ rewritten: string }>('/ai/rewrite', { text, vehicleType, category }).then((res) => res.data),
 };
 
 // License Plate

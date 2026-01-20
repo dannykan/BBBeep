@@ -154,7 +154,7 @@ const SendPage = React.memo(() => {
         const textToRewrite = (selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise'))
           ? customText 
           : `${generatedMessage} ${customText}`;
-        const result = await aiApi.rewrite(textToRewrite);
+        const result = await aiApi.rewrite(textToRewrite, vehicleType || undefined, selectedCategory || undefined);
         setAiSuggestion(result.rewritten);
         setUsedAi(true);
         await checkAiLimit();

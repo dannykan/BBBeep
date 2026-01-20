@@ -12,14 +12,18 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { UserType } from '@prisma/client';
+import { AIPromptService } from '../ai/ai-prompt.service';
+import { UserType, VehicleType } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Admin')
 @Controller('admin')
 @Public() // 所有 Admin 端点都使用自己的 token 验证，不需要 JWT
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly aiPromptService: AIPromptService,
+  ) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Admin 登入' })
@@ -193,5 +197,30 @@ export class AdminController {
       throw new UnauthorizedException('無效的管理員 token');
     }
     return this.adminService.reviewMessageReport(id, data.decision, data.adminNote);
+  }
+
+  @Get('ai-prompts')
+  @ApiOperation({ summary: '獲取所有 AI Prompt' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getAIPrompts(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.aiPromptService.getAllPrompts();
+  }
+
+  @Put('ai-prompts')
+  @ApiOperation({ summary: '更新 AI Prompt' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async updateAIPrompt(
+    @Headers('x-admin-token') token: string,
+    @Body() dto: { vehicleType: VehicleType; category: string; prompt: string },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.aiPromptService.updatePrompt(dto.vehicleType, dto.category, dto.prompt);
   }
 }

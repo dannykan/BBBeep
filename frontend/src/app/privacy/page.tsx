@@ -28,13 +28,13 @@ const PrivacyPage = React.memo(() => {
         <Card className="p-6 space-y-6 bg-card border-border shadow-none">
           {/* 最後更新日期 */}
           <div className="text-sm text-muted-foreground">
-            最後更新：2026 年 1 月 19 日
+            最後更新：2026 年 1 月 20 日
           </div>
 
           {/* 前言 */}
           <section className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              「路上提醒」重視您的隱私權。本政策說明我們如何收集、使用和保護您的個人資料。
+              「叭叭叭 BBBeep」重視您的隱私權。本政策說明我們如何收集、使用和保護您的個人資料。
             </p>
           </section>
 

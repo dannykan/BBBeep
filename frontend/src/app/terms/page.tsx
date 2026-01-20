@@ -11,7 +11,7 @@ const TermsPage = React.memo(() => {
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b border-border">
-        <div className="max-w-md mx-auto px-6 py-4 flex items-center justify-between relative">
+        <div className="max-w-md mx-auto px-6 py-4 flex items-center gap-4">
           <button
             onClick={() => router.push('/settings')}
             className="flex items-center gap-2 p-1 hover:bg-muted/50 rounded transition-colors"
@@ -19,8 +19,7 @@ const TermsPage = React.memo(() => {
             <ChevronLeft className="h-5 w-5 text-muted-foreground" strokeWidth={2} />
             <span className="text-sm text-muted-foreground">返回</span>
           </button>
-          <h1 className="text-base text-foreground absolute left-1/2 -translate-x-1/2">使用條款</h1>
-          <div className="w-[80px]" />
+          <h1 className="text-base text-foreground">使用條款</h1>
         </div>
       </div>
 
@@ -28,14 +27,14 @@ const TermsPage = React.memo(() => {
         <Card className="p-6 space-y-6 bg-card border-border shadow-none">
           {/* 最後更新日期 */}
           <div className="text-sm text-muted-foreground">
-            最後更新：2026 年 1 月 19 日
+            最後更新：2026 年 1 月 20 日
           </div>
 
           {/* 服務說明 */}
           <section className="space-y-3">
             <h2 className="text-base text-foreground font-medium">1. 服務說明</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              「路上提醒」是一個讓駕駛者可以私密發送善意提醒的系統。這不是聊天平台，而是一次性提醒服務。
+              「叭叭叭 BBBeep」是一個讓駕駛者可以私密發送善意提醒的系統。這不是聊天平台，而是一次性提醒服務。
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               本服務採用點數付費制度，用戶需要消耗點數來發送提醒。收到讚美可以獲得少量點數回饋。

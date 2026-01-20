@@ -19,7 +19,12 @@ export class AiController {
   @Post('rewrite')
   @ApiOperation({ summary: 'AI 改寫文字（每日5次限制）' })
   async rewrite(@CurrentUser() user: any, @Body() dto: RewriteDto) {
-    const rewritten = await this.aiService.rewrite(user.userId, dto.text);
+    const rewritten = await this.aiService.rewrite(
+      user.userId,
+      dto.text,
+      dto.vehicleType,
+      dto.category,
+    );
     return { rewritten };
   }
 }
