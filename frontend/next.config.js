@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 使用静态导出以兼容 Cloudflare Pages
-  // 这会生成静态 HTML 文件到 out 目录
-  output: 'export',
-  // 禁用图片优化（静态导出不支持）
+  // 使用 Edge Runtime 模式以兼容 Cloudflare Pages
+  // 不再使用静态导出，因为动态路由无法预知所有参数
+  // output: 'export', // 已移除静态导出
+  // 禁用图片优化（Cloudflare Pages 支持）
   images: {
     unoptimized: true,
   },
