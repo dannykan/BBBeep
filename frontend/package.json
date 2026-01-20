@@ -9,6 +9,7 @@
     "build": "next build",
     "postbuild": "node scripts/post-build.js",
     "build:clean": "rm -rf .next && next build && node scripts/post-build.js",
+    "pages:build": "npm run build && npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf .next"
