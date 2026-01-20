@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, TrendingUp, TrendingDown, Gift } from 'lucide-react';
+import { ChevronLeft, TrendingUp, TrendingDown, Gift, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
 import { pointsApi } from '@/lib/api-services';
@@ -149,21 +149,10 @@ const WalletPage = React.memo(() => {
                       NT$ {option.price}
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    className={`h-9 shadow-none ${
-                      selectedOption === option.points
-                        ? 'bg-primary hover:bg-primary-dark text-white'
-                        : 'bg-muted hover:bg-muted/80 text-foreground'
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRecharge(option.points, option.price);
-                    }}
-                    disabled={isRecharging}
-                  >
-                    {isRecharging ? '處理中...' : '購買'}
-                  </Button>
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>尚未開通</span>
+                  </div>
                 </div>
               </Card>
             ))}
