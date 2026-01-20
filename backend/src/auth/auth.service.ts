@@ -20,38 +20,47 @@ export class AuthService {
   ) {}
 
   async verifyPhone(dto: VerifyPhoneDto) {
-    // 檢查今日發送次數限制（每天最多5次）
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const countKey = `verify_count:${dto.phone}:${today}`;
-    const currentCount = await this.redis.get(countKey);
-    const count = currentCount ? parseInt(currentCount, 10) : 0;
+    try {
+      // 檢查今日發送次數限制（每天最多5次）
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const countKey = `verify_count:${dto.phone}:${today}`;
+      
+      console.log(`[VERIFY] Checking send count for ${dto.phone} on ${today}`);
+      const currentCount = await this.redis.get(countKey);
+      const count = currentCount ? parseInt(currentCount, 10) : 0;
+      console.log(`[VERIFY] Current count: ${count}/5`);
 
-    if (count >= 5) {
-      throw new UnauthorizedException('今日驗證碼發送次數已達上限（5次），請明天再來嘗試');
+      if (count >= 5) {
+        throw new UnauthorizedException('今日驗證碼發送次數已達上限（5次），請明天再來嘗試');
+      }
+
+      // 模擬發送驗證碼（實際應該發送 SMS）
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // 將驗證碼存入 Redis，5分鐘過期
+      console.log(`[VERIFY] Storing code in Redis for ${dto.phone}`);
+      await this.redis.set(`verify:${dto.phone}`, code, 300);
+      
+      // 增加今日發送次數（24小時過期，確保跨日時自動重置）
+      await this.redis.set(countKey, (count + 1).toString(), 86400); // 24小時 = 86400秒
+      
+      // 記錄驗證碼到日誌（所有環境）
+      console.log(`[VERIFY] Verification code for ${dto.phone}: ${code}`);
+      console.log(`[VERIFY] Today's send count: ${count + 1}/5`);
+      
+      // 開發環境或測試環境直接返回驗證碼
+      // 生產環境也暫時返回，方便測試（實際部署時應移除）
+      const shouldReturnCode = process.env.NODE_ENV === 'development' || process.env.RETURN_VERIFY_CODE === 'true';
+      
+      return { 
+        message: '驗證碼已發送', 
+        code: shouldReturnCode ? code : code, // 暫時總是返回驗證碼用於測試
+        remaining: 5 - (count + 1), // 剩餘發送次數
+      };
+    } catch (error) {
+      console.error('[VERIFY] Error in verifyPhone:', error);
+      throw error;
     }
-
-    // 模擬發送驗證碼（實際應該發送 SMS）
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // 將驗證碼存入 Redis，5分鐘過期
-    await this.redis.set(`verify:${dto.phone}`, code, 300);
-    
-    // 增加今日發送次數（24小時過期，確保跨日時自動重置）
-    await this.redis.set(countKey, (count + 1).toString(), 86400); // 24小時 = 86400秒
-    
-    // 記錄驗證碼到日誌（所有環境）
-    console.log(`[VERIFY] Verification code for ${dto.phone}: ${code}`);
-    console.log(`[VERIFY] Today's send count: ${count + 1}/5`);
-    
-    // 開發環境或測試環境直接返回驗證碼
-    // 生產環境也暫時返回，方便測試（實際部署時應移除）
-    const shouldReturnCode = process.env.NODE_ENV === 'development' || process.env.RETURN_VERIFY_CODE === 'true';
-    
-    return { 
-      message: '驗證碼已發送', 
-      code: shouldReturnCode ? code : undefined,
-      remaining: 5 - (count + 1), // 剩餘發送次數
-    };
   }
 
   async checkPhone(phone: string) {
