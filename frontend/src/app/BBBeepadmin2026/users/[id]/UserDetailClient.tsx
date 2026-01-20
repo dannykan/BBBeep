@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -54,10 +54,12 @@ interface Message {
   sender?: {
     id: string;
     nickname?: string;
+    licensePlate?: string;
   };
   receiver?: {
     id: string;
     nickname?: string;
+    licensePlate?: string;
   };
 }
 
@@ -69,18 +71,25 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
   const router = useRouter();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const [messageType, setMessageType] = useState<'received' | 'sent'>('received');
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    nickname: '',
-    email: '',
-  });
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editData, setEditData] = useState<Partial<UserDetail>>({});
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [showEditMessageDialog, setShowEditMessageDialog] = useState(false);
+  const [editMessageData, setEditMessageData] = useState<{ template?: string; customText?: string; read?: boolean }>({});
 
   useEffect(() => {
     loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  useEffect(() => {
+    if (user) {
+      loadMessages();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, messageType]);
 
   const getAdminToken = () => {
     return localStorage.getItem('admin_token');
@@ -95,20 +104,15 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
 
     setIsLoading(true);
     try {
-      const [userResponse, messagesResponse] = await Promise.all([
-        axios.get(`${API_URL}/admin/users/${userId}`, {
-          headers: { 'x-admin-token': token },
-        }),
-        axios.get(`${API_URL}/admin/users/${userId}/messages?type=${activeTab}`, {
-          headers: { 'x-admin-token': token },
-        }),
-      ]);
-
-      setUser(userResponse.data);
-      setMessages(messagesResponse.data);
+      const response = await axios.get(`${API_URL}/admin/users/${userId}`, {
+        headers: { 'x-admin-token': token },
+      });
+      setUser(response.data);
       setEditData({
-        nickname: userResponse.data.nickname || '',
-        email: userResponse.data.email || '',
+        nickname: response.data.nickname || '',
+        licensePlate: response.data.licensePlate || '',
+        points: response.data.points,
+        email: response.data.email || '',
       });
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -122,19 +126,29 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
     }
   };
 
-  const handleSave = async () => {
-    if (!user) return;
+  const loadMessages = async () => {
+    const token = getAdminToken();
+    if (!token || !user) return;
 
+    try {
+      const response = await axios.get(`${API_URL}/admin/users/${userId}/messages`, {
+        params: { type: messageType },
+        headers: { 'x-admin-token': token },
+      });
+      setMessages(response.data);
+    } catch (error: any) {
+      toast.error('載入消息失敗');
+    }
+  };
+
+  const handleSaveUser = async () => {
     const token = getAdminToken();
     if (!token) return;
 
     try {
       await axios.put(
-        `${API_URL}/admin/users/${user.id}`,
-        {
-          nickname: editData.nickname || undefined,
-          email: editData.email || undefined,
-        },
+        `${API_URL}/admin/users/${userId}`,
+        editData,
         {
           headers: { 'x-admin-token': token },
         }
@@ -147,40 +161,59 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!user) return;
+  const handleEditMessage = (message: Message) => {
+    setSelectedMessage(message);
+    setEditMessageData({
+      template: message.template,
+      customText: message.customText || '',
+      read: message.read,
+    });
+    setShowEditMessageDialog(true);
+  };
+
+  const handleSaveMessage = async () => {
+    if (!selectedMessage) return;
 
     const token = getAdminToken();
     if (!token) return;
 
     try {
-      await axios.delete(`${API_URL}/admin/users/${user.id}`, {
-        headers: { 'x-admin-token': token },
-      });
-      toast.success('用戶已刪除');
-      router.push('/BBBeepadmin2026');
+      await axios.put(
+        `${API_URL}/admin/messages/${selectedMessage.id}`,
+        editMessageData,
+        {
+          headers: { 'x-admin-token': token },
+        }
+      );
+      toast.success('消息已更新');
+      setShowEditMessageDialog(false);
+      loadMessages();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || '刪除失敗');
+      toast.error('更新失敗');
     }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as 'received' | 'sent');
-    loadUserData();
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm('確定要刪除這條消息嗎？')) return;
+
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      await axios.delete(`${API_URL}/admin/messages/${messageId}`, {
+        headers: { 'x-admin-token': token },
+      });
+      toast.success('消息已刪除');
+      loadMessages();
+    } catch (error: any) {
+      toast.error('刪除失敗');
+    }
   };
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">載入中...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">用戶不存在</p>
       </div>
     );
   }
@@ -198,198 +231,327 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
           </button>
           <h1 className="text-lg font-bold text-foreground absolute left-1/2 -translate-x-1/2">用戶詳情</h1>
           <div className="w-[80px]" />
+          {!isEditing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="ml-auto"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              編輯
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <Card className="p-6 bg-card border-border shadow-none">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-2">基本資訊</h2>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">ID:</span>
-                  <span className="ml-2 text-foreground font-mono">{user.id}</span>
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="info">用戶資料</TabsTrigger>
+            <TabsTrigger value="messages">收件夾</TabsTrigger>
+            <TabsTrigger value="sent">發送記錄</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info" className="space-y-4">
+            <Card className="p-6 bg-card border-border shadow-none">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>手機號碼</Label>
+                    <Input value={user.phone} disabled className="bg-muted" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>暱稱</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editData.nickname || ''}
+                        onChange={(e) => setEditData({ ...editData, nickname: e.target.value })}
+                      />
+                    ) : (
+                      <Input value={user.nickname || '未設定'} disabled className="bg-muted" />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>車牌號碼</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editData.licensePlate || ''}
+                        onChange={(e) => setEditData({ ...editData, licensePlate: e.target.value.toUpperCase() })}
+                      />
+                    ) : (
+                      <Input value={user.licensePlate || '未設定'} disabled className="bg-muted" />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>點數</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        value={editData.points || 0}
+                        onChange={(e) => setEditData({ ...editData, points: parseInt(e.target.value) || 0 })}
+                      />
+                    ) : (
+                      <Input value={user.points} disabled className="bg-muted" />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>用戶類型</Label>
+                    <Input value={user.userType === 'driver' ? '駕駛' : '行人'} disabled className="bg-muted" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>車輛類型</Label>
+                    <Input
+                      value={user.vehicleType === 'car' ? '汽車' : user.vehicleType === 'scooter' ? '機車' : '未設定'}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>電子郵件</Label>
+                    {isEditing ? (
+                      <Input
+                        type="email"
+                        value={editData.email || ''}
+                        onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                      />
+                    ) : (
+                      <Input value={user.email || '未設定'} disabled className="bg-muted" />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>註冊時間</Label>
+                    <Input value={new Date(user.createdAt).toLocaleString('zh-TW')} disabled className="bg-muted" />
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">手機號碼:</span>
-                  <span className="ml-2 text-foreground">{user.phone}</span>
-                </div>
+
+                {isEditing && (
+                  <div className="flex gap-2 pt-4">
+                    <Button onClick={handleSaveUser}>
+                      <Save className="h-4 w-4 mr-2" />
+                      儲存
+                    </Button>
+                    <Button variant="outline" onClick={() => {
+                      setIsEditing(false);
+                      setEditData({
+                        nickname: user.nickname || '',
+                        licensePlate: user.licensePlate || '',
+                        points: user.points,
+                        email: user.email || '',
+                      });
+                    }}>
+                      <X className="h-4 w-4 mr-2" />
+                      取消
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="flex gap-2">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
-                    取消
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="messages" className="space-y-4">
+            <Card className="p-6 bg-card border-border shadow-none">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">收件夾 ({messages.length})</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMessageType('received');
+                      loadMessages();
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    刷新
                   </Button>
-                  <Button size="sm" onClick={handleSave}>
-                    儲存
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    編輯
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    刪除
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>暱稱</Label>
-              {isEditing ? (
-                <Input
-                  value={editData.nickname}
-                  onChange={(e) => setEditData({ ...editData, nickname: e.target.value })}
-                  placeholder="未設定"
-                  className="mt-1"
-                />
-              ) : (
-                <p className="text-foreground mt-1">{user.nickname || '未設定'}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>電子郵件</Label>
-              {isEditing ? (
-                <Input
-                  type="email"
-                  value={editData.email}
-                  onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                  placeholder="未設定"
-                  className="mt-1"
-                />
-              ) : (
-                <p className="text-foreground mt-1">{user.email || '未設定'}</p>
-              )}
-            </div>
-
-            <div>
-              <Label>車牌號碼</Label>
-              <p className="text-foreground mt-1 font-mono">{user.licensePlate || '未設定'}</p>
-            </div>
-
-            <div>
-              <Label>用戶類型</Label>
-              <p className="text-foreground mt-1">
-                {user.userType === 'driver' ? '駕駛' : '行人'}
-                {user.vehicleType && ` (${user.vehicleType === 'car' ? '汽車' : '機車'})`}
-              </p>
-            </div>
-
-            <div>
-              <Label>點數</Label>
-              <p className="text-foreground mt-1">{user.points}</p>
-            </div>
-
-            <div>
-              <Label>完成註冊</Label>
-              <p className="text-foreground mt-1">{user.hasCompletedOnboarding ? '是' : '否'}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-card border-border shadow-none">
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList>
-              <TabsTrigger value="received">收到的訊息 ({user._count.receivedMessages})</TabsTrigger>
-              <TabsTrigger value="sent">發送的訊息 ({user._count.sentMessages})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="received" className="mt-4">
-              {messages.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">尚無收到的訊息</p>
-              ) : (
-                <div className="space-y-2">
-                  {messages.map((message) => (
-                    <Card key={message.id} className="p-4 bg-card border-border shadow-none">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
-                              {message.type}
-                            </span>
-                            {!message.read && (
-                              <span className="text-xs px-2 py-1 rounded bg-yellow-500/10 text-yellow-600">
-                                未讀
+                {messages.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">尚無消息</p>
+                ) : (
+                  <div className="space-y-2">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                {message.type}
                               </span>
+                              {message.read ? (
+                                <span className="text-xs text-muted-foreground">已讀</span>
+                              ) : (
+                                <span className="text-xs text-primary">未讀</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground">{message.template}</p>
+                            {message.customText && (
+                              <p className="text-xs text-muted-foreground">{message.customText}</p>
                             )}
+                            {message.sender && (
+                              <p className="text-xs text-muted-foreground">
+                                發送者：{message.sender.nickname || '匿名'} ({message.sender.licensePlate || '無車牌'})
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(message.createdAt).toLocaleString('zh-TW')}
+                            </p>
                           </div>
-                          <p className="text-sm text-foreground mb-1">{message.template}</p>
-                          {message.customText && (
-                            <p className="text-xs text-muted-foreground">{message.customText}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(message.createdAt).toLocaleString('zh-TW')}
-                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditMessage(message)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
 
-            <TabsContent value="sent" className="mt-4">
-              {messages.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">尚無發送的訊息</p>
-              ) : (
-                <div className="space-y-2">
-                  {messages.map((message) => (
-                    <Card key={message.id} className="p-4 bg-card border-border shadow-none">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
-                              {message.type}
-                            </span>
-                            {message.read && (
-                              <span className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-600">
-                                已讀
+          <TabsContent value="sent" className="space-y-4">
+            <Card className="p-6 bg-card border-border shadow-none">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">發送記錄 ({messages.length})</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMessageType('sent');
+                      loadMessages();
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    刷新
+                  </Button>
+                </div>
+
+                {messages.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">尚無發送記錄</p>
+                ) : (
+                  <div className="space-y-2">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className="p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                {message.type}
                               </span>
+                              {message.read ? (
+                                <span className="text-xs text-muted-foreground">已讀</span>
+                              ) : (
+                                <span className="text-xs text-primary">未讀</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground">{message.template}</p>
+                            {message.customText && (
+                              <p className="text-xs text-muted-foreground">{message.customText}</p>
                             )}
+                            {message.receiver && (
+                              <p className="text-xs text-muted-foreground">
+                                接收者：{message.receiver.nickname || '匿名'} ({message.receiver.licensePlate || '無車牌'})
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(message.createdAt).toLocaleString('zh-TW')}
+                            </p>
                           </div>
-                          <p className="text-sm text-foreground mb-1">{message.template}</p>
-                          {message.customText && (
-                            <p className="text-xs text-muted-foreground">{message.customText}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(message.createdAt).toLocaleString('zh-TW')}
-                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditMessage(message)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+      {/* 編輯消息對話框 */}
+      <Dialog open={showEditMessageDialog} onOpenChange={setShowEditMessageDialog}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>刪除用戶</DialogTitle>
-            <DialogDescription>
-              確定要刪除用戶「{user.nickname || user.phone}」嗎？此操作無法復原。
-            </DialogDescription>
+            <DialogTitle>編輯消息</DialogTitle>
+            <DialogDescription>修改消息內容和狀態</DialogDescription>
           </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>消息內容</Label>
+              <textarea
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={editMessageData.template || ''}
+                onChange={(e) => setEditMessageData({ ...editMessageData, template: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>補充說明</Label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={editMessageData.customText || ''}
+                onChange={(e) => setEditMessageData({ ...editMessageData, customText: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="read"
+                checked={editMessageData.read || false}
+                onChange={(e) => setEditMessageData({ ...editMessageData, read: e.target.checked })}
+                className="rounded"
+              />
+              <Label htmlFor="read" className="cursor-pointer">已讀</Label>
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" onClick={() => setShowEditMessageDialog(false)}>
               取消
             </Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>
-              確認刪除
-            </Button>
+            <Button onClick={handleSaveMessage}>儲存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
