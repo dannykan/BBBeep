@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { authApi } from '@/lib/api-services';
+import { LineLoginButton } from '@/components/LineLoginButton';
 
 type Step = 'phone' | 'otp' | 'password' | 'login';
 
@@ -439,6 +440,19 @@ const LoginPage = React.memo(() => {
                     [開發] 重置發送次數
                   </button>
                 )}
+
+                {/* LINE 登入分隔線 */}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">或</span>
+                  </div>
+                </div>
+
+                {/* LINE 登入按鈕 */}
+                <LineLoginButton disabled={isCheckingPhone} />
               </div>
             </>
           )}

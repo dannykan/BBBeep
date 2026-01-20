@@ -1,11 +1,12 @@
-import { Controller, Post, Body, Get, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, Get, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
 import { PasswordLoginDto } from './dto/password-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { LineLoginDto } from './dto/line-login.dto';
 import { Public } from './decorators/public.decorator';
 
 @ApiTags('Auth')
@@ -91,5 +92,26 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '重置成功' })
   async resetVerifyCount(@Body() body: { phone: string }) {
     return this.authService.resetVerifyCount(body.phone);
+  }
+
+  // LINE Login 相關端點
+  @Public()
+  @Get('line/url')
+  @ApiOperation({ summary: '取得 LINE 登入 URL' })
+  @ApiQuery({ name: 'state', required: true, description: '用於防止 CSRF 攻擊的 state 參數' })
+  @ApiResponse({ status: 200, description: '返回 LINE 登入 URL' })
+  getLineLoginUrl(@Query('state') state: string) {
+    const url = this.authService.getLineLoginUrl(state);
+    return { url };
+  }
+
+  @Public()
+  @Post('line/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'LINE 登入（使用授權碼）' })
+  @ApiResponse({ status: 200, description: '登入成功' })
+  @ApiResponse({ status: 401, description: 'LINE 登入失敗' })
+  async lineLogin(@Body() dto: LineLoginDto) {
+    return this.authService.lineLogin(dto);
   }
 }

@@ -51,7 +51,7 @@ enum ReportStatus {
 
 model User {
   id                     String       @id @default(cuid())
-  phone                  String       @unique
+  phone                  String?      @unique // 改為可選，支援 LINE 登入用戶
   password               String? // 密碼（可選，用於已註冊用戶）
   nickname               String?
   licensePlate           String?
@@ -62,6 +62,11 @@ model User {
   email                  String?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
+
+  // LINE Login 相關欄位
+  lineUserId             String?      @unique // LINE User ID
+  lineDisplayName        String?              // LINE 顯示名稱
+  linePictureUrl         String?              // LINE 頭像 URL
 
   // Relations
   sentMessages             Message[]                 @relation("Sender")
@@ -77,6 +82,7 @@ model User {
 
   @@index([phone])
   @@index([licensePlate])
+  @@index([lineUserId])
 }
 
 model Message {

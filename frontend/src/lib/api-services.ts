@@ -24,6 +24,9 @@ export const authApi = {
     api.post('/auth/reset-password', { phone, code, newPassword }).then((res) => res.data),
   resetVerifyCount: (phone: string) =>
     api.post('/auth/reset-verify-count', { phone }).then((res) => res.data),
+  // LINE Login
+  lineLogin: (code: string, state: string) =>
+    api.post<LoginResponse>('/auth/line/login', { code, state }).then((res) => res.data),
 };
 
 // Users

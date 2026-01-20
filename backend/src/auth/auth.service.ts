@@ -8,7 +8,9 @@ import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
 import { PasswordLoginDto } from './dto/password-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { LineLoginDto } from './dto/line-login.dto';
 import * as bcrypt from 'bcryptjs';
+import axios from 'axios';
 
 @Injectable()
 export class AuthService {
@@ -416,5 +418,150 @@ export class AuthService {
       where: { id: userId },
     });
     return user;
+  }
+
+  // LINE Login 相關方法
+  async lineLogin(dto: LineLoginDto) {
+    try {
+      // 1. 用授權碼換取 access token
+      const tokenResponse = await this.exchangeLineCode(dto.code);
+
+      // 2. 用 access token 取得用戶資料
+      const lineProfile = await this.getLineProfile(tokenResponse.access_token);
+
+      // 3. 查找或創建用戶
+      let user = await this.prisma.user.findUnique({
+        where: { lineUserId: lineProfile.userId },
+      });
+
+      if (!user) {
+        // 新用戶，創建帳號
+        user = await this.prisma.user.create({
+          data: {
+            lineUserId: lineProfile.userId,
+            lineDisplayName: lineProfile.displayName,
+            linePictureUrl: lineProfile.pictureUrl,
+            nickname: lineProfile.displayName,
+            points: 8, // 新手禮包
+            userType: 'driver', // 預設值，會在 onboarding 時更新
+          },
+        });
+
+        // 記錄新手禮包點數
+        await this.prisma.pointHistory.create({
+          data: {
+            userId: user.id,
+            type: 'bonus',
+            amount: 8,
+            description: '新手體驗點數',
+          },
+        });
+
+        console.log(`[LINE_LOGIN] New user created: ${user.id}`);
+      } else {
+        // 更新 LINE 資料
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lineDisplayName: lineProfile.displayName,
+            linePictureUrl: lineProfile.pictureUrl,
+          },
+        });
+
+        console.log(`[LINE_LOGIN] Existing user logged in: ${user.id}`);
+      }
+
+      // 4. 生成 JWT token
+      const payload = { sub: user.id, lineUserId: user.lineUserId };
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          nickname: user.nickname,
+          licensePlate: user.licensePlate,
+          userType: user.userType,
+          vehicleType: user.vehicleType,
+          points: user.points,
+          hasCompletedOnboarding: user.hasCompletedOnboarding,
+          email: user.email,
+          lineUserId: user.lineUserId,
+          lineDisplayName: user.lineDisplayName,
+          linePictureUrl: user.linePictureUrl,
+        },
+      };
+    } catch (error) {
+      console.error('[LINE_LOGIN] Error:', error.response?.data || error.message);
+      throw new UnauthorizedException('LINE 登入失敗，請稍後再試');
+    }
+  }
+
+  private async exchangeLineCode(code: string): Promise<{ access_token: string; id_token?: string }> {
+    const channelId = this.configService.get<string>('LINE_CHANNEL_ID');
+    const channelSecret = this.configService.get<string>('LINE_CHANNEL_SECRET');
+    const callbackUrl = this.configService.get<string>('LINE_CALLBACK_URL');
+
+    if (!channelId || !channelSecret || !callbackUrl) {
+      throw new BadRequestException('LINE 設定不完整');
+    }
+
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', callbackUrl);
+    params.append('client_id', channelId);
+    params.append('client_secret', channelSecret);
+
+    const response = await axios.post(
+      'https://api.line.me/oauth2/v2.1/token',
+      params.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      },
+    );
+
+    return response.data;
+  }
+
+  private async getLineProfile(accessToken: string): Promise<{
+    userId: string;
+    displayName: string;
+    pictureUrl?: string;
+  }> {
+    const response = await axios.get('https://api.line.me/v2/profile', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    return {
+      userId: response.data.userId,
+      displayName: response.data.displayName,
+      pictureUrl: response.data.pictureUrl,
+    };
+  }
+
+  // 產生 LINE 登入 URL 的輔助方法
+  getLineLoginUrl(state: string): string {
+    const channelId = this.configService.get<string>('LINE_CHANNEL_ID');
+    const callbackUrl = this.configService.get<string>('LINE_CALLBACK_URL');
+
+    if (!channelId || !callbackUrl) {
+      throw new BadRequestException('LINE 設定不完整');
+    }
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: channelId,
+      redirect_uri: callbackUrl,
+      state: state,
+      scope: 'profile openid',
+    });
+
+    return `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
   }
 }
