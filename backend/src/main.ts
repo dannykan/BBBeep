@@ -8,17 +8,35 @@ async function bootstrap() {
 
   // Enable CORS
   const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+    ? process.env.FRONTEND_URL.split(',').map((url) => {
+        const trimmed = url.trim();
+        // 如果没有协议，自动添加 https://
+        if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+          return `https://${trimmed}`;
+        }
+        return trimmed;
+      })
     : ['http://localhost:3000'];
 
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-        callback(null, true);
+      // 在生产环境中，严格检查 origin
+      if (process.env.NODE_ENV === 'production') {
+        // 检查是否匹配允许的 origin（支持带或不带协议）
+        const isAllowed = allowedOrigins.some((allowed) => {
+          const allowedUrl = allowed.startsWith('http') ? allowed : `https://${allowed}`;
+          return origin === allowedUrl || origin === allowed;
+        });
+        if (isAllowed) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // 开发环境允许所有 origin
+        callback(null, true);
       }
     },
     credentials: true,
