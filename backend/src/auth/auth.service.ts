@@ -39,15 +39,17 @@ export class AuthService {
     // 增加今日發送次數（24小時過期，確保跨日時自動重置）
     await this.redis.set(countKey, (count + 1).toString(), 86400); // 24小時 = 86400秒
     
-    // 開發環境直接返回驗證碼（生產環境不應返回）
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV] Verification code for ${dto.phone}: ${code}`);
-      console.log(`[DEV] Today's send count: ${count + 1}/5`);
-    }
+    // 記錄驗證碼到日誌（所有環境）
+    console.log(`[VERIFY] Verification code for ${dto.phone}: ${code}`);
+    console.log(`[VERIFY] Today's send count: ${count + 1}/5`);
+    
+    // 開發環境或測試環境直接返回驗證碼
+    // 生產環境也暫時返回，方便測試（實際部署時應移除）
+    const shouldReturnCode = process.env.NODE_ENV === 'development' || process.env.RETURN_VERIFY_CODE === 'true';
     
     return { 
       message: '驗證碼已發送', 
-      code: process.env.NODE_ENV === 'development' ? code : undefined,
+      code: shouldReturnCode ? code : undefined,
       remaining: 5 - (count + 1), // 剩餘發送次數
     };
   }
