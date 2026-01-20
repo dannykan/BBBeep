@@ -1,0 +1,18 @@
+{
+  "runtime": "edge",
+  "name": "BBBeepadmin2026/users/[id]",
+  "deploymentTarget": "v8-worker",
+  "entrypoint": "index.js",
+  "assets": [],
+  "framework": {
+    "slug": "nextjs",
+    "version": "14.2.35"
+  },
+  "environment": {
+    "__NEXT_BUILD_ID": "Y8aL_HYbUKkG4JBiog6CX",
+    "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "SawSPrAYTWUheWe9FFZ9ClvJZBoqkxiyTLdJdJnxlzg=",
+    "__NEXT_PREVIEW_MODE_ID": "b9c20c19e73e39a5d50085bc8bc14afc",
+    "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "d5e9ea4e30dedca4b190a46529d813589fb9db38e0fe9910757242c5d1cffe65",
+    "__NEXT_PREVIEW_MODE_SIGNING_KEY": "97e3cd76c30f04800e092e788a7d19b217086cec6c23b9cde463076472c7c126"
+  }
+}
