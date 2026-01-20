@@ -61,6 +61,13 @@ const SendPage = React.memo(() => {
   };
 
   const getPointCost = (): number => {
+    // 其他讚美：有文字用AI改寫2點，不用AI 4點
+    if (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise') {
+      if (useAiVersion && usedAi) return 2;
+      if (customText) return 4;
+      return 0;
+    }
+    // 其他讚美選項：直接送出0點
     if (selectedCategory === '讚美感謝') return 0;
     if (selectedCategory === '其他情況') {
       return customText ? 2 : 4; // 其他情況：有文字用AI改寫2點，沒文字4點
@@ -108,6 +115,14 @@ const SendPage = React.memo(() => {
   const handleSituationSelect = (situationId: string) => {
     if (!vehicleType) return;
     setSelectedSituation(situationId);
+    
+    // 其他讚美：直接進入輸入界面，不顯示模板訊息
+    if (selectedCategory === '讚美感謝' && situationId === 'other-praise') {
+      setGeneratedMessage(''); // 不設置模板訊息
+      setStep('custom');
+      return;
+    }
+    
     const message = getMessageByVehicleType(vehicleType, situationId);
     setGeneratedMessage(message);
     setStep('review');
@@ -125,8 +140,8 @@ const SendPage = React.memo(() => {
       return;
     }
 
-    // 讚美類不進AI
-    if (selectedCategory === '讚美感謝') {
+    // 其他讚美可以使用AI，其他讚美選項直接送出
+    if (selectedCategory === '讚美感謝' && selectedSituation !== 'other-praise') {
       setStep('confirm');
       return;
     }
@@ -135,8 +150,8 @@ const SendPage = React.memo(() => {
     if (aiLimit.canUse && customText.trim()) {
       setIsLoading(true);
       try {
-        // 對於"其他情況"，只改寫補充文字；對於其他分類，改寫系統生成+補充文字
-        const textToRewrite = selectedCategory === '其他情況' 
+        // 對於"其他情況"和"其他讚美"，只改寫補充文字；對於其他分類，改寫系統生成+補充文字
+        const textToRewrite = (selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise'))
           ? customText 
           : `${generatedMessage} ${customText}`;
         const result = await aiApi.rewrite(textToRewrite);
@@ -168,14 +183,15 @@ const SendPage = React.memo(() => {
       return;
     }
 
-    // "其他情況"不需要 generatedMessage，只需要 customText
-    if (selectedCategory !== '其他情況' && !generatedMessage) {
+    // "其他情況"和"其他讚美"不需要 generatedMessage，只需要 customText
+    const isOtherCase = selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise');
+    if (!isOtherCase && !generatedMessage) {
       toast.error('請完成所有步驟');
       return;
     }
 
-    // "其他情況"必須有 customText，且字數符合要求
-    if (selectedCategory === '其他情況') {
+    // "其他情況"和"其他讚美"必須有 customText，且字數符合要求
+    if (isOtherCase) {
       if (!customText.trim()) {
         toast.error('請輸入說明內容');
         return;
@@ -205,8 +221,8 @@ const SendPage = React.memo(() => {
       await messagesApi.create({
         licensePlate: normalizedPlate, // 使用格式化後的車牌（不含分隔符）
         type: selectedCategory === '其他情況' ? '行車安全提醒' : (selectedCategory === '行車安全' ? '行車安全提醒' : (selectedCategory as MessageType)),
-        template: selectedCategory === '其他情況' ? customText : (generatedMessage || customText), // "其他情況"使用 customText 作為 template
-        customText: selectedCategory === '其他情況' ? undefined : (customText || undefined),
+        template: isOtherCase ? customText : (generatedMessage || customText), // "其他情況"和"其他讚美"使用 customText 作為 template
+        customText: isOtherCase ? undefined : (customText || undefined),
         useAiRewrite: usedAi,
       });
       await refreshUser();
@@ -515,7 +531,9 @@ const SendPage = React.memo(() => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-xl font-medium mb-2">系統已生成</h2>
-              <p className="text-sm text-muted-foreground">預設使用這個訊息（1點）</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedCategory === '讚美感謝' ? '預設使用這個訊息（免費）' : '預設使用這個訊息（1點）'}
+              </p>
             </div>
 
             {/* 車種 + 分類提示 */}
@@ -542,38 +560,51 @@ const SendPage = React.memo(() => {
 
             {/* 操作按鈕 */}
             <div className="space-y-3">
-              {canAfford(1) ? (
+              {selectedCategory === '讚美感謝' ? (
+                // 讚美感謝：直接送出，不顯示補充按鈕
                 <button
                   onClick={() => setStep('confirm')}
                   className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
                 >
-                  直接送出（1 點）
+                  直接送出（免費）
                 </button>
               ) : (
-                <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">點數不足</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    目前剩餘 {user?.points ?? 0} 點，需要 1 點才能發送
-                  </p>
-                  <Button
-                    size="sm"
-                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-none"
-                    onClick={() => router.push('/wallet')}
-                  >
-                    去儲值
-                  </Button>
-                </div>
-              )}
+                // 其他分類：顯示點數和補充按鈕
+                <>
+                  {canAfford(1) ? (
+                    <button
+                      onClick={() => setStep('confirm')}
+                      className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
+                    >
+                      直接送出（1 點）
+                    </button>
+                  ) : (
+                    <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                        <span className="text-sm font-medium text-destructive">點數不足</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        目前剩餘 {user?.points ?? 0} 點，需要 1 點才能發送
+                      </p>
+                      <Button
+                        size="sm"
+                        className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-none"
+                        onClick={() => router.push('/wallet')}
+                      >
+                        去儲值
+                      </Button>
+                    </div>
+                  )}
 
-              <button
-                onClick={() => setStep('custom')}
-                className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
-              >
-                想補充一句
-              </button>
+                  <button
+                    onClick={() => setStep('custom')}
+                    className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
+                  >
+                    想補充一句
+                  </button>
+                </>
+              )}
             </div>
 
             {/* 點數說明 */}
@@ -601,15 +632,19 @@ const SendPage = React.memo(() => {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-xl font-medium mb-2">
-                {selectedCategory === '其他情況' ? '請簡單說明' : '想補充一句'}
+                {selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
+                  ? '請簡單說明'
+                  : '想補充一句'}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {selectedCategory === '其他情況' ? '5-30字' : '可選，5-30字'}
+                {selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
+                  ? '5-30字'
+                  : '可選，5-30字'}
               </p>
             </div>
 
             {/* 顯示系統生成（如果有） */}
-            {generatedMessage && selectedCategory !== '其他情況' && (
+            {generatedMessage && selectedCategory !== '其他情況' && !(selectedCategory === '讚美感謝' && selectedSituation === 'other-praise') && (
               <Card className="p-4 bg-muted/30 border-border">
                 <div className="text-sm">
                   <div className="text-muted-foreground mb-2">系統生成</div>
@@ -621,7 +656,9 @@ const SendPage = React.memo(() => {
             {/* 補充文字輸入 */}
             <div className="space-y-2">
               <Label htmlFor="custom-text" className="text-sm text-muted-foreground">
-                {selectedCategory === '其他情況' ? '說明內容' : '補充說明'}
+                {selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
+                  ? '說明內容'
+                  : '補充說明'}
               </Label>
               <div className="relative">
                 <Input
@@ -641,7 +678,7 @@ const SendPage = React.memo(() => {
             </div>
 
             {/* AI 使用次數提示 */}
-            {selectedCategory !== '讚美感謝' && customText.trim() && (
+            {(selectedCategory !== '讚美感謝' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')) && customText.trim() && (
               <Card className="p-3 bg-primary/5 border-primary/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -685,7 +722,7 @@ const SendPage = React.memo(() => {
                 /* 有補充文字 - 兩個選項 */
                 <>
                   {/* AI 協助改寫 */}
-                  {selectedCategory !== '讚美感謝' && (
+                  {(selectedCategory !== '讚美感謝' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')) && (
                     aiLimit.canUse ? (
                       <button
                         onClick={() => {
@@ -720,7 +757,7 @@ const SendPage = React.memo(() => {
                     }}
                     className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
                   >
-                    不用 AI，直接送出（4 點）
+                    不用 AI，直接送出（{selectedCategory === '讚美感謝' && selectedSituation === 'other-praise' ? '4' : '4'} 點）
                   </button>
                 </>
               )}
@@ -739,7 +776,7 @@ const SendPage = React.memo(() => {
             {customText && (
               <Card className="p-4 bg-muted/30 border-border">
                 <div className="space-y-2 text-sm">
-                  {selectedCategory !== '讚美感謝' && aiLimit.canUse && (
+                  {(selectedCategory !== '讚美感謝' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')) && aiLimit.canUse && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">使用 AI 協助</span>
                       <span className="font-medium tabular-nums">2 點</span>
@@ -749,7 +786,7 @@ const SendPage = React.memo(() => {
                     <span className="text-muted-foreground">不使用 AI</span>
                     <span className="font-medium tabular-nums">4 點</span>
                   </div>
-                  {selectedCategory !== '讚美感謝' && (
+                  {(selectedCategory !== '讚美感謝' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')) && (
                     <div className="pt-2 border-t border-border">
                       <p className="text-xs text-muted-foreground">
                         💡 AI 協助每日限制 5 次，今日剩餘 {aiLimit.remaining} 次
@@ -877,7 +914,7 @@ const SendPage = React.memo(() => {
                 <p className="text-foreground leading-relaxed whitespace-pre-line">
                   {useAiVersion 
                     ? aiSuggestion 
-                    : selectedCategory === '其他情況'
+                    : selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
                       ? customText
                       : (customText ? `${generatedMessage}\n${customText}` : generatedMessage)
                   }
