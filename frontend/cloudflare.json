@@ -4,7 +4,6 @@
     "cwd": "frontend",
     "watch": []
   },
-  "output_directory": ".vercel/output/static",
   "routes": {
     "/*": {
       "status": 200,
