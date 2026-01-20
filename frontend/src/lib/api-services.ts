@@ -11,7 +11,7 @@ import type {
 // Auth
 export const authApi = {
   checkPhone: (phone: string) =>
-    api.get<{ exists: boolean; hasPassword: boolean }>(`/auth/check-phone/${phone}`).then((res) => res.data),
+    api.get<{ exists: boolean; hasPassword: boolean }>(`/auth/check-phone/${encodeURIComponent(phone)}`).then((res) => res.data),
   verifyPhone: (phone: string) =>
     api.post<{ message: string; code?: string; remaining?: number }>('/auth/verify-phone', { phone }).then((res) => res.data),
   login: (phone: string, code: string) =>

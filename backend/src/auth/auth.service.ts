@@ -53,15 +53,20 @@ export class AuthService {
   }
 
   async checkPhone(phone: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { phone },
-      select: { id: true, password: true },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { phone },
+        select: { id: true, password: true },
+      });
 
-    return {
-      exists: !!user,
-      hasPassword: !!user?.password,
-    };
+      return {
+        exists: !!user,
+        hasPassword: !!user?.password,
+      };
+    } catch (error) {
+      console.error('Error checking phone:', error);
+      throw error;
+    }
   }
 
   async resetVerifyCount(phone: string) {
