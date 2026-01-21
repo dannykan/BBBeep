@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare, Ban, ShieldOff } from 'lucide-react';
+import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare, Ban, ShieldOff, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 import {
@@ -88,6 +88,8 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
   const [editMessageData, setEditMessageData] = useState<{ template?: string; customText?: string; read?: boolean }>({});
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [blockReason, setBlockReason] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -255,6 +257,25 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
       loadUserData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || '解除封鎖失敗');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    setIsDeleting(true);
+    try {
+      await axios.delete(`${API_URL}/admin/users/${userId}`, {
+        headers: { 'x-admin-token': token },
+      });
+      toast.success('用戶已刪除');
+      setShowDeleteDialog(false);
+      router.push('/BBBeepadmin2026');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '刪除失敗');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -455,16 +476,26 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
                   </div>
                 )}
 
-                {/* 封鎖用戶按鈕 */}
-                {!isEditing && !user.isBlockedByAdmin && (
-                  <div className="pt-4 border-t border-border">
+                {/* 封鎖用戶與刪除用戶按鈕 */}
+                {!isEditing && (
+                  <div className="pt-4 border-t border-border flex gap-2">
+                    {!user.isBlockedByAdmin && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowBlockDialog(true)}
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <Ban className="h-4 w-4 mr-2" />
+                        封鎖此用戶
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
-                      onClick={() => setShowBlockDialog(true)}
+                      onClick={() => setShowDeleteDialog(true)}
                       className="border-red-300 text-red-600 hover:bg-red-50"
                     >
-                      <Ban className="h-4 w-4 mr-2" />
-                      封鎖此用戶
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      刪除用戶
                     </Button>
                   </div>
                 )}
@@ -712,6 +743,48 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
             <Button onClick={handleBlockUser} className="bg-red-600 hover:bg-red-700 text-white">
               <Ban className="h-4 w-4 mr-2" />
               確認封鎖
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 刪除用戶對話框 */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              刪除用戶
+            </DialogTitle>
+            <DialogDescription>
+              此操作將永久刪除該用戶的所有數據，包括訊息記錄、點數歷史等。刪除後用戶可以重新註冊。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
+              <p className="text-sm text-red-600 font-medium mb-2">即將刪除的用戶</p>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {user?.lineDisplayName && <p>LINE 名稱：{user.lineDisplayName}</p>}
+                {user?.phone && <p>手機號碼：{user.phone}</p>}
+                {user?.nickname && <p>暱稱：{user.nickname}</p>}
+                {user?.licensePlate && <p>車牌號碼：{user.licensePlate}</p>}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ⚠️ 此操作無法復原，請確認後再繼續。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+              取消
+            </Button>
+            <Button
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isDeleting ? '刪除中...' : '確認刪除'}
             </Button>
           </DialogFooter>
         </DialogContent>

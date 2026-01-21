@@ -16,7 +16,6 @@ import {
   FileText,
   Shield,
   LogOut,
-  Trash2,
   Car,
   Bike,
   User as UserIcon,
@@ -42,7 +41,6 @@ const SettingsPage = React.memo(() => {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showLicensePlateDialog, setShowLicensePlateDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
 
@@ -99,12 +97,6 @@ const SettingsPage = React.memo(() => {
     logout();
     router.push('/landing');
     toast.success('已登出');
-  };
-
-  const handleDeleteAccount = () => {
-    // TODO: 實現刪除帳號功能
-    toast.error('刪除帳號功能尚未實現');
-    setShowDeleteDialog(false);
   };
 
   if (!user) {
@@ -269,14 +261,6 @@ const SettingsPage = React.memo(() => {
             <LogOut className="h-4 w-4 mr-2" strokeWidth={1.5} />
             登出
           </Button>
-
-          <button
-            className="w-full text-sm text-muted-foreground hover:text-destructive transition-colors py-2 flex items-center justify-center gap-2"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-            刪除帳號
-          </button>
         </div>
 
         {/* 版本信息 */}
@@ -367,25 +351,6 @@ const SettingsPage = React.memo(() => {
         </DialogContent>
       </Dialog>
 
-      {/* 删除账号确认对话框 */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>刪除帳號</DialogTitle>
-            <DialogDescription>
-              確定要刪除帳號嗎？此操作無法復原，所有數據將被永久刪除。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteAccount}>
-              確認刪除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 });

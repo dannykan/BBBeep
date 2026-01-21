@@ -265,4 +265,18 @@ export class AdminController {
     }
     return this.adminService.unblockUser(id);
   }
+
+  @Delete('users/:id')
+  @ApiOperation({ summary: '刪除用戶（讓用戶可以重新註冊）' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async deleteUser(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.deleteUser(id);
+  }
 }

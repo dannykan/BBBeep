@@ -475,4 +475,58 @@ export class AdminService {
       orderBy: { blockedByAdminAt: 'desc' },
     });
   }
+
+  // 刪除用戶（讓用戶可以重新註冊）
+  async deleteUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    // 刪除用戶相關的所有資料
+    // 1. 刪除點數歷史
+    await this.prisma.pointHistory.deleteMany({
+      where: { userId },
+    });
+
+    // 2. 刪除 AI 使用記錄
+    await this.prisma.aIUsageLog.deleteMany({
+      where: { userId },
+    });
+
+    // 3. 刪除封鎖/被封鎖記錄
+    await this.prisma.blockedUser.deleteMany({
+      where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    });
+
+    // 4. 刪除拒收記錄
+    await this.prisma.rejectedUser.deleteMany({
+      where: { OR: [{ rejecterId: userId }, { rejectedId: userId }] },
+    });
+
+    // 5. 刪除訊息檢舉記錄
+    await this.prisma.messageReport.deleteMany({
+      where: { reporterId: userId },
+    });
+
+    // 6. 刪除車牌申請
+    await this.prisma.licensePlateApplication.deleteMany({
+      where: { userId },
+    });
+
+    // 7. 刪除收到的和發送的訊息
+    await this.prisma.message.deleteMany({
+      where: { OR: [{ senderId: userId }, { receiverId: userId }] },
+    });
+
+    // 8. 最後刪除用戶
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return { success: true, message: '用戶已刪除' };
+  }
 }
