@@ -15,14 +15,21 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface AdminUser {
   id: string;
-  phone: string;
+  phone?: string;
   nickname?: string;
   licensePlate?: string;
   userType: 'driver' | 'pedestrian';
   vehicleType?: 'car' | 'scooter';
   points: number;
+  freePoints?: number;
   hasCompletedOnboarding: boolean;
   createdAt: string;
+  // LINE Login 相關
+  lineUserId?: string;
+  lineDisplayName?: string;
+  linePictureUrl?: string;
+  // 封鎖狀態
+  isBlockedByAdmin?: boolean;
   _count: {
     receivedMessages: number;
     sentMessages: number;
@@ -131,9 +138,11 @@ const AdminPage = React.memo(() => {
     const query = searchQuery.toLowerCase();
     const filtered = users.filter(
       (user) =>
-        user.phone.toLowerCase().includes(query) ||
+        user.phone?.toLowerCase().includes(query) ||
         user.nickname?.toLowerCase().includes(query) ||
-        user.licensePlate?.toLowerCase().includes(query)
+        user.licensePlate?.toLowerCase().includes(query) ||
+        user.lineDisplayName?.toLowerCase().includes(query) ||
+        user.lineUserId?.toLowerCase().includes(query)
     );
     setFilteredUsers(filtered);
   };
@@ -361,12 +370,36 @@ const AdminPage = React.memo(() => {
                 </div>
 
                 <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">手機號碼</p>
-                    <p className="text-sm font-medium text-foreground">{user.phone}</p>
-                  </div>
+                  {/* LINE 用戶顯示 */}
+                  {user.lineUserId ? (
+                    <div className="flex items-center gap-2">
+                      {user.linePictureUrl && (
+                        <img
+                          src={user.linePictureUrl}
+                          alt="LINE"
+                          className="w-8 h-8 rounded-full"
+                        />
+                      )}
+                      <div>
+                        <p className="text-xs text-green-600">LINE 用戶</p>
+                        <p className="text-sm font-medium text-foreground">{user.lineDisplayName || 'LINE 用戶'}</p>
+                      </div>
+                    </div>
+                  ) : user.phone ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground">手機號碼</p>
+                      <p className="text-sm font-medium text-foreground">{user.phone}</p>
+                    </div>
+                  ) : null}
 
-                  {user.nickname && (
+                  {/* 封鎖狀態 */}
+                  {user.isBlockedByAdmin && (
+                    <div className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-600">
+                      已封鎖
+                    </div>
+                  )}
+
+                  {user.nickname && !user.lineUserId && (
                     <div>
                       <p className="text-xs text-muted-foreground">暱稱</p>
                       <p className="text-sm text-foreground">{user.nickname}</p>
@@ -383,7 +416,7 @@ const AdminPage = React.memo(() => {
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <div>
                       <p className="text-xs text-muted-foreground">點數</p>
-                      <p className="text-sm font-medium text-foreground">{user.points}</p>
+                      <p className="text-sm font-medium text-foreground">{(user.points || 0) + (user.freePoints || 0)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">消息</p>

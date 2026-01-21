@@ -34,8 +34,16 @@ export class AdminService {
     if (userType) {
       where.userType = userType;
     }
-    // 排除臨時用戶
-    where.phone = { not: { startsWith: 'temp_' } };
+    // 排除臨時用戶（temp_ 開頭的手機號）
+    // 但要包含 LINE 用戶（phone 為 null）
+    where.OR = [
+      { phone: null }, // LINE 用戶
+      { phone: { not: { startsWith: 'temp_' } } }, // 非臨時用戶
+    ];
+    // 同時排除 unbound_ 開頭的未綁定車牌用戶
+    where.NOT = [
+      { phone: { startsWith: 'unbound_' } },
+    ];
 
     return this.prisma.user.findMany({
       where,
@@ -47,8 +55,15 @@ export class AdminService {
         userType: true,
         vehicleType: true,
         points: true,
+        freePoints: true,
         hasCompletedOnboarding: true,
         createdAt: true,
+        // LINE Login 相關
+        lineUserId: true,
+        lineDisplayName: true,
+        linePictureUrl: true,
+        // 封鎖狀態
+        isBlockedByAdmin: true,
         _count: {
           select: {
             receivedMessages: true,
