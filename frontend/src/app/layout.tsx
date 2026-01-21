@@ -7,8 +7,20 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: '路上提醒平台',
-  description: '一個讓駕駛者可以私密發送善意提醒的系統',
+  title: '叭叭叭 BBBeep',
+  description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+  openGraph: {
+    title: '叭叭叭 BBBeep',
+    description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+    type: 'website',
+    locale: 'zh_TW',
+    siteName: '叭叭叭 BBBeep',
+  },
+  twitter: {
+    card: 'summary',
+    title: '叭叭叭 BBBeep',
+    description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+  },
 };
 
 export default function RootLayout({
