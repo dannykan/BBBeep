@@ -6,7 +6,6 @@ export const runtime = 'edge';
 // 標記為動態頁面
 export const dynamic = 'force-dynamic';
 
-export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return <UserDetailClient userId={id} />;
+export default function UserDetailPage({ params }: { params: { id: string } }) {
+  return <UserDetailClient userId={params.id} />;
 }
