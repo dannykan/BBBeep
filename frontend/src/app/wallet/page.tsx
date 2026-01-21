@@ -9,6 +9,7 @@ import { ChevronLeft, TrendingUp, TrendingDown, Gift, AlertCircle } from 'lucide
 import { toast } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
 import { pointsApi } from '@/lib/api-services';
+import { getTotalPoints } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import type { PointHistory } from '@/types';
@@ -113,7 +114,7 @@ const WalletPage = React.memo(() => {
         <Card className="p-6 text-center bg-card border-border shadow-none">
           <div className="text-xs text-muted-foreground mb-2">目前剩餘</div>
           <div className="text-6xl font-bold text-primary-dark tabular-nums mb-1">
-            {user.points || 0}
+            {getTotalPoints(user)}
           </div>
           <div className="text-sm text-muted-foreground">點</div>
         </Card>

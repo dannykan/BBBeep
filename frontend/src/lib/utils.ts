@@ -14,3 +14,13 @@ export function formatLocationDisplay(location: string | null | undefined): stri
   if (!location) return '';
   return `在 ${location} 附近`;
 }
+
+/**
+ * 計算用戶總點數（購買點數 + 每日免費點數）
+ * @param user 用戶物件
+ * @returns 總點數
+ */
+export function getTotalPoints(user: { points?: number; freePoints?: number } | null | undefined): number {
+  if (!user) return 0;
+  return (user.points ?? 0) + (user.freePoints ?? 0);
+}

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
 import { formatDistanceToNow } from 'date-fns';
 import { messagesApi, usersApi, aiApi } from '@/lib/api-services';
-import { formatLocationDisplay } from '@/lib/utils';
+import { formatLocationDisplay, getTotalPoints } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -208,7 +208,7 @@ const InboxPage = React.memo(() => {
     }
   };
 
-  const canAfford = (cost: number) => (user?.points ?? 0) >= cost;
+  const canAfford = (cost: number) => (getTotalPoints(user)) >= cost;
 
   const getMessageAccentColor = (type: string) => {
     switch (type) {
@@ -570,7 +570,7 @@ const InboxPage = React.memo(() => {
                           <span className="text-sm font-medium text-destructive">點數不足</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          目前剩餘 {user?.points ?? 0} 點，使用 AI 協助需要 2 點
+                          目前剩餘 {getTotalPoints(user)} 點，使用 AI 協助需要 2 點
                         </p>
                       </div>
                     )}

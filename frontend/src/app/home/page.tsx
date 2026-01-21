@@ -10,6 +10,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { formatDistanceToNow } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { displayLicensePlate } from '@/lib/license-plate-format';
+import { getTotalPoints } from '@/lib/utils';
 
 const HomePage = React.memo(() => {
   const router = useRouter();
@@ -35,7 +36,7 @@ const HomePage = React.memo(() => {
   }
 
   const unreadCount = messages.filter((m) => !m.read).length;
-  const isLowPoints = (user?.points ?? 0) < 5;
+  const isLowPoints = (getTotalPoints(user)) < 5;
 
   const getMessageAccentColor = (type: string) => {
     switch (type) {
@@ -113,7 +114,7 @@ const HomePage = React.memo(() => {
             <div>
               <div className="text-xs text-muted-foreground mb-1.5">剩餘點數</div>
               <div className="text-5xl font-bold text-foreground tabular-nums leading-none">
-                {user?.points || 0}
+                {getTotalPoints(user)}
               </div>
             </div>
             <Button
@@ -140,7 +141,7 @@ const HomePage = React.memo(() => {
         <button
           className="w-full px-4 py-5 bg-primary hover:bg-primary-dark text-white rounded-xl transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => router.push('/send')}
-          disabled={isLowPoints && (user?.points ?? 0) < 1}
+          disabled={isLowPoints && (getTotalPoints(user)) < 1}
         >
           <div className="flex items-center justify-center gap-3">
             <Send className="h-6 w-6" strokeWidth={2} />

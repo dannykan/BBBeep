@@ -9,7 +9,8 @@ export interface User {
   licensePlate?: string;
   userType: UserType;
   vehicleType?: VehicleType;
-  points: number;
+  points: number;        // 購買的點數
+  freePoints: number;    // 每日免費點數
   hasCompletedOnboarding: boolean;
   email?: string;
   blockedUsers?: BlockedUser[];

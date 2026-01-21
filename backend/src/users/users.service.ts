@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { PointsService } from '../points/points.service';
 import { UpdateUserDto, CompleteOnboardingDto } from './dto/update-user.dto';
 import { BlockUserDto, RejectUserDto } from './dto/block-user.dto';
 import { CreateLicensePlateApplicationDto } from './dto/license-plate-application.dto';
@@ -7,9 +8,15 @@ import { normalizeLicensePlate } from '../common/utils/license-plate-format';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private pointsService: PointsService,
+  ) {}
 
   async findOne(userId: string) {
+    // 先檢查並重置每日免費點數
+    await this.pointsService.checkAndResetFreePoints(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {

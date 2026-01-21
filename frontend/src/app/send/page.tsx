@@ -31,6 +31,7 @@ import {
 import { messagesApi, aiApi } from '@/lib/api-services';
 import type { MessageType } from '@/types';
 import { normalizeLicensePlate, displayLicensePlate } from '@/lib/license-plate-format';
+import { getTotalPoints } from '@/lib/utils';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
 type SendStep = 'vehicle-type' | 'plate-input' | 'category' | 'situation' | 'review' | 'custom' | 'ai-suggest' | 'confirm' | 'success';
@@ -331,7 +332,7 @@ const SendPage = React.memo(() => {
     return 4; // 補充文字 + 不用AI
   };
 
-  const canAfford = (cost: number) => (user?.points ?? 0) >= cost;
+  const canAfford = (cost: number) => (getTotalPoints(user)) >= cost;
 
   // 檢查點數是否足夠，不足則顯示 Dialog
   const checkPointsAndProceed = (cost: number, onSuccess: () => void) => {
@@ -1347,7 +1348,7 @@ const SendPage = React.memo(() => {
               </div>
               <div className="mt-2 pt-2 border-t border-border flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">送出後剩餘</span>
-                <span className="font-medium tabular-nums">{(user?.points ?? 0) - getPointCost()} 點</span>
+                <span className="font-medium tabular-nums">{(getTotalPoints(user)) - getPointCost()} 點</span>
               </div>
             </Card>
 
@@ -1376,7 +1377,7 @@ const SendPage = React.memo(() => {
                     <span className="text-sm font-medium text-destructive">點數不足</span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">
-                    目前剩餘 {user?.points ?? 0} 點，需要 {getPointCost()} 點才能發送
+                    目前剩餘 {getTotalPoints(user)} 點，需要 {getPointCost()} 點才能發送
                   </p>
                   <Button
                     size="sm"
@@ -1417,7 +1418,7 @@ const SendPage = React.memo(() => {
             <Card className="p-4 bg-muted/30 border-border">
               <div className="text-sm space-y-1">
                 <div className="text-muted-foreground">剩餘點數</div>
-                <div className="text-3xl font-bold text-[#3C5E8C] tabular-nums">{user?.points ?? 0}</div>
+                <div className="text-3xl font-bold text-[#3C5E8C] tabular-nums">{getTotalPoints(user)}</div>
               </div>
             </Card>
 
@@ -1498,7 +1499,7 @@ const SendPage = React.memo(() => {
                 此操作需要 <span className="font-bold text-foreground">{requiredPoints} 點</span>
               </p>
               <p className="text-muted-foreground">
-                您目前剩餘 <span className="font-bold text-foreground">{user?.points ?? 0} 點</span>
+                您目前剩餘 <span className="font-bold text-foreground">{getTotalPoints(user)} 點</span>
               </p>
             </div>
 
