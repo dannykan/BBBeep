@@ -53,8 +53,12 @@ function LineCallbackContent() {
       localStorage.removeItem('line_login_state');
 
       try {
+        console.log('[LINE_CALLBACK] Calling backend API with code:', code.substring(0, 10) + '...');
+
         // 呼叫後端 API 完成登入
         const response = await authApi.lineLogin(code, state);
+
+        console.log('[LINE_CALLBACK] Login successful, user:', response.user?.id);
 
         // 儲存 token 和用戶資料
         localStorage.setItem('token', response.access_token);
@@ -74,10 +78,20 @@ function LineCallbackContent() {
           router.push('/onboarding');
         }
       } catch (error: any) {
-        const errorMessage = error.response?.data?.message || 'LINE 登入失敗';
-        setError(errorMessage);
+        console.error('[LINE_CALLBACK] Login error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+
+        const errorMessage = error.response?.data?.message || 'LINE 登入失敗，請稍後再試';
+        const errorDetail = error.response?.status
+          ? `(錯誤代碼: ${error.response.status})`
+          : '';
+
+        setError(`${errorMessage} ${errorDetail}`);
         toast.error(errorMessage);
-        setTimeout(() => router.push('/login'), 2000);
+        setTimeout(() => router.push('/login'), 3000);
       }
     };
 
