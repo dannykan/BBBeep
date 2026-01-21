@@ -12,6 +12,7 @@ import { AiModule } from './ai/ai.module';
 import { RedisModule } from './common/redis/redis.module';
 import { AdminModule } from './admin/admin.module';
 import { UploadModule } from './upload/upload.module';
+import { InviteModule } from './invite/invite.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -29,6 +30,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     AiModule,
     AdminModule,
     UploadModule,
+    InviteModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,20 +1,25 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Send, Inbox, Wallet, Settings, AlertCircle, ChevronRight, User, Car, Bike, History } from 'lucide-react';
+import { Send, Inbox, Wallet, Settings, AlertCircle, User, Car, Bike, History, Gift, Copy, Share2, Users } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
-import { formatDistanceToNow } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
 import { displayLicensePlate } from '@/lib/license-plate-format';
 import { getTotalPoints } from '@/lib/utils';
+import { inviteApi } from '@/lib/api-services';
+import type { InviteCodeResponse } from '@/types';
+import { toast } from 'sonner';
 
 const HomePage = React.memo(() => {
   const router = useRouter();
   const { user, messages, isLoading, refreshUser, refreshMessages } = useApp();
+
+  // Invite code state
+  const [inviteData, setInviteData] = useState<InviteCodeResponse | null>(null);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -27,6 +32,53 @@ const HomePage = React.memo(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoading, router]);
 
+  // Load invite code data
+  useEffect(() => {
+    const loadInviteData = async () => {
+      setIsLoadingInvite(true);
+      try {
+        const data = await inviteApi.getMyCode();
+        setInviteData(data);
+      } catch (error) {
+        console.error('Failed to load invite data:', error);
+      } finally {
+        setIsLoadingInvite(false);
+      }
+    };
+    if (user) {
+      loadInviteData();
+    }
+  }, [user]);
+
+  const handleCopyInviteCode = () => {
+    if (inviteData?.inviteCode) {
+      navigator.clipboard.writeText(inviteData.inviteCode);
+      toast.success('邀請碼已複製');
+    }
+  };
+
+  const handleShareInviteCode = async () => {
+    if (!inviteData?.inviteCode) return;
+
+    const shareText = `來用 BBBeep 提醒路上的朋友吧！使用我的邀請碼 ${inviteData.inviteCode}，註冊完成後你可以獲得 ${inviteData.inviteeReward} 點獎勵！`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'BBBeep 邀請碼',
+          text: shareText,
+        });
+      } catch (error) {
+        // User cancelled or share failed, fall back to copy
+        navigator.clipboard.writeText(shareText);
+        toast.success('邀請訊息已複製');
+      }
+    } else {
+      navigator.clipboard.writeText(shareText);
+      toast.success('邀請訊息已複製');
+    }
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -37,32 +89,6 @@ const HomePage = React.memo(() => {
 
   const unreadCount = messages.filter((m) => !m.read).length;
   const isLowPoints = (getTotalPoints(user)) < 5;
-
-  const getMessageAccentColor = (type: string) => {
-    switch (type) {
-      case '車況提醒':
-        return 'border-l-[3px] border-l-accent-vehicle';
-      case '行車安全提醒':
-        return 'border-l-[3px] border-l-accent-safety';
-      case '讚美感謝':
-        return 'border-l-[3px] border-l-accent-praise';
-      default:
-        return '';
-    }
-  };
-
-  const getTagColor = (type: string) => {
-    switch (type) {
-      case '車況提醒':
-        return 'bg-accent-vehicle/10 text-accent-vehicle';
-      case '行車安全提醒':
-        return 'bg-accent-safety/10 text-accent-safety';
-      case '讚美感謝':
-        return 'bg-accent-praise/10 text-accent-praise';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -228,51 +254,67 @@ const HomePage = React.memo(() => {
           </Button>
         </div>
 
-        {messages.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm text-muted-foreground">最近收到的提醒</div>
-              <button
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
-                onClick={() => router.push('/inbox')}
-              >
-                查看全部
-                <ChevronRight className="h-3 w-3" strokeWidth={2} />
-              </button>
+        {/* 邀請好友 */}
+        <Card className="p-4 bg-card border-border shadow-none">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <Gift className="h-5 w-5 text-primary" />
             </div>
-            <Card className="divide-y divide-border bg-card border-border shadow-none overflow-hidden">
-              {messages.slice(0, 3).map((message) => (
-                <button
-                  key={message.id}
-                  className={`w-full p-4 text-left hover:bg-muted/30 transition-colors ${getMessageAccentColor(message.type)}`}
-                  onClick={() => router.push('/inbox')}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${getTagColor(message.type)}`}>
-                          {message.type}
-                        </span>
-                        {!message.read && (
-                          <div className="w-2 h-2 bg-primary rounded-full" />
-                        )}
-                      </div>
-                      <p className="text-base text-foreground line-clamp-1 mb-1 font-medium">
-                        {message.template}
-                      </p>
-                      {message.customText && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {message.customText}
-                        </p>
-                      )}
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" strokeWidth={1.5} />
-                  </div>
-                </button>
-              ))}
-            </Card>
+            <div>
+              <div className="text-sm font-medium text-foreground">邀請好友</div>
+              <div className="text-xs text-muted-foreground">
+                成功邀請好友完成註冊，雙方都能獲得點數獎勵
+              </div>
+            </div>
           </div>
-        )}
+
+          {isLoadingInvite ? (
+            <div className="text-center py-2">
+              <div className="text-sm text-muted-foreground">載入中...</div>
+            </div>
+          ) : inviteData ? (
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1.5">我的邀請碼</div>
+                <div className="bg-muted/50 border border-border rounded-lg p-2.5">
+                  <div className="text-center font-mono text-lg tracking-[0.4em] text-foreground font-medium">
+                    {inviteData.inviteCode}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-9"
+                  onClick={handleCopyInviteCode}
+                >
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  複製
+                </Button>
+                <Button
+                  className="flex-1 h-9 bg-primary hover:bg-primary-dark"
+                  onClick={handleShareInviteCode}
+                >
+                  <Share2 className="h-4 w-4 mr-1.5" />
+                  分享
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-border">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  已成功邀請 {inviteData.inviteCount} 人
+                  {inviteData.totalRewards > 0 && `，獲得 ${inviteData.totalRewards} 點獎勵`}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <div className="text-sm text-muted-foreground">無法載入邀請碼</div>
+            </div>
+          )}
+        </Card>
       </div>
 
       <BottomNav />

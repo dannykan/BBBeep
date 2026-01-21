@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointsService } from '../points/points.service';
+import { InviteService } from '../invite/invite.service';
 import { UpdateUserDto, CompleteOnboardingDto } from './dto/update-user.dto';
 import { BlockUserDto, RejectUserDto } from './dto/block-user.dto';
 import { CreateLicensePlateApplicationDto } from './dto/license-plate-application.dto';
@@ -11,6 +12,8 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private pointsService: PointsService,
+    @Inject(forwardRef(() => InviteService))
+    private inviteService: InviteService,
   ) {}
 
   async findOne(userId: string) {
@@ -189,6 +192,9 @@ export class UsersService {
           where: { id: tempUser.id },
         });
 
+        // 處理邀請獎勵
+        await this.inviteService.processInviteReward(userId);
+
         return updatedUser;
       }
     }
@@ -202,10 +208,15 @@ export class UsersService {
       }
       updateData.licensePlate = normalizedPlate;
     }
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,
     });
+
+    // 處理邀請獎勵
+    await this.inviteService.processInviteReward(userId);
+
+    return user;
   }
 
   async findByLicensePlate(licensePlate: string) {

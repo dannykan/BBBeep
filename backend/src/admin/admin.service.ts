@@ -1,9 +1,13 @@
 import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { UserType, VehicleType } from '@prisma/client';
+import { UserType, VehicleType, InviteStatus } from '@prisma/client';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
 
 const ADMIN_PASSWORD = '12345678';
+
+// 排除易混淆字元：0, O, I, l
+const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const INVITE_CODE_LENGTH = 6;
 
 @Injectable()
 export class AdminService {
@@ -531,5 +535,272 @@ export class AdminService {
     });
 
     return { success: true, message: '用戶已刪除' };
+  }
+
+  // ========== 邀請碼管理 ==========
+
+  // 生成唯一邀請碼
+  private generateInviteCode(): string {
+    let code = '';
+    for (let i = 0; i < INVITE_CODE_LENGTH; i++) {
+      code += INVITE_CODE_CHARS.charAt(Math.floor(Math.random() * INVITE_CODE_CHARS.length));
+    }
+    return code;
+  }
+
+  // 取得或初始化邀請設定
+  async getInviteSettings() {
+    let settings = await this.prisma.inviteSettings.findFirst();
+    if (!settings) {
+      settings = await this.prisma.inviteSettings.create({
+        data: {
+          defaultInviterReward: 5,
+          defaultInviteeReward: 3,
+          isEnabled: true,
+        },
+      });
+    }
+    return settings;
+  }
+
+  // 更新邀請設定
+  async updateInviteSettings(data: {
+    defaultInviterReward?: number;
+    defaultInviteeReward?: number;
+    isEnabled?: boolean;
+  }) {
+    const settings = await this.getInviteSettings();
+    return this.prisma.inviteSettings.update({
+      where: { id: settings.id },
+      data,
+    });
+  }
+
+  // 取得邀請統計
+  async getInviteStatistics() {
+    const [
+      totalInvites,
+      completedInvites,
+      pendingInvites,
+      totalInviterRewards,
+      totalInviteeRewards,
+    ] = await Promise.all([
+      this.prisma.inviteHistory.count(),
+      this.prisma.inviteHistory.count({ where: { status: 'completed' } }),
+      this.prisma.inviteHistory.count({ where: { status: 'pending' } }),
+      this.prisma.inviteHistory.aggregate({
+        where: { status: 'completed' },
+        _sum: { inviterReward: true },
+      }),
+      this.prisma.inviteHistory.aggregate({
+        where: { status: 'completed' },
+        _sum: { inviteeReward: true },
+      }),
+    ]);
+
+    return {
+      totalInvites,
+      completedInvites,
+      pendingInvites,
+      expiredInvites: totalInvites - completedInvites - pendingInvites,
+      totalInviterRewards: totalInviterRewards._sum.inviterReward || 0,
+      totalInviteeRewards: totalInviteeRewards._sum.inviteeReward || 0,
+      totalRewardsDistributed: (totalInviterRewards._sum.inviterReward || 0) + (totalInviteeRewards._sum.inviteeReward || 0),
+    };
+  }
+
+  // 取得所有邀請記錄
+  async getAllInviteHistory(status?: InviteStatus) {
+    const where: any = {};
+    if (status) {
+      where.status = status;
+    }
+
+    return this.prisma.inviteHistory.findMany({
+      where,
+      include: {
+        inviter: {
+          select: {
+            id: true,
+            phone: true,
+            nickname: true,
+            licensePlate: true,
+          },
+        },
+        invitee: {
+          select: {
+            id: true,
+            phone: true,
+            nickname: true,
+            licensePlate: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // 更新用戶的邀請碼設定
+  async updateUserInviteSettings(userId: string, data: {
+    inviteCode?: string;
+    customInviterReward?: number | null;
+    customInviteeReward?: number | null;
+  }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    const updateData: any = {};
+
+    // 更新邀請碼
+    if (data.inviteCode !== undefined) {
+      const code = data.inviteCode.toUpperCase();
+
+      // 驗證邀請碼格式
+      if (!/^[A-Z0-9]{6}$/.test(code)) {
+        throw new BadRequestException('邀請碼必須為6位大寫英數字');
+      }
+
+      // 檢查邀請碼是否已被使用
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          inviteCode: code,
+          id: { not: userId },
+        },
+      });
+
+      if (existing) {
+        throw new BadRequestException('該邀請碼已被使用');
+      }
+
+      updateData.inviteCode = code;
+    }
+
+    // 更新自訂獎勵
+    if (data.customInviterReward !== undefined) {
+      updateData.customInviterReward = data.customInviterReward;
+    }
+    if (data.customInviteeReward !== undefined) {
+      updateData.customInviteeReward = data.customInviteeReward;
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        nickname: true,
+        inviteCode: true,
+        customInviterReward: true,
+        customInviteeReward: true,
+      },
+    });
+  }
+
+  // 為用戶生成新的邀請碼
+  async generateUserInviteCode(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    let code: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    do {
+      code = this.generateInviteCode();
+      const existing = await this.prisma.user.findUnique({
+        where: { inviteCode: code },
+      });
+      if (!existing) break;
+      attempts++;
+    } while (attempts < maxAttempts);
+
+    if (attempts >= maxAttempts) {
+      throw new BadRequestException('無法生成唯一邀請碼，請稍後再試');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { inviteCode: code },
+      select: {
+        id: true,
+        nickname: true,
+        inviteCode: true,
+        customInviterReward: true,
+        customInviteeReward: true,
+      },
+    });
+  }
+
+  // 取得用戶的邀請統計
+  async getUserInviteStats(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        inviteCode: true,
+        customInviterReward: true,
+        customInviteeReward: true,
+        invitedById: true,
+        invitedBy: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    const inviteHistory = await this.prisma.inviteHistory.findMany({
+      where: { inviterId: userId },
+      include: {
+        invitee: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const completedInvites = inviteHistory.filter(h => h.status === 'completed');
+    const totalRewards = completedInvites.reduce((sum, h) => sum + h.inviterReward, 0);
+
+    const settings = await this.getInviteSettings();
+
+    return {
+      inviteCode: user.inviteCode,
+      customInviterReward: user.customInviterReward,
+      customInviteeReward: user.customInviteeReward,
+      effectiveInviterReward: user.customInviterReward ?? settings.defaultInviterReward,
+      effectiveInviteeReward: user.customInviteeReward ?? settings.defaultInviteeReward,
+      invitedBy: user.invitedBy,
+      inviteCount: completedInvites.length,
+      pendingCount: inviteHistory.filter(h => h.status === 'pending').length,
+      totalRewards,
+      inviteHistory: inviteHistory.map(h => ({
+        id: h.id,
+        inviteeNickname: h.invitee.nickname || '匿名用戶',
+        status: h.status,
+        inviterReward: h.inviterReward,
+        inviteeReward: h.inviteeReward,
+        createdAt: h.createdAt,
+        rewardedAt: h.rewardedAt,
+      })),
+    };
   }
 }

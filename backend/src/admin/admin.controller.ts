@@ -13,7 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { AIPromptService } from '../ai/ai-prompt.service';
-import { UserType, VehicleType } from '@prisma/client';
+import { UserType, VehicleType, InviteStatus } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Admin')
@@ -278,5 +278,108 @@ export class AdminController {
       throw new UnauthorizedException('無效的管理員 token');
     }
     return this.adminService.deleteUser(id);
+  }
+
+  // ========== 邀請碼管理 ==========
+
+  @Get('invite-settings')
+  @ApiOperation({ summary: '取得全域邀請設定' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getInviteSettings(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getInviteSettings();
+  }
+
+  @Put('invite-settings')
+  @ApiOperation({ summary: '更新全域邀請設定' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async updateInviteSettings(
+    @Headers('x-admin-token') token: string,
+    @Body() data: {
+      defaultInviterReward?: number;
+      defaultInviteeReward?: number;
+      isEnabled?: boolean;
+    },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.updateInviteSettings(data);
+  }
+
+  @Get('invite-statistics')
+  @ApiOperation({ summary: '取得邀請統計' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getInviteStatistics(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getInviteStatistics();
+  }
+
+  @Get('invite-history')
+  @ApiOperation({ summary: '取得所有邀請記錄' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getAllInviteHistory(
+    @Headers('x-admin-token') token: string,
+    @Query('status') status?: InviteStatus,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getAllInviteHistory(status);
+  }
+
+  @Put('users/:id/invite')
+  @ApiOperation({ summary: '更新用戶的邀請碼/獎勵設定' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async updateUserInviteSettings(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+    @Body() data: {
+      inviteCode?: string;
+      customInviterReward?: number | null;
+      customInviteeReward?: number | null;
+    },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.updateUserInviteSettings(id, data);
+  }
+
+  @Post('users/:id/invite/generate')
+  @ApiOperation({ summary: '為用戶生成新的邀請碼' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async generateUserInviteCode(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.generateUserInviteCode(id);
+  }
+
+  @Get('users/:id/invite-stats')
+  @ApiOperation({ summary: '取得用戶的邀請統計' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getUserInviteStats(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getUserInviteStats(id);
   }
 }

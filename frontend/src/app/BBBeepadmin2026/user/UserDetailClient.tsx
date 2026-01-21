@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare, Ban, ShieldOff, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Edit, Save, X, Trash2, MessageSquare, Ban, ShieldOff, AlertTriangle, Gift, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { adminInviteApi } from '@/lib/api-services';
+import type { UserInviteStats } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -91,6 +93,14 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Invite code state
+  const [inviteStats, setInviteStats] = useState<UserInviteStats | null>(null);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
+  const [editInviteCode, setEditInviteCode] = useState('');
+  const [editInviterReward, setEditInviterReward] = useState<string>('');
+  const [editInviteeReward, setEditInviteeReward] = useState<string>('');
+  const [isEditingInvite, setIsEditingInvite] = useState(false);
+
   useEffect(() => {
     loadUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +109,7 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
   useEffect(() => {
     if (user) {
       loadMessages();
+      loadInviteStats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, messageType]);
@@ -150,6 +161,66 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
       setMessages(response.data);
     } catch (error: any) {
       toast.error('載入消息失敗');
+    }
+  };
+
+  const loadInviteStats = async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    setIsLoadingInvite(true);
+    try {
+      const data = await adminInviteApi.getUserInviteStats(token, userId);
+      setInviteStats(data);
+      setEditInviteCode(data.inviteCode || '');
+      setEditInviterReward(data.customInviterReward?.toString() || '');
+      setEditInviteeReward(data.customInviteeReward?.toString() || '');
+    } catch (error) {
+      console.error('Failed to load invite stats:', error);
+    } finally {
+      setIsLoadingInvite(false);
+    }
+  };
+
+  const handleGenerateInviteCode = async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      await adminInviteApi.generateUserInviteCode(token, userId);
+      toast.success('已生成新的邀請碼');
+      loadInviteStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '生成邀請碼失敗');
+    }
+  };
+
+  const handleSaveInviteSettings = async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    try {
+      const data: any = {};
+      if (editInviteCode && editInviteCode !== inviteStats?.inviteCode) {
+        data.inviteCode = editInviteCode;
+      }
+      if (editInviterReward !== '') {
+        data.customInviterReward = parseInt(editInviterReward) || null;
+      } else if (inviteStats?.customInviterReward !== null) {
+        data.customInviterReward = null;
+      }
+      if (editInviteeReward !== '') {
+        data.customInviteeReward = parseInt(editInviteeReward) || null;
+      } else if (inviteStats?.customInviteeReward !== null) {
+        data.customInviteeReward = null;
+      }
+
+      await adminInviteApi.updateUserInviteSettings(token, userId, data);
+      toast.success('邀請碼設定已更新');
+      setIsEditingInvite(false);
+      loadInviteStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '更新失敗');
     }
   };
 
@@ -500,6 +571,156 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
                   </div>
                 )}
               </div>
+            </Card>
+
+            {/* 邀請碼管理 */}
+            <Card className="p-6 bg-card border-border shadow-none">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Gift className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-foreground">邀請碼管理</h3>
+                    <p className="text-xs text-muted-foreground">管理用戶的邀請碼和獎勵設定</p>
+                  </div>
+                </div>
+                {!isEditingInvite && (
+                  <Button variant="outline" size="sm" onClick={() => setIsEditingInvite(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    編輯
+                  </Button>
+                )}
+              </div>
+
+              {isLoadingInvite ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">載入中...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 邀請碼 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>邀請碼</Label>
+                      {isEditingInvite ? (
+                        <div className="flex gap-2">
+                          <Input
+                            value={editInviteCode}
+                            onChange={(e) => setEditInviteCode(e.target.value.toUpperCase())}
+                            placeholder="輸入自訂邀請碼"
+                            maxLength={6}
+                            className="font-mono"
+                          />
+                          <Button variant="outline" size="sm" onClick={handleGenerateInviteCode}>
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Input
+                          value={inviteStats?.inviteCode || '未設定'}
+                          disabled
+                          className="bg-muted font-mono"
+                        />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>邀請統計</Label>
+                      <div className="flex items-center gap-4 h-10">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Users className="h-4 w-4" />
+                          已邀請 {inviteStats?.inviteCount || 0} 人
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          獲得 {inviteStats?.totalRewards || 0} 點
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 自訂獎勵 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>自訂邀請人獎勵（留空使用預設）</Label>
+                      {isEditingInvite ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={editInviterReward}
+                          onChange={(e) => setEditInviterReward(e.target.value)}
+                          placeholder={`預設: ${inviteStats?.effectiveInviterReward || 5}`}
+                        />
+                      ) : (
+                        <Input
+                          value={
+                            inviteStats?.customInviterReward !== null && inviteStats?.customInviterReward !== undefined
+                              ? `${inviteStats.customInviterReward} 點（自訂）`
+                              : `${inviteStats?.effectiveInviterReward || 5} 點（預設）`
+                          }
+                          disabled
+                          className="bg-muted"
+                        />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>自訂被邀請人獎勵（留空使用預設）</Label>
+                      {isEditingInvite ? (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={editInviteeReward}
+                          onChange={(e) => setEditInviteeReward(e.target.value)}
+                          placeholder={`預設: ${inviteStats?.effectiveInviteeReward || 3}`}
+                        />
+                      ) : (
+                        <Input
+                          value={
+                            inviteStats?.customInviteeReward !== null && inviteStats?.customInviteeReward !== undefined
+                              ? `${inviteStats.customInviteeReward} 點（自訂）`
+                              : `${inviteStats?.effectiveInviteeReward || 3} 點（預設）`
+                          }
+                          disabled
+                          className="bg-muted"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 被誰邀請 */}
+                  {inviteStats?.invitedBy && (
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        被邀請：由 <span className="text-foreground font-medium">{inviteStats.invitedBy.nickname || '匿名用戶'}</span> 邀請
+                      </p>
+                    </div>
+                  )}
+
+                  {isEditingInvite && (
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={handleSaveInviteSettings}>
+                        <Save className="h-4 w-4 mr-2" />
+                        儲存
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingInvite(false);
+                          setEditInviteCode(inviteStats?.inviteCode || '');
+                          setEditInviterReward(inviteStats?.customInviterReward?.toString() || '');
+                          setEditInviteeReward(inviteStats?.customInviteeReward?.toString() || '');
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        取消
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           </TabsContent>
 

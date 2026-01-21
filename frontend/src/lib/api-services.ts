@@ -6,6 +6,15 @@ import type {
   PointHistory,
   LoginResponse,
   MessageType,
+  InviteCodeResponse,
+  ValidateCodeResponse,
+  ApplyInviteCodeResponse,
+  InviteHistoryItem,
+  InviteSettings,
+  InviteStatistics,
+  AdminInviteHistoryItem,
+  UserInviteStats,
+  InviteStatus,
 } from '@/types';
 
 // Auth
@@ -130,4 +139,53 @@ export const licensePlateApi = {
     api.get('/users/license-plate-application').then((res) => res.data),
   getApplication: (id: string) =>
     api.get(`/users/license-plate-application/${id}`).then((res) => res.data),
+};
+
+// Invite
+export const inviteApi = {
+  getMyCode: () =>
+    api.get<InviteCodeResponse>('/invite/my-code').then((res) => res.data),
+  validateCode: (code: string) =>
+    api.get<ValidateCodeResponse>(`/invite/validate/${code}`).then((res) => res.data),
+  applyCode: (code: string) =>
+    api.post<ApplyInviteCodeResponse>('/invite/apply', { code }).then((res) => res.data),
+  getHistory: () =>
+    api.get<InviteHistoryItem[]>('/invite/history').then((res) => res.data),
+};
+
+// Admin Invite
+export const adminInviteApi = {
+  getSettings: (token: string) =>
+    api.get<InviteSettings>('/admin/invite-settings', {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  updateSettings: (token: string, data: Partial<Pick<InviteSettings, 'defaultInviterReward' | 'defaultInviteeReward' | 'isEnabled'>>) =>
+    api.put<InviteSettings>('/admin/invite-settings', data, {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  getStatistics: (token: string) =>
+    api.get<InviteStatistics>('/admin/invite-statistics', {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  getHistory: (token: string, status?: InviteStatus) =>
+    api.get<AdminInviteHistoryItem[]>('/admin/invite-history', {
+      params: { status },
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  updateUserInviteSettings: (token: string, userId: string, data: {
+    inviteCode?: string;
+    customInviterReward?: number | null;
+    customInviteeReward?: number | null;
+  }) =>
+    api.put(`/admin/users/${userId}/invite`, data, {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  generateUserInviteCode: (token: string, userId: string) =>
+    api.post(`/admin/users/${userId}/invite/generate`, {}, {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
+  getUserInviteStats: (token: string, userId: string) =>
+    api.get<UserInviteStats>(`/admin/users/${userId}/invite-stats`, {
+      headers: { 'x-admin-token': token }
+    }).then((res) => res.data),
 };

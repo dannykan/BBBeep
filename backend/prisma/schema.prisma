@@ -37,6 +37,12 @@ enum PointHistoryType {
   bonus
 }
 
+enum InviteStatus {
+  pending   // 邀請碼已輸入，onboarding 未完成
+  completed // onboarding 完成，獎勵已發放
+  expired   // 用戶放棄註冊
+}
+
 enum ApplicationStatus {
   pending // 待審核
   approved // 已通過
@@ -75,6 +81,14 @@ model User {
   blockedByAdminAt       DateTime?                    // 封鎖時間
   blockedByAdminReason   String?                      // 封鎖原因
 
+  // 邀請碼相關
+  inviteCode             String?      @unique        // 用戶的個人邀請碼
+  invitedById            String?                     // 邀請此用戶的人的 ID
+  invitedBy              User?        @relation("Inviter", fields: [invitedById], references: [id])
+  invitedUsers           User[]       @relation("Inviter")
+  customInviterReward    Int?                        // 此用戶的邀請碼給邀請人的獎勵（覆蓋預設）
+  customInviteeReward    Int?                        // 此用戶的邀請碼給被邀請人的獎勵（覆蓋預設）
+
   // Relations
   sentMessages             Message[]                 @relation("Sender")
   receivedMessages         Message[]                 @relation("Receiver")
@@ -86,6 +100,8 @@ model User {
   messageReports           MessageReport[]           @relation("Reporter")
   aiUsageLogs              AIUsageLog[]
   licensePlateApplications LicensePlateApplication[]
+  inviteHistoryAsInviter   InviteHistory[]           @relation("InviterHistory")
+  inviteHistoryAsInvitee   InviteHistory?            @relation("InviteeHistory")
 
   @@index([phone])
   @@index([licensePlate])
@@ -219,4 +235,30 @@ model AIPrompt {
 
   @@unique([vehicleType, category])
   @@index([vehicleType, category, isActive])
+}
+
+model InviteSettings {
+  id                   String   @id @default(cuid())
+  defaultInviterReward Int      @default(5)    // 邀請人獎勵點數
+  defaultInviteeReward Int      @default(3)    // 被邀請人獎勵點數
+  isEnabled            Boolean  @default(true) // 啟用/停用邀請系統
+  updatedAt            DateTime @updatedAt
+}
+
+model InviteHistory {
+  id            String       @id @default(cuid())
+  inviterId     String
+  inviter       User         @relation("InviterHistory", fields: [inviterId], references: [id])
+  inviteeId     String       @unique  // 每個用戶只能被邀請一次
+  invitee       User         @relation("InviteeHistory", fields: [inviteeId], references: [id])
+  inviteCode    String       // 使用的邀請碼
+  status        InviteStatus @default(pending)
+  inviterReward Int          // 實際給邀請人的獎勵
+  inviteeReward Int          // 實際給被邀請人的獎勵
+  rewardedAt    DateTime?    // 獎勵發放時間
+  createdAt     DateTime     @default(now())
+
+  @@index([inviterId])
+  @@index([status])
+  @@index([createdAt])
 }

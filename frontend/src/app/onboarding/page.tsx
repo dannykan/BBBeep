@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Car, Bike, User, ChevronLeft, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Car, Bike, User, ChevronLeft, Upload, X, Image as ImageIcon, Gift, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { usersApi, licensePlateApi, uploadApi } from '@/lib/api-services';
-import type { UserType } from '@/types';
+import { usersApi, licensePlateApi, uploadApi, inviteApi } from '@/lib/api-services';
+import type { UserType, ValidateCodeResponse } from '@/types';
 import { normalizeLicensePlate, displayLicensePlate } from '@/lib/license-plate-format';
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-type OnboardingStep = 1 | 2 | 3 | 4 | 5;
+type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 const OnboardingPage = React.memo(() => {
   const router = useRouter();
@@ -44,12 +44,58 @@ const OnboardingPage = React.memo(() => {
   const [isUploading, setIsUploading] = useState(false);
   const [applicationEmail, setApplicationEmail] = useState<string>('');
 
+  // Invite code state
+  const [inviteCode, setInviteCode] = useState<string>('');
+  const [inviteCodeValidation, setInviteCodeValidation] = useState<ValidateCodeResponse | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [inviteCodeApplied, setInviteCodeApplied] = useState(false);
+
   const handleUserTypeSelect = (type: UserType, vehicle?: 'car' | 'scooter') => {
     setUserType(type);
     if (vehicle) {
       setVehicleType(vehicle);
     }
     setStep(2);
+  };
+
+  // Validate invite code
+  const handleValidateInviteCode = async (code: string) => {
+    if (code.length !== 6) {
+      setInviteCodeValidation(null);
+      return;
+    }
+
+    setIsValidatingCode(true);
+    try {
+      const result = await inviteApi.validateCode(code);
+      setInviteCodeValidation(result);
+    } catch (error) {
+      setInviteCodeValidation({ valid: false, message: '驗證失敗' });
+    } finally {
+      setIsValidatingCode(false);
+    }
+  };
+
+  // Apply invite code and continue
+  const handleApplyInviteCode = async () => {
+    if (!inviteCodeValidation?.valid || !inviteCode) return;
+
+    setIsLoading(true);
+    try {
+      await inviteApi.applyCode(inviteCode);
+      setInviteCodeApplied(true);
+      toast.success(`成功使用邀請碼！完成註冊後可獲得 ${inviteCodeValidation.inviteeReward} 點獎勵`);
+      setStep(3); // Go to nickname step
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || '使用邀請碼失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Skip invite code step
+  const handleSkipInviteCode = () => {
+    setStep(3); // Go to nickname step
   };
 
   const handleNicknameSubmit = async () => {
@@ -63,9 +109,9 @@ const OnboardingPage = React.memo(() => {
     }
 
     if (userType === 'pedestrian') {
-      setStep(4);
+      setStep(5); // Points explanation step
     } else {
-      setStep(3);
+      setStep(4); // License plate step for drivers
     }
   };
 
@@ -104,7 +150,7 @@ const OnboardingPage = React.memo(() => {
       } catch (error) {
         console.error('Failed to update license plate:', error);
       }
-      setStep(4);
+      setStep(5); // Go to points explanation step
     } catch (error: any) {
       toast.error(error.response?.data?.message || '檢查車牌失敗');
     } finally {
@@ -175,7 +221,7 @@ const OnboardingPage = React.memo(() => {
       toast.success('申請已提交，我們會在 1-2 個工作天內以 Email 通知');
       setShowApplicationDialog(false);
       // 跳過車牌步驟，繼續完成註冊（不綁定車牌）
-      setStep(4);
+      setStep(5); // Go to points explanation step
     } catch (error: any) {
       toast.error(error.response?.data?.message || '提交申請失敗');
     } finally {
@@ -216,22 +262,41 @@ const OnboardingPage = React.memo(() => {
     if (step === 1) {
       router.push('/login');
     } else if (step === 2) {
+      // Invite code step -> User type selection
       setStep(1);
     } else if (step === 3) {
+      // Nickname step -> Invite code step
       setStep(2);
     } else if (step === 4) {
-      if (userType === 'pedestrian') {
-        setStep(2);
-      } else {
-        setStep(3);
-      }
+      // License plate step -> Nickname step
+      setStep(3);
     } else if (step === 5) {
-      setStep(4);
+      // Points explanation step
+      if (userType === 'pedestrian') {
+        setStep(3); // Back to nickname
+      } else {
+        setStep(4); // Back to license plate
+      }
+    } else if (step === 6) {
+      // Welcome step -> Points explanation
+      setStep(5);
     }
   };
 
-  const totalSteps = userType === 'pedestrian' ? 4 : 5;
-  const currentStep = userType === 'pedestrian' && step > 3 ? step - 1 : step;
+  // Total steps: Drivers: 6 (user type, invite, nickname, plate, points, welcome)
+  // Pedestrians: 5 (user type, invite, nickname, points, welcome - skip license plate)
+  const totalSteps = userType === 'pedestrian' ? 5 : 6;
+
+  // Calculate display step for pedestrians (skip the license plate step 4)
+  const getDisplayStep = () => {
+    if (userType === 'pedestrian') {
+      // Steps 1-3 are the same, but step 5 should display as 4, step 6 as 5
+      if (step <= 3) return step;
+      return step - 1;
+    }
+    return step;
+  };
+  const currentStep = getDisplayStep();
 
   return (
     <div className="min-h-screen bg-background">
@@ -328,6 +393,96 @@ const OnboardingPage = React.memo(() => {
         )}
 
         {step === 2 && (
+          <Card className="p-6 space-y-6 bg-card border-border shadow-none">
+            <div className="space-y-3 text-center">
+              <div className="w-12 h-12 bg-primary/10 rounded-full mx-auto flex items-center justify-center mb-2">
+                <Gift className="h-6 w-6 text-primary" />
+              </div>
+              <h2 className="text-xl text-foreground">有邀請碼嗎？（可跳過）</h2>
+              <p className="text-sm text-muted-foreground">
+                輸入好友的邀請碼<br />
+                完成註冊後雙方都能獲得點數獎勵
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="inviteCode" className="text-sm text-foreground">
+                邀請碼
+              </Label>
+              <Input
+                id="inviteCode"
+                type="text"
+                placeholder="輸入 6 位邀請碼"
+                value={inviteCode}
+                onChange={(e) => {
+                  const cleaned = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  if (cleaned.length <= 6) {
+                    setInviteCode(cleaned);
+                    if (cleaned.length === 6) {
+                      handleValidateInviteCode(cleaned);
+                    } else {
+                      setInviteCodeValidation(null);
+                    }
+                  }
+                }}
+                maxLength={6}
+                className="text-center font-mono text-lg tracking-[0.5em]"
+              />
+
+              {/* Validation feedback */}
+              {isValidatingCode && (
+                <p className="text-xs text-muted-foreground text-center">驗證中...</p>
+              )}
+              {inviteCodeValidation && inviteCodeValidation.valid && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <div className="flex-1">
+                    <p className="text-sm text-green-800">
+                      邀請人：{inviteCodeValidation.inviterNickname}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      完成註冊可獲得 {inviteCodeValidation.inviteeReward} 點獎勵
+                    </p>
+                  </div>
+                </div>
+              )}
+              {inviteCodeValidation && !inviteCodeValidation.valid && (
+                <p className="text-xs text-red-500 text-center">
+                  {inviteCodeValidation.message || '無效的邀請碼'}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {inviteCodeValidation?.valid ? (
+                <Button
+                  className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
+                  onClick={handleApplyInviteCode}
+                  disabled={isLoading}
+                >
+                  {isLoading ? '處理中...' : '使用邀請碼並繼續'}
+                </Button>
+              ) : (
+                <Button
+                  className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
+                  onClick={handleSkipInviteCode}
+                >
+                  跳過
+                </Button>
+              )}
+              {inviteCodeValidation?.valid && (
+                <button
+                  onClick={handleSkipInviteCode}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  跳過
+                </button>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {step === 3 && (
             <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-3 text-center">
               <h2 className="text-xl text-foreground">設定一個暱稱（可跳過）</h2>
@@ -374,7 +529,7 @@ const OnboardingPage = React.memo(() => {
           </Card>
         )}
 
-        {step === 3 && userType === 'driver' && (
+        {step === 4 && userType === 'driver' && (
             <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-3 text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
@@ -426,7 +581,7 @@ const OnboardingPage = React.memo(() => {
           </Card>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-4 text-center">
               <h2 className="text-xl text-foreground">
@@ -457,14 +612,14 @@ const OnboardingPage = React.memo(() => {
 
             <Button
               className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
-              onClick={() => setStep(5)}
+              onClick={() => setStep(6)}
             >
               下一步
             </Button>
           </Card>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-4">
               <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto flex items-center justify-center">
@@ -499,6 +654,14 @@ const OnboardingPage = React.memo(() => {
                     <li>✅ 每天免費 2 點</li>
                     <li>⚠️ 因沒有車牌，無法接收提醒</li>
                   </ul>
+                </div>
+              )}
+
+              {inviteCodeApplied && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800 text-center">
+                    🎉 已使用邀請碼，完成註冊即可獲得獎勵點數
+                  </p>
                 </div>
               )}
             </div>
