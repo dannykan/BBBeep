@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
 import { formatDistanceToNow } from 'date-fns';
 import { messagesApi } from '@/lib/api-services';
 import type { SentMessage } from '@/types';
 import { displayLicensePlate } from '@/lib/license-plate-format';
+import { formatLocationDisplay } from '@/lib/utils';
 
 const SentPage = React.memo(() => {
   const router = useRouter();
@@ -49,6 +50,17 @@ const SentPage = React.memo(() => {
       });
     } catch {
       return '未知時間';
+    }
+  };
+
+  const formatOccurredTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch {
+      return '';
     }
   };
 
@@ -121,6 +133,24 @@ const SentPage = React.memo(() => {
               </div>
             )}
 
+            {/* 事發地點和時間 */}
+            {(selectedMsg.location || selectedMsg.occurredAt) && (
+              <div className="flex flex-wrap gap-3 text-sm">
+                {selectedMsg.location && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{formatLocationDisplay(selectedMsg.location)}</span>
+                  </div>
+                )}
+                {selectedMsg.occurredAt && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>事發時間 {formatOccurredTime(selectedMsg.occurredAt)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="pt-4 border-t border-border">
               <p className="text-xs text-muted-foreground">發送給</p>
               <p className="text-sm text-foreground mt-1">
@@ -129,6 +159,18 @@ const SentPage = React.memo(() => {
               </p>
             </div>
           </Card>
+
+          {/* 收件者的回覆 */}
+          {selectedMsg.replyText ? (
+            <Card className="p-4 bg-green-50 border-green-200 shadow-none dark:bg-green-900/20 dark:border-green-800">
+              <p className="text-xs text-green-600 dark:text-green-400 mb-2">對方的回覆</p>
+              <p className="text-sm text-foreground leading-relaxed">{selectedMsg.replyText}</p>
+            </Card>
+          ) : (
+            <Card className="p-4 bg-muted/30 border-border shadow-none">
+              <p className="text-xs text-muted-foreground text-center">對方尚未回覆</p>
+            </Card>
+          )}
 
           <div className="space-y-2">
             <button
@@ -191,6 +233,9 @@ const SentPage = React.memo(() => {
                       </span>
                       {message.read && (
                         <span className="text-xs text-muted-foreground">已讀</span>
+                      )}
+                      {message.replyText && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">已回覆</span>
                       )}
                       <span className="text-xs text-muted-foreground tabular-nums ml-auto">
                         {formatTime(message.createdAt)}

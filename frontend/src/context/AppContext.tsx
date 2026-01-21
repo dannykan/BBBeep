@@ -34,14 +34,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const updated = await usersApi.getMe();
       setUser(updated);
       localStorage.setItem('user', JSON.stringify(updated));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to refresh user:', error);
-      // 如果 token 失效，清除本地存儲
-      if (error instanceof Error && error.message.includes('401')) {
+      // 只有明確的 401 錯誤才清除登入狀態
+      // 網路錯誤或其他錯誤時保留本地資料
+      if (error?.response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
       }
+      // 網路錯誤時保留本地快取的 user 資料
     }
   }, []);
 

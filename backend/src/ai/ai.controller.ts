@@ -16,6 +16,12 @@ export class AiController {
     return this.aiService.checkDailyLimit(user.userId);
   }
 
+  @Post('rewrite/reset')
+  @ApiOperation({ summary: '重置 AI 改寫每日使用次數（成功發送訊息後自動重置）' })
+  async resetLimit(@CurrentUser() user: any) {
+    return this.aiService.resetDailyLimit(user.userId);
+  }
+
   @Post('rewrite')
   @ApiOperation({ summary: 'AI 改寫文字（每日5次限制）' })
   async rewrite(@CurrentUser() user: any, @Body() dto: RewriteDto) {

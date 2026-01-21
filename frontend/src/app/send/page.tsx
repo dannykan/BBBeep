@@ -1,13 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, Car, Bike, AlertCircle, Sparkles, AlertTriangle, ThumbsUp, HelpCircle, Check } from 'lucide-react';
+import { DateTimePickerWheel } from '@/components/ui/datetime-picker-wheel';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { MapLocationPicker } from '@/components/ui/map-location-picker';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ChevronLeft, Car, Bike, AlertCircle, Sparkles, AlertTriangle, ThumbsUp, HelpCircle, Check, MapPin, Clock, Loader2, Map } from 'lucide-react';
 import { toast } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
 import {
@@ -43,6 +52,17 @@ const SendPage = React.memo(() => {
   const [aiLimit, setAiLimit] = useState({ canUse: true, remaining: 5 });
   const [isLoading, setIsLoading] = useState(false);
 
+  // 地點和時間相關 state
+  const [location, setLocation] = useState('');
+  const [locationSource, setLocationSource] = useState<'gps' | 'manual' | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [occurredAt, setOccurredAt] = useState<Date>(new Date());
+  const [selectedTimeOption, setSelectedTimeOption] = useState<'now' | '5min' | '10min' | '15min' | 'custom'>('now');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showInsufficientPointsDialog, setShowInsufficientPointsDialog] = useState(false);
+  const [requiredPoints, setRequiredPoints] = useState(0);
+
   useEffect(() => {
     if (!user) {
       router.push('/login');
@@ -59,6 +79,240 @@ const SendPage = React.memo(() => {
       console.error('Failed to check AI limit:', error);
     }
   };
+
+  // 反向地理編碼：將經緯度轉換為地址
+  const reverseGeocode = useCallback(async (latitude: number, longitude: number): Promise<string | null> => {
+    // 優先使用 Google Maps Geocoding API
+    const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (googleApiKey) {
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleApiKey}&language=zh-TW`
+        );
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          // 嘗試找到最適合的地址格式
+          // Google 會回傳多個結果，從最精確到最不精確
+          // 對於高速公路，可能會有 route 類型的結果
+          for (const result of data.results) {
+            const types = result.types || [];
+            // 優先使用街道地址或路線
+            if (types.includes('street_address') || types.includes('route') || types.includes('premise')) {
+              return result.formatted_address;
+            }
+          }
+          // 如果沒有找到優先類型，使用第一個結果
+          return data.results[0].formatted_address;
+        }
+      } catch (error) {
+        console.error('Google Geocoding error:', error);
+      }
+    }
+
+    // 備用方案：使用 OpenStreetMap Nominatim（免費，無需 API Key）
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=zh-TW`,
+        {
+          headers: {
+            'User-Agent': 'BBBeep App (contact@bbbeep.com)',
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (data && data.display_name) {
+        // Nominatim 的 display_name 通常很長，嘗試簡化
+        const address = data.address;
+        if (address) {
+          // 組合簡潔的地址
+          const parts: string[] = [];
+
+          // 高速公路特殊處理
+          if (address.road && (address.road.includes('國道') || address.road.includes('高速公路'))) {
+            parts.push(address.road);
+            if (address.city || address.town || address.county) {
+              parts.push(address.city || address.town || address.county);
+            }
+          } else {
+            // 一般道路
+            if (address.city || address.town) {
+              parts.push(address.city || address.town);
+            }
+            if (address.district || address.suburb) {
+              parts.push(address.district || address.suburb);
+            }
+            if (address.road) {
+              parts.push(address.road);
+              if (address.house_number) {
+                parts.push(`${address.house_number}號`);
+              }
+            }
+          }
+
+          if (parts.length > 0) {
+            return parts.join('');
+          }
+        }
+
+        // 如果無法組合，使用原始 display_name 但截斷
+        const displayName = data.display_name;
+        // 移除台灣和郵遞區號等較不重要的資訊
+        const simplified = displayName
+          .replace(/,\s*台灣$/, '')
+          .replace(/,\s*\d{3,6}$/, '')
+          .split(',')
+          .slice(0, 4)
+          .join(', ');
+        return simplified;
+      }
+    } catch (error) {
+      console.error('Nominatim Geocoding error:', error);
+    }
+
+    return null;
+  }, []);
+
+  // 取得目前位置
+  const handleGetLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast.error('您的瀏覽器不支援地理位置功能');
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          const address = await reverseGeocode(latitude, longitude);
+
+          if (address) {
+            setLocation(address);
+            setLocationSource('gps');
+            toast.success('已取得目前位置');
+          } else {
+            // 如果所有 API 都失敗，顯示座標
+            setLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+            setLocationSource('gps');
+            toast.success('已取得座標位置');
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
+          setLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          setLocationSource('gps');
+          toast.success('已取得座標位置');
+        }
+
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error('您已拒絕位置存取權限');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error('無法取得位置資訊');
+            break;
+          case error.TIMEOUT:
+            toast.error('取得位置逾時');
+            break;
+          default:
+            toast.error('無法取得位置');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [reverseGeocode]);
+
+  // 處理時間快捷選擇
+  const handleTimeOptionSelect = (option: 'now' | '5min' | '10min' | '15min' | 'custom') => {
+    setSelectedTimeOption(option);
+    const now = new Date();
+
+    switch (option) {
+      case 'now':
+        setOccurredAt(now);
+        break;
+      case '5min':
+        setOccurredAt(new Date(now.getTime() - 5 * 60 * 1000));
+        break;
+      case '10min':
+        setOccurredAt(new Date(now.getTime() - 10 * 60 * 1000));
+        break;
+      case '15min':
+        setOccurredAt(new Date(now.getTime() - 15 * 60 * 1000));
+        break;
+      case 'custom':
+        setShowTimePicker(true);
+        break;
+    }
+  };
+
+  // 格式化時間顯示
+  const formatOccurredTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / (60 * 1000));
+
+    if (diffMins < 1) return '剛剛';
+    if (diffMins < 60) return `${diffMins} 分鐘前`;
+
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    // 判斷是否為今天
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateStart = new Date(date);
+    dateStart.setHours(0, 0, 0, 0);
+
+    if (dateStart.getTime() === today.getTime()) {
+      return `今天 ${hours}:${minutes}`;
+    }
+
+    // 判斷是否為昨天
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (dateStart.getTime() === yesterday.getTime()) {
+      return `昨天 ${hours}:${minutes}`;
+    }
+
+    // 其他日期
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day} ${hours}:${minutes}`;
+  };
+
+  // 計算步驟進度
+  const getStepProgress = (): { current: number; total: number; label: string } => {
+    const totalSteps = 5;
+    switch (step) {
+      case 'vehicle-type':
+        return { current: 1, total: totalSteps, label: '選擇車種' };
+      case 'plate-input':
+        return { current: 2, total: totalSteps, label: '輸入車牌' };
+      case 'category':
+        return { current: 3, total: totalSteps, label: '選擇分類' };
+      case 'situation':
+      case 'review':
+      case 'custom':
+      case 'ai-suggest':
+        return { current: 4, total: totalSteps, label: '編輯訊息' };
+      case 'confirm':
+        return { current: 5, total: totalSteps, label: '確認送出' };
+      case 'success':
+        return { current: 5, total: totalSteps, label: '送出成功' };
+      default:
+        return { current: 1, total: totalSteps, label: '發送提醒' };
+    }
+  };
+
+  const stepProgress = getStepProgress();
 
   const getPointCost = (): number => {
     // 其他讚美：有文字用AI改寫2點，不用AI 4點
@@ -78,6 +332,16 @@ const SendPage = React.memo(() => {
   };
 
   const canAfford = (cost: number) => (user?.points ?? 0) >= cost;
+
+  // 檢查點數是否足夠，不足則顯示 Dialog
+  const checkPointsAndProceed = (cost: number, onSuccess: () => void) => {
+    if (canAfford(cost)) {
+      onSuccess();
+    } else {
+      setRequiredPoints(cost);
+      setShowInsufficientPointsDialog(true);
+    }
+  };
 
   const handleVehicleTypeSelect = (type: VehicleType) => {
     setVehicleType(type);
@@ -183,6 +447,12 @@ const SendPage = React.memo(() => {
       return;
     }
 
+    // 驗證事發地點（必填）
+    if (!location.trim()) {
+      toast.error('請填寫事發地點');
+      return;
+    }
+
     // "其他情況"和"其他讚美"不需要 generatedMessage，只需要 customText
     const isOtherCase = selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise');
     if (!isOtherCase && !generatedMessage) {
@@ -224,7 +494,18 @@ const SendPage = React.memo(() => {
         template: isOtherCase ? customText : (generatedMessage || customText), // "其他情況"和"其他讚美"使用 customText 作為 template
         customText: isOtherCase ? undefined : (customText || undefined),
         useAiRewrite: usedAi,
+        location: location || undefined,
+        occurredAt: occurredAt.toISOString(),
       });
+
+      // 發送成功後，重置 AI 改寫次數
+      try {
+        const resetResult = await aiApi.resetLimit();
+        setAiLimit(resetResult);
+      } catch (error) {
+        console.error('Failed to reset AI limit:', error);
+      }
+
       await refreshUser();
       await refreshMessages();
       toast.success('提醒已發送');
@@ -274,6 +555,11 @@ const SendPage = React.memo(() => {
     setAiSuggestion('');
     setUseAiVersion(false);
     setUsedAi(false);
+    // 重置地點和時間
+    setLocation('');
+    setLocationSource(null);
+    setOccurredAt(new Date());
+    setSelectedTimeOption('now');
   };
 
   if (!user) return null;
@@ -290,10 +576,32 @@ const SendPage = React.memo(() => {
             <ChevronLeft className="h-5 w-5" />
             <span className="text-sm">{step === 'success' ? '完成' : '返回'}</span>
           </button>
-          <h1 className="font-medium text-foreground">發送提醒</h1>
+          <h1 className="font-medium text-foreground">
+            {step === 'success' ? '送出成功' : `發送提醒 (${stepProgress.current}/${stepProgress.total})`}
+          </h1>
           <div className="w-16" />
         </div>
       </div>
+
+      {/* 步驟進度指示器 */}
+      {step !== 'success' && (
+        <div className="max-w-2xl mx-auto px-6 pt-4">
+          <div className="flex justify-center gap-2">
+            {Array.from({ length: stepProgress.total }, (_, i) => i + 1).map((s) => (
+              <div
+                key={s}
+                className={`h-1.5 rounded-full transition-all ${
+                  s === stepProgress.current
+                    ? 'w-8 bg-primary'
+                    : s < stepProgress.current
+                    ? 'w-1.5 bg-primary/50'
+                    : 'w-1.5 bg-border'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -565,47 +873,28 @@ const SendPage = React.memo(() => {
             {/* 操作按鈕 */}
             <div className="space-y-3">
               {selectedCategory === '讚美感謝' ? (
-                // 讚美感謝：直接送出，不顯示補充按鈕
+                // 讚美感謝：下一步，不顯示補充按鈕
                 <button
                   onClick={() => setStep('confirm')}
                   className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
                 >
-                  直接送出（免費）
+                  下一步（免費）
                 </button>
               ) : (
                 // 其他分類：顯示點數和補充按鈕
                 <>
-                  {canAfford(1) ? (
-                    <button
-                      onClick={() => setStep('confirm')}
-                      className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
-                    >
-                      直接送出（1 點）
-                    </button>
-                  ) : (
-                    <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                        <span className="text-sm font-medium text-destructive">點數不足</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        目前剩餘 {user?.points ?? 0} 點，需要 1 點才能發送
-                      </p>
-                      <Button
-                        size="sm"
-                        className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-none"
-                        onClick={() => router.push('/wallet')}
-                      >
-                        去儲值
-                      </Button>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => checkPointsAndProceed(1, () => setStep('confirm'))}
+                    className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
+                  >
+                    下一步（1 點）
+                  </button>
 
                   <button
                     onClick={() => setStep('custom')}
                     className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
                   >
-                    想補充一句
+                    我想補充一句（2-4 點）
                   </button>
                 </>
               )}
@@ -704,13 +993,13 @@ const SendPage = React.memo(() => {
 
             {/* 操作按鈕 */}
             <div className="space-y-3">
-              {/* 沒有補充文字 - 直接送出 */}
+              {/* 沒有補充文字 - 下一步 */}
               {!customText.trim() ? (
                 <button
                   onClick={handleAddCustomText}
                   className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
                 >
-                  直接送出
+                  下一步
                 </button>
               ) : customText.trim().length < 5 ? (
                 <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
@@ -739,7 +1028,7 @@ const SendPage = React.memo(() => {
                         disabled={isLoading}
                         className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium disabled:opacity-50"
                       >
-                        {isLoading ? '處理中...' : `AI 協助改寫（剩 ${aiLimit.remaining} 次）`}
+                        {isLoading ? '處理中...' : 'AI 協助改寫（1 點）'}
                       </button>
                     ) : (
                       <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
@@ -754,14 +1043,14 @@ const SendPage = React.memo(() => {
                     )
                   )}
 
-                  {/* 不用 AI，直接送出 */}
+                  {/* 不用 AI，下一步 */}
                   <button
                     onClick={() => {
-                      setStep('confirm');
+                      checkPointsAndProceed(4, () => setStep('confirm'));
                     }}
                     className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
                   >
-                    不用 AI，直接送出（{selectedCategory === '讚美感謝' && selectedSituation === 'other-praise' ? '4' : '4'} 點）
+                    不用 AI，下一步（4 點）
                   </button>
                 </>
               )}
@@ -840,52 +1129,25 @@ const SendPage = React.memo(() => {
 
             {/* 操作按鈕 */}
             <div className="space-y-3">
-              {canAfford(2) ? (
-                <button
-                  onClick={() => {
-                    setUseAiVersion(true);
-                    setStep('confirm');
-                  }}
-                  className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
-                >
-                  用建議版送（2 點）
-                </button>
-              ) : (
-                <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">點數不足</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    目前剩餘 {user?.points ?? 0} 點，使用 AI 協助需要 2 點
-                  </p>
-                  <Button
-                    size="sm"
-                    className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-none"
-                    onClick={() => router.push('/wallet')}
-                  >
-                    去儲值
-                  </Button>
-                </div>
-              )}
+              <button
+                onClick={() => checkPointsAndProceed(2, () => {
+                  setUseAiVersion(true);
+                  setStep('confirm');
+                })}
+                className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium"
+              >
+                用建議版送（2 點）
+              </button>
 
-              {canAfford(4) ? (
-                <button
-                  onClick={() => {
-                    setUseAiVersion(false);
-                    setStep('confirm');
-                  }}
-                  className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
-                >
-                  用原版送出（4 點）
-                </button>
-              ) : (
-                <div className="p-4 bg-muted/30 border border-border rounded-xl">
-                  <p className="text-xs text-muted-foreground text-center">
-                    原版需要 4 點（點數不足）
-                  </p>
-                </div>
-              )}
+              <button
+                onClick={() => checkPointsAndProceed(4, () => {
+                  setUseAiVersion(false);
+                  setStep('confirm');
+                })}
+                className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all active:scale-[0.98] font-medium"
+              >
+                用原版送出（4 點）
+              </button>
             </div>
           </div>
         )}
@@ -921,13 +1183,156 @@ const SendPage = React.memo(() => {
                   </span>
                 </div>
                 <p className="text-foreground leading-relaxed whitespace-pre-line">
-                  {useAiVersion 
-                    ? aiSuggestion 
+                  {useAiVersion
+                    ? aiSuggestion
                     : selectedCategory === '其他情況' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')
                       ? customText
                       : (customText ? `${generatedMessage}\n${customText}` : generatedMessage)
                   }
                 </p>
+              </div>
+            </Card>
+
+            {/* 📍 事發地點 */}
+            <Card className="p-4 bg-card border-border">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">事發地點</span>
+                    <span className="text-xs text-destructive">*必填</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">
+                    位置越準確，對方越容易回想起當時情況
+                  </p>
+                </div>
+
+                {/* 位置選擇按鈕 */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleGetLocation}
+                    disabled={isGettingLocation}
+                    className="flex-1 h-10 bg-muted/50 hover:bg-muted text-foreground rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isGettingLocation ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        取得中...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-4 w-4" />
+                        目前位置
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowMapPicker(true)}
+                    className="flex-1 h-10 bg-muted/50 hover:bg-muted text-foreground rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <Map className="h-4 w-4" />
+                    地圖選擇
+                  </button>
+                </div>
+
+                {/* 地址輸入框（帶自動完成） */}
+                <AddressAutocomplete
+                  value={location}
+                  onChange={(value) => {
+                    setLocation(value);
+                    setLocationSource('manual');
+                  }}
+                  onSelect={(place) => {
+                    setLocation(place.address);
+                    setLocationSource('manual');
+                  }}
+                  placeholder="輸入地址、路口或地標名稱"
+                  className="h-10 text-sm"
+                  maxLength={200}
+                />
+
+                {/* 提示文字 */}
+                {!location && (
+                  <p className="text-xs text-muted-foreground">
+                    例如：信義路五段、台北101附近、全家便利商店前
+                  </p>
+                )}
+                {location && (
+                  <p className="text-xs text-muted-foreground">
+                    {locationSource === 'gps' ? '📍 已自動定位，' : ''}可直接修改文字讓描述更精確
+                  </p>
+                )}
+              </div>
+            </Card>
+
+            {/* ⏰ 事發時間 */}
+            <Card className="p-4 bg-card border-border">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">事發時間</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {formatOccurredTime(occurredAt)}
+                  </span>
+                </div>
+
+                {/* 快捷按鈕 */}
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    onClick={() => handleTimeOptionSelect('now')}
+                    className={`h-9 rounded-lg text-xs font-medium transition-all ${
+                      selectedTimeOption === 'now'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    剛剛
+                  </button>
+                  <button
+                    onClick={() => handleTimeOptionSelect('5min')}
+                    className={`h-9 rounded-lg text-xs font-medium transition-all ${
+                      selectedTimeOption === '5min'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    5分鐘前
+                  </button>
+                  <button
+                    onClick={() => handleTimeOptionSelect('10min')}
+                    className={`h-9 rounded-lg text-xs font-medium transition-all ${
+                      selectedTimeOption === '10min'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    10分鐘前
+                  </button>
+                  <button
+                    onClick={() => handleTimeOptionSelect('15min')}
+                    className={`h-9 rounded-lg text-xs font-medium transition-all ${
+                      selectedTimeOption === '15min'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 hover:bg-muted text-foreground'
+                    }`}
+                  >
+                    15分鐘前
+                  </button>
+                </div>
+
+                {/* 其他時間按鈕 */}
+                <button
+                  onClick={() => handleTimeOptionSelect('custom')}
+                  className={`w-full h-9 rounded-lg text-xs font-medium transition-all ${
+                    selectedTimeOption === 'custom'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/50 hover:bg-muted text-foreground'
+                  }`}
+                >
+                  其他時間...
+                </button>
               </div>
             </Card>
 
@@ -948,11 +1353,19 @@ const SendPage = React.memo(() => {
 
             {/* 操作按鈕 */}
             <div className="space-y-3">
+              {/* 地點未填寫提示 */}
+              {!location.trim() && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <span className="text-sm text-amber-700 dark:text-amber-300">請先填寫事發地點</span>
+                </div>
+              )}
+
               {canAfford(getPointCost()) ? (
                 <button
                   onClick={handleConfirm}
-                  disabled={isLoading}
-                  className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium disabled:opacity-50"
+                  disabled={isLoading || !location.trim()}
+                  className="w-full h-12 bg-[#4A6FA5] hover:bg-[#3C5E8C] text-white rounded-xl transition-all shadow-sm active:scale-[0.98] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? '發送中...' : '確認送出'}
                 </button>
@@ -1025,6 +1438,97 @@ const SendPage = React.memo(() => {
           </div>
         )}
       </div>
+
+      {/* 日期時間選擇器 Dialog */}
+      <Dialog open={showTimePicker} onOpenChange={setShowTimePicker}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">選擇事發日期和時間</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <DateTimePickerWheel
+              value={occurredAt}
+              onChange={setOccurredAt}
+              maxDate={new Date()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTimePicker(false)}
+                className="flex-1 h-11 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all font-medium"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedTimeOption('custom');
+                  setShowTimePicker(false);
+                }}
+                className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all font-medium"
+              >
+                確定
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 地圖選擇器 */}
+      <MapLocationPicker
+        open={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={(loc) => {
+          setLocation(loc.address);
+          setLocationSource('manual');
+          toast.success('已選擇位置');
+        }}
+      />
+
+      {/* 點數不足 Dialog */}
+      <Dialog open={showInsufficientPointsDialog} onOpenChange={setShowInsufficientPointsDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              點數不足
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="text-center space-y-2">
+              <p className="text-muted-foreground">
+                此操作需要 <span className="font-bold text-foreground">{requiredPoints} 點</span>
+              </p>
+              <p className="text-muted-foreground">
+                您目前剩餘 <span className="font-bold text-foreground">{user?.points ?? 0} 點</span>
+              </p>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground text-center">
+                前往儲值頁面獲取更多點數，<br />
+                繼續使用完整功能
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowInsufficientPointsDialog(false)}
+                className="flex-1 h-11 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all font-medium"
+              >
+                稍後再說
+              </button>
+              <button
+                onClick={() => {
+                  setShowInsufficientPointsDialog(false);
+                  router.push('/wallet');
+                }}
+                className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all font-medium"
+              >
+                去儲值
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>

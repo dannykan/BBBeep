@@ -52,6 +52,26 @@ export class AiService {
     };
   }
 
+  async resetDailyLimit(userId: string): Promise<{ canUse: boolean; remaining: number }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 刪除今日的 AI 使用紀錄，重置為 5 次
+    await this.prisma.aIUsageLog.deleteMany({
+      where: {
+        userId,
+        resetDate: {
+          gte: today,
+        },
+      },
+    });
+
+    return {
+      canUse: true,
+      remaining: 5,
+    };
+  }
+
   async rewrite(
     userId: string,
     text: string,

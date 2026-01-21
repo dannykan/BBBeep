@@ -38,6 +38,8 @@ export interface Message {
   template: string;
   customText?: string;
   replyText?: string; // 回覆內容（僅供記錄）
+  location?: string; // 事發地點
+  occurredAt?: string; // 事發時間
   createdAt: string;
   read: boolean;
   sender?: {
@@ -51,6 +53,9 @@ export interface SentMessage {
   type: MessageType;
   template: string;
   customText?: string;
+  replyText?: string; // 收件者的回覆
+  location?: string; // 事發地點
+  occurredAt?: string; // 事發時間
   createdAt: string;
   read: boolean;
   receiver: {

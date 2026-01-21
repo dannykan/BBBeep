@@ -65,6 +65,8 @@ export const messagesApi = {
     template: string;
     customText?: string;
     useAiRewrite?: boolean;
+    location?: string;
+    occurredAt?: string;
   }) => api.post<Message>('/messages', data).then((res) => res.data),
   getAll: (unreadOnly?: boolean) =>
     api.get<Message[]>('/messages', { params: { unreadOnly } }).then((res) => res.data),
@@ -73,8 +75,8 @@ export const messagesApi = {
     api.get<Message>(`/messages/${id}`).then((res) => res.data),
   markAsRead: (id: string) =>
     api.post(`/messages/${id}/read`).then((res) => res.data),
-  reply: (id: string, replyText: string) =>
-    api.post(`/messages/${id}/reply`, { replyText }).then((res) => res.data),
+  reply: (id: string, replyText: string, options?: { isQuickReply?: boolean; useAiRewrite?: boolean }) =>
+    api.post(`/messages/${id}/reply`, { replyText, ...options }).then((res) => res.data),
   report: (id: string, reason?: string) =>
     api.post(`/messages/${id}/report`, { reason }).then((res) => res.data),
 };
@@ -93,6 +95,8 @@ export const pointsApi = {
 export const aiApi = {
   checkLimit: () =>
     api.get<{ canUse: boolean; remaining: number }>('/ai/rewrite/limit').then((res) => res.data),
+  resetLimit: () =>
+    api.post<{ canUse: boolean; remaining: number }>('/ai/rewrite/reset').then((res) => res.data),
   rewrite: (text: string, vehicleType?: 'car' | 'scooter', category?: string) =>
     api.post<{ rewritten: string }>('/ai/rewrite', { text, vehicleType, category }).then((res) => res.data),
 };

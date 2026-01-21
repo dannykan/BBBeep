@@ -170,6 +170,8 @@ export class MessagesService {
         type: prismaType,
         template: dto.template,
         customText: dto.customText,
+        location: dto.location || null,
+        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : null,
         senderId: userId,
         receiverId: receiver.id,
       },
@@ -320,7 +322,12 @@ export class MessagesService {
     };
   }
 
-  async replyToMessage(userId: string, messageId: string, replyText: string) {
+  async replyToMessage(
+    userId: string,
+    messageId: string,
+    replyText: string,
+    options?: { isQuickReply?: boolean; useAiRewrite?: boolean },
+  ) {
     const existingMessage = await this.prisma.message.findUnique({
       where: { id: messageId },
     });
@@ -329,7 +336,46 @@ export class MessagesService {
       throw new NotFoundException('訊息不存在');
     }
 
-    // 更新回覆內容（僅供記錄，不會通知發送者）
+    // 檢查是否已經回覆過
+    if (existingMessage.replyText) {
+      throw new BadRequestException('此訊息已經回覆過了');
+    }
+
+    // 計算點數消耗
+    // 快速回覆（預設文字）：免費
+    // 自訂回覆 + AI 優化：2 點
+    // 自訂回覆（不用 AI）：4 點
+    let pointCost = 0;
+    if (!options?.isQuickReply) {
+      if (options?.useAiRewrite) {
+        pointCost = 2;
+      } else {
+        pointCost = 4;
+      }
+    }
+
+    // 檢查點數
+    if (pointCost > 0) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new NotFoundException('用戶不存在');
+      }
+
+      if (user.points < pointCost) {
+        throw new BadRequestException('點數不足');
+      }
+
+      // 扣除點數
+      await this.pointsService.deductPoints(userId, pointCost, {
+        type: 'spend',
+        description: options?.useAiRewrite ? '回覆訊息（AI 協助）' : '回覆訊息',
+      });
+    }
+
+    // 更新回覆內容
     const updatedMessage = await this.prisma.message.update({
       where: { id: messageId },
       data: { replyText },

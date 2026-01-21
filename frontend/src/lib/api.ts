@@ -34,18 +34,28 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 只有认证相关错误（如 token 过期）才跳转，不包括验证码相关错误
-    const isAuthError = error.response?.status === 401 && 
-                        error.config?.url?.includes('/auth/verify-phone') === false &&
-                        error.config?.url?.includes('/auth/check-phone') === false &&
-                        error.config?.url?.includes('/auth/reset-verify-count') === false &&
-                        error.config?.url?.includes('/auth/login') === false &&
-                        error.config?.url?.includes('/auth/set-password') === false &&
-                        error.config?.url?.includes('/auth/reset-password') === false;
-    
-    if (isAuthError) {
-      // Token 过期，清除并跳转到登录页
+    // 只有在 token 明確過期或無效時才清除登入狀態
+    // 不要在網路錯誤或其他錯誤時清除
+    const isTokenExpiredError =
+      error.response?.status === 401 &&
+      error.response?.data?.message?.includes('expired') ||
+      error.response?.data?.message?.includes('invalid') ||
+      error.response?.data?.message?.includes('Unauthorized');
+
+    // 排除登入相關的 API（這些本來就不需要 token）
+    const isAuthEndpoint =
+      error.config?.url?.includes('/auth/verify-phone') ||
+      error.config?.url?.includes('/auth/check-phone') ||
+      error.config?.url?.includes('/auth/reset-verify-count') ||
+      error.config?.url?.includes('/auth/login') ||
+      error.config?.url?.includes('/auth/set-password') ||
+      error.config?.url?.includes('/auth/reset-password') ||
+      error.config?.url?.includes('/auth/line');
+
+    if (isTokenExpiredError && !isAuthEndpoint) {
+      // Token 過期，清除並跳轉到登入頁
       if (typeof window !== 'undefined') {
+        console.log('Token expired, clearing auth state');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';

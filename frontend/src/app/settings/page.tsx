@@ -135,13 +135,8 @@ const SettingsPage = React.memo(() => {
         {/* 用户信息 */}
         <Card className="p-4 bg-card border-border shadow-none">
           <div className="space-y-3">
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">手機號碼</div>
-              <div className="text-sm text-foreground">{user.phone}</div>
-            </div>
-
             {/* 昵称 */}
-            <div className="pt-3 border-t border-border">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="text-xs text-muted-foreground mb-1">暱稱</div>

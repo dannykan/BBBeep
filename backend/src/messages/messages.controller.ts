@@ -44,13 +44,16 @@ export class MessagesController {
   }
 
   @Post(':id/reply')
-  @ApiOperation({ summary: '回覆訊息（僅供記錄，不會通知發送者）' })
+  @ApiOperation({ summary: '回覆訊息' })
   async replyToMessage(
     @CurrentUser() user: any,
     @Param('id') id: string,
     @Body() dto: ReplyMessageDto,
   ) {
-    return this.messagesService.replyToMessage(user.userId, id, dto.replyText);
+    return this.messagesService.replyToMessage(user.userId, id, dto.replyText, {
+      isQuickReply: dto.isQuickReply,
+      useAiRewrite: dto.useAiRewrite,
+    });
   }
 
   @Post(':id/report')

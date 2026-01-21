@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsIn, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn, IsOptional, MaxLength, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { MessageType } from '@prisma/client';
 
@@ -8,8 +8,8 @@ export class CreateMessageDto {
   @IsNotEmpty()
   licensePlate: string;
 
-  @ApiProperty({ 
-    enum: ['車況提醒', '行車安全提醒', '讚美感謝'], 
+  @ApiProperty({
+    enum: ['車況提醒', '行車安全提醒', '讚美感謝'],
     description: '提醒類型',
     example: '車況提醒'
   })
@@ -32,4 +32,15 @@ export class CreateMessageDto {
   @ApiProperty({ required: false, example: false, description: '是否使用AI改寫' })
   @IsOptional()
   useAiRewrite?: boolean;
+
+  @ApiProperty({ required: false, example: '台北市信義區松高路12號', description: '事發地點（可選）' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200, { message: '地點最多200字元' })
+  location?: string;
+
+  @ApiProperty({ required: false, example: '2026-01-21T10:30:00.000Z', description: '事發時間 ISO 8601 格式（可選）' })
+  @IsDateString()
+  @IsOptional()
+  occurredAt?: string;
 }
