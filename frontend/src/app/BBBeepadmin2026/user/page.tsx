@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import UserDetailClient from '../users/[id]/UserDetailClient';
+import UserDetailClient from './UserDetailClient';
 
 function UserDetailContent() {
   const searchParams = useSearchParams();
