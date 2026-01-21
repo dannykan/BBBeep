@@ -60,7 +60,7 @@ const HomePage = React.memo(() => {
   const handleShareInviteCode = async () => {
     if (!inviteData?.inviteCode) return;
 
-    const shareText = `來用 BBBeep 提醒路上的朋友吧！使用我的邀請碼 ${inviteData.inviteCode}，註冊完成後你可以獲得 ${inviteData.inviteeReward} 點獎勵！`;
+    const shareText = `來用 BBBeep 提醒路上的朋友吧！使用我的邀請碼 ${inviteData.inviteCode}，你我各得 10 點！`;
 
     if (navigator.share) {
       try {
@@ -255,15 +255,15 @@ const HomePage = React.memo(() => {
         </div>
 
         {/* 邀請好友 */}
-        <Card className="p-4 bg-card border-border shadow-none">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+        <Card className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 shadow-none">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center">
               <Gift className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <div className="text-sm font-medium text-foreground">邀請好友</div>
-              <div className="text-xs text-muted-foreground">
-                成功邀請好友完成註冊，雙方都能獲得點數獎勵
+            <div className="flex-1">
+              <div className="text-sm font-medium text-foreground">邀請好友賺點數</div>
+              <div className="text-xs text-primary font-medium">
+                你我各得 10 點！
               </div>
             </div>
           </div>
@@ -274,40 +274,39 @@ const HomePage = React.memo(() => {
             </div>
           ) : inviteData ? (
             <div className="space-y-3">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1.5">我的邀請碼</div>
-                <div className="bg-muted/50 border border-border rounded-lg p-2.5">
-                  <div className="text-center font-mono text-lg tracking-[0.4em] text-foreground font-medium">
-                    {inviteData.inviteCode}
-                  </div>
+              <div className="bg-white/80 border border-border rounded-lg p-3">
+                <div className="text-xs text-muted-foreground mb-1 text-center">我的邀請碼</div>
+                <div className="text-center font-mono text-xl tracking-[0.5em] text-foreground font-bold">
+                  {inviteData.inviteCode}
                 </div>
               </div>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1 h-9"
+                  className="flex-1 h-10 bg-white/50"
                   onClick={handleCopyInviteCode}
                 >
                   <Copy className="h-4 w-4 mr-1.5" />
-                  複製
+                  複製邀請碼
                 </Button>
                 <Button
-                  className="flex-1 h-9 bg-primary hover:bg-primary-dark"
+                  className="flex-1 h-10 bg-primary hover:bg-primary-dark"
                   onClick={handleShareInviteCode}
                 >
                   <Share2 className="h-4 w-4 mr-1.5" />
-                  分享
+                  分享給好友
                 </Button>
               </div>
 
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  已成功邀請 {inviteData.inviteCount} 人
-                  {inviteData.totalRewards > 0 && `，獲得 ${inviteData.totalRewards} 點獎勵`}
-                </span>
-              </div>
+              {inviteData.inviteCount > 0 && (
+                <div className="flex items-center justify-center gap-2 pt-2 border-t border-primary/10">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-foreground">
+                    已邀請 <span className="font-medium">{inviteData.inviteCount}</span> 人，獲得 <span className="font-medium text-primary">{inviteData.totalRewards}</span> 點
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-2">

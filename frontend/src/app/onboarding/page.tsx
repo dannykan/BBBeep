@@ -84,7 +84,7 @@ const OnboardingPage = React.memo(() => {
     try {
       await inviteApi.applyCode(inviteCode);
       setInviteCodeApplied(true);
-      toast.success(`成功使用邀請碼！完成註冊後可獲得 ${inviteCodeValidation.inviteeReward} 點獎勵`);
+      toast.success('邀請碼已套用！完成註冊後你和邀請人各得 10 點');
       setStep(3); // Go to nickname step
     } catch (error: any) {
       toast.error(error.response?.data?.message || '使用邀請碼失敗');
@@ -395,14 +395,13 @@ const OnboardingPage = React.memo(() => {
         {step === 2 && (
           <Card className="p-6 space-y-6 bg-card border-border shadow-none">
             <div className="space-y-3 text-center">
-              <div className="w-12 h-12 bg-primary/10 rounded-full mx-auto flex items-center justify-center mb-2">
-                <Gift className="h-6 w-6 text-primary" />
+              <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/30 rounded-full mx-auto flex items-center justify-center mb-2">
+                <Gift className="h-7 w-7 text-primary" />
               </div>
-              <h2 className="text-xl text-foreground">有邀請碼嗎？（可跳過）</h2>
-              <p className="text-sm text-muted-foreground">
-                輸入好友的邀請碼<br />
-                完成註冊後雙方都能獲得點數獎勵
-              </p>
+              <h2 className="text-xl text-foreground">有邀請碼嗎？</h2>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full">
+                <span className="text-sm font-medium text-primary">輸入邀請碼，你我各得 10 點！</span>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -426,7 +425,7 @@ const OnboardingPage = React.memo(() => {
                   }
                 }}
                 maxLength={6}
-                className="text-center font-mono text-lg tracking-[0.5em]"
+                className="text-center font-mono text-xl tracking-[0.5em] h-14"
               />
 
               {/* Validation feedback */}
@@ -434,14 +433,16 @@ const OnboardingPage = React.memo(() => {
                 <p className="text-xs text-muted-foreground text-center">驗證中...</p>
               )}
               {inviteCodeValidation && inviteCodeValidation.valid && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <Check className="h-4 w-4 text-green-600" />
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Check className="h-4 w-4 text-green-600" />
+                  </div>
                   <div className="flex-1">
-                    <p className="text-sm text-green-800">
-                      邀請人：{inviteCodeValidation.inviterNickname}
+                    <p className="text-sm font-medium text-green-800">
+                      來自「{inviteCodeValidation.inviterNickname}」的邀請
                     </p>
                     <p className="text-xs text-green-600">
-                      完成註冊可獲得 {inviteCodeValidation.inviteeReward} 點獎勵
+                      完成註冊後，你和邀請人各得 10 點
                     </p>
                   </div>
                 </div>
@@ -453,21 +454,22 @@ const OnboardingPage = React.memo(() => {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {inviteCodeValidation?.valid ? (
                 <Button
-                  className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
+                  className="w-full h-12 bg-primary hover:bg-primary-dark text-white text-base"
                   onClick={handleApplyInviteCode}
                   disabled={isLoading}
                 >
-                  {isLoading ? '處理中...' : '使用邀請碼並繼續'}
+                  {isLoading ? '處理中...' : '使用邀請碼，一起賺點數！'}
                 </Button>
               ) : (
                 <Button
-                  className="w-full h-11 bg-primary hover:bg-primary-dark text-white"
+                  variant="outline"
+                  className="w-full h-11 border-border"
                   onClick={handleSkipInviteCode}
                 >
-                  跳過
+                  沒有邀請碼，跳過此步驟
                 </Button>
               )}
               {inviteCodeValidation?.valid && (
@@ -475,7 +477,7 @@ const OnboardingPage = React.memo(() => {
                   onClick={handleSkipInviteCode}
                   className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                 >
-                  跳過
+                  不使用邀請碼
                 </button>
               )}
             </div>
