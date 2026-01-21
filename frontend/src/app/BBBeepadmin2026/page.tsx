@@ -357,7 +357,7 @@ const AdminPage = React.memo(() => {
               <Card
                 key={user.id}
                 className="p-4 bg-card border-border shadow-none hover:border-primary/50 transition-colors cursor-pointer"
-                onClick={() => router.push(`/BBBeepadmin2026/users/${user.id}`)}
+                onClick={() => router.push(`/BBBeepadmin2026/user?id=${user.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
