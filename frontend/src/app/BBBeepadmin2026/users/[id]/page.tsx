@@ -3,6 +3,9 @@
 import { useParams } from 'next/navigation';
 import UserDetailClient from './UserDetailClient';
 
+// Cloudflare Pages 需要 Edge Runtime
+export const runtime = 'edge';
+
 export default function UserDetailPage() {
   const params = useParams();
   const userId = params.id as string;
