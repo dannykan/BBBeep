@@ -33,6 +33,7 @@ export function LineLoginButton({ className, disabled }: LineLoginButtonProps) {
       redirect_uri: callbackUrl,
       state: state,
       scope: 'profile openid',
+      bot_prompt: 'aggressive', // 登入時顯示加入官方帳號好友選項
     });
 
     window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
