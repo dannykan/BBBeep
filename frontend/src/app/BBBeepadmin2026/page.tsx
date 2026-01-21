@@ -399,7 +399,8 @@ const AdminPage = React.memo(() => {
                     </div>
                   )}
 
-                  {user.nickname && !user.lineUserId && (
+                  {/* 暱稱 - 顯示 LINE 顯示名稱以外的自訂暱稱 */}
+                  {user.nickname && user.nickname !== user.lineDisplayName && (
                     <div>
                       <p className="text-xs text-muted-foreground">暱稱</p>
                       <p className="text-sm text-foreground">{user.nickname}</p>
