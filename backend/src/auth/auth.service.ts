@@ -409,7 +409,11 @@ export class AuthService {
       // 2. 用 access token 取得用戶資料
       const lineProfile = await this.getLineProfile(tokenResponse.access_token);
 
-      // 3. 查找或創建用戶
+      // 3. 檢查是否已加入 LINE 官方帳號好友
+      const isLineFriend = await this.checkLineFriendshipStatus(tokenResponse.access_token);
+      console.log(`[LINE_LOGIN] Friendship status: ${isLineFriend}`);
+
+      // 4. 查找或創建用戶
       let user = await this.prisma.user.findUnique({
         where: { lineUserId: lineProfile.userId },
       });
@@ -424,6 +428,7 @@ export class AuthService {
             nickname: lineProfile.displayName,
             userType: 'driver', // 預設值，會在 onboarding 時更新
             lastFreePointsReset: new Date(), // 設定今天已重置
+            isLineFriend: isLineFriend,
           },
         });
 
@@ -434,19 +439,20 @@ export class AuthService {
           throw new UnauthorizedException('您的帳號已被停用，如有疑問請聯繫客服');
         }
 
-        // 更新 LINE 資料
+        // 更新 LINE 資料和好友狀態
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: {
             lineDisplayName: lineProfile.displayName,
             linePictureUrl: lineProfile.pictureUrl,
+            isLineFriend: isLineFriend,
           },
         });
 
         console.log(`[LINE_LOGIN] Existing user logged in: ${user.id}`);
       }
 
-      // 4. 生成 JWT token
+      // 5. 生成 JWT token
       const payload = { sub: user.id, lineUserId: user.lineUserId };
       const token = this.jwtService.sign(payload);
 
@@ -460,11 +466,13 @@ export class AuthService {
           userType: user.userType,
           vehicleType: user.vehicleType,
           points: user.points,
+          freePoints: user.freePoints,
           hasCompletedOnboarding: user.hasCompletedOnboarding,
           email: user.email,
           lineUserId: user.lineUserId,
           lineDisplayName: user.lineDisplayName,
           linePictureUrl: user.linePictureUrl,
+          isLineFriend: user.isLineFriend,
         },
       };
     } catch (error) {
@@ -518,6 +526,21 @@ export class AuthService {
       displayName: response.data.displayName,
       pictureUrl: response.data.pictureUrl,
     };
+  }
+
+  // 檢查用戶是否已加入 LINE 官方帳號好友
+  private async checkLineFriendshipStatus(accessToken: string): Promise<boolean> {
+    try {
+      const response = await axios.get('https://api.line.me/friendship/v1/status', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return response.data.friendFlag === true;
+    } catch (error) {
+      console.error('[LINE_LOGIN] Failed to check friendship status:', error.response?.data || error.message);
+      return false;
+    }
   }
 
   // 產生 LINE 登入 URL 的輔助方法

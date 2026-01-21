@@ -15,6 +15,11 @@ export interface User {
   email?: string;
   blockedUsers?: BlockedUser[];
   rejectedUsers?: RejectedUser[];
+  // LINE 相關
+  lineUserId?: string;
+  lineDisplayName?: string;
+  linePictureUrl?: string;
+  isLineFriend?: boolean; // 是否已加入 LINE 官方帳號好友
 }
 
 export interface BlockedUser {

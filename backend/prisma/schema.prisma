@@ -75,6 +75,7 @@ model User {
   lineUserId             String?      @unique // LINE User ID
   lineDisplayName        String?              // LINE 顯示名稱
   linePictureUrl         String?              // LINE 頭像 URL
+  isLineFriend           Boolean      @default(false) // 是否已加入 LINE 官方帳號好友
 
   // 官方封鎖相關欄位
   isBlockedByAdmin       Boolean      @default(false) // 是否被官方封鎖
