@@ -19,7 +19,13 @@
       "Bash(npx ts-node:*)",
       "Bash(xxd:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" node -e:*)",
-      "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" npx ts-node:*)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" npx ts-node:*)",
+      "Bash(git show:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npm ls:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(npx prisma migrate diff:*)"
     ]
   }
 }
