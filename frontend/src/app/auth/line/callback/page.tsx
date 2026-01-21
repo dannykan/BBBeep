@@ -64,10 +64,10 @@ function LineCallbackContent() {
         localStorage.setItem('token', response.access_token);
         localStorage.setItem('user', JSON.stringify(response.user));
 
-        // 刷新用戶資料
-        refreshUser().catch(console.error);
-        refreshMessages().catch(console.error);
-        refreshPointHistory().catch(console.error);
+        // 刷新用戶資料（必須等待完成才能跳轉）
+        await refreshUser();
+        await refreshMessages();
+        await refreshPointHistory();
 
         toast.success('LINE 登入成功');
 
