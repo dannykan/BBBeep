@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(xargs:*)",
+      "Bash(npm install:*)",
+      "Bash(git push)",
+      "Bash(npm_config_workspaces=false npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:backend:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(curl:*)",
+      "Bash(git push:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(xxd:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" node -e:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" npx ts-node:*)"
+    ]
+  }
+}
