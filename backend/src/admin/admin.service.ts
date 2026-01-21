@@ -30,20 +30,23 @@ export class AdminService {
   }
 
   async getAllUsers(userType?: UserType) {
-    const where: any = {};
+    const where: any = {
+      // 排除臨時用戶和未綁定車牌用戶
+      // 包含: LINE 用戶 (phone 為 null) 或 一般用戶 (phone 不以 temp_/unbound_ 開頭)
+      OR: [
+        { phone: null }, // LINE 用戶
+        {
+          AND: [
+            { phone: { not: { startsWith: 'temp_' } } },
+            { phone: { not: { startsWith: 'unbound_' } } },
+          ],
+        },
+      ],
+    };
+
     if (userType) {
       where.userType = userType;
     }
-    // 排除臨時用戶（temp_ 開頭的手機號）
-    // 但要包含 LINE 用戶（phone 為 null）
-    where.OR = [
-      { phone: null }, // LINE 用戶
-      { phone: { not: { startsWith: 'temp_' } } }, // 非臨時用戶
-    ];
-    // 同時排除 unbound_ 開頭的未綁定車牌用戶
-    where.NOT = [
-      { phone: { startsWith: 'unbound_' } },
-    ];
 
     return this.prisma.user.findMany({
       where,
