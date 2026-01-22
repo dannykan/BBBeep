@@ -25,7 +25,11 @@
       "Bash(npm ls:*)",
       "Bash(pkill:*)",
       "Bash(lsof:*)",
-      "Bash(npx prisma migrate diff:*)"
+      "Bash(npx prisma migrate diff:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(git mv:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm approve-builds:*)"
     ]
   }
 }

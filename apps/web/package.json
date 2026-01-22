@@ -1,5 +1,5 @@
 {
-  "name": "bbbeeep-frontend",
+  "name": "@bbbeeep/web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -8,8 +8,8 @@
     "prebuild": "node scripts/pre-build.js",
     "build": "next build",
     "postbuild": "node scripts/post-build.js",
-    "build:clean": "rm -rf .next && npm run build && node scripts/post-build.js",
-    "pages:build": "npm run build && SKIP_ENV_VALIDATION=true npx @cloudflare/next-on-pages",
+    "build:clean": "rm -rf .next && pnpm build && node scripts/post-build.js",
+    "pages:build": "pnpm build && SKIP_ENV_VALIDATION=true npx @cloudflare/next-on-pages",
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf .next"

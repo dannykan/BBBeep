@@ -9,51 +9,63 @@ BBBeep (路上提醒平台) is a one-way anonymous message reminder system for d
 ## Development Commands
 
 ```bash
-# Install all dependencies (root, frontend, backend)
-npm run install:all
+# Install all dependencies (uses pnpm workspaces)
+pnpm install
 
-# Start development servers (both frontend and backend)
-npm run dev
+# Start development servers (both web and api)
+pnpm dev
 
 # Start individually
-npm run dev:frontend       # http://localhost:3000
-npm run dev:backend        # http://localhost:3001
+pnpm dev:web        # http://localhost:3000
+pnpm dev:api        # http://localhost:3001
 
 # Build
-npm run build              # Build both
-npm run build:frontend
-npm run build:backend
+pnpm build          # Build both
+pnpm build:web
+pnpm build:api
+
+# Lint all packages
+pnpm lint
+
+# Run tests
+pnpm test
 ```
 
-### Backend Commands (run from /backend)
+### API Commands (run from /apps/api or use pnpm filter)
 ```bash
-npm run start:dev          # Dev server with watch
-npm run test               # Run Jest tests
-npm run test:watch         # Run tests in watch mode
-npm run test -- --testPathPattern=auth  # Run single test file/pattern
-npm run test:e2e           # End-to-end tests
-npm run lint               # ESLint with auto-fix
+pnpm --filter @bbbeeep/api start:dev    # Dev server with watch
+pnpm --filter @bbbeeep/api test         # Run Jest tests
+pnpm --filter @bbbeeep/api test:watch   # Run tests in watch mode
+pnpm --filter @bbbeeep/api lint         # ESLint with auto-fix
 
 # Prisma commands
-npm run prisma:generate    # Generate Prisma client after schema changes
-npm run prisma:migrate     # Create new migration (dev)
-npm run migration:run      # Apply migrations (production)
-npm run prisma:studio      # Open Prisma Studio GUI
+pnpm prisma:generate    # Generate Prisma client after schema changes
+pnpm prisma:migrate     # Create new migration (dev)
+pnpm prisma:studio      # Open Prisma Studio GUI
 ```
 
-### Frontend Commands (run from /frontend)
+### Web Commands (run from /apps/web or use pnpm filter)
 ```bash
-npm run dev                # Dev server
-npm run build              # Production build
-npm run lint               # ESLint
-npm run pages:build        # Cloudflare Pages build
+pnpm --filter @bbbeeep/web dev           # Dev server
+pnpm --filter @bbbeeep/web build         # Production build
+pnpm --filter @bbbeeep/web lint          # ESLint
+pnpm --filter @bbbeeep/web pages:build   # Cloudflare Pages build
 ```
 
 ## Architecture
 
-### Monorepo Structure
-- **frontend/**: Next.js 14 (App Router) + TypeScript + Tailwind CSS + Radix UI
-- **backend/**: NestJS + TypeScript + PostgreSQL (Prisma) + Redis
+### Monorepo Structure (pnpm workspace)
+```
+BBBeep/
+├── apps/
+│   ├── web/          # Next.js 14 (App Router) + TypeScript + Tailwind CSS + Radix UI
+│   ├── api/          # NestJS + TypeScript + PostgreSQL (Prisma) + Redis
+│   └── mobile/       # (Future) React Native Expo app
+├── packages/
+│   └── shared/       # (Future) Shared types, validators, API client
+├── pnpm-workspace.yaml
+└── package.json
+```
 
 ### Backend Module Pattern
 Each feature follows NestJS conventions:
@@ -77,13 +89,13 @@ Key modules: `auth/`, `users/`, `messages/`, `points/`, `ai/`, `admin/`
 4. Guards: `JwtAuthGuard`, `AdminGuard`
 
 ### Key Patterns
-- License plate normalization: `backend/src/common/utils/license-plate.util.ts`
+- License plate normalization: `apps/api/src/common/utils/license-plate.util.ts`
 - AI rewriting: 5 per-day limit tracked via Redis
 - Admin panel route: `/BBBeepadmin2026`
 
 ## Database
 
-Schema: `backend/prisma/schema.prisma`
+Schema: `apps/api/prisma/schema.prisma`
 
 Key models:
 - `User` - phone, license plate, userType (DRIVER/PEDESTRIAN), vehicleType, points
@@ -94,7 +106,7 @@ Key models:
 
 ## Environment Variables
 
-### Backend (.env)
+### API (.env in apps/api/)
 ```
 DATABASE_URL=postgresql://user:password@localhost:5432/bbbeeep
 REDIS_URL=redis://localhost:6379
@@ -104,7 +116,7 @@ OPENAI_API_KEY=your-key  # or GOOGLE_AI_API_KEY
 PORT=3001
 ```
 
-### Frontend (.env.local)
+### Web (.env.local in apps/web/)
 ```
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
@@ -122,6 +134,6 @@ Modern Calm Blue theme:
 
 ## Deployment
 
-- Frontend: Cloudflare Pages (`npm run pages:build`)
-- Backend: Railway (uses `scripts/start.sh`)
+- Web: Cloudflare Pages (`pnpm --filter @bbbeeep/web pages:build`)
+- API: Railway (uses `apps/api/scripts/start.sh`)
 - CI/CD: GitHub Actions (`.github/workflows/`)

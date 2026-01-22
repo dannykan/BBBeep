@@ -1,5 +1,5 @@
 {
-  "name": "bbbeeep-backend",
+  "name": "@bbbeeep/api",
   "version": "1.0.0",
   "description": "BBBeeep Backend API",
   "author": "",
@@ -26,7 +26,7 @@
     "prisma:seed-bbp2999": "ts-node prisma/seed-bbp2999.ts",
     "prisma:reset-users": "ts-node prisma/reset-users.ts",
     "prisma:reset-redis": "ts-node prisma/reset-redis.ts",
-    "prisma:reset-all": "npm run prisma:reset-users && npm run prisma:reset-redis",
+    "prisma:reset-all": "pnpm prisma:reset-users && pnpm prisma:reset-redis",
     "prisma:normalize-plates": "ts-node prisma/normalize-license-plates.ts",
     "migration:run": "prisma migrate deploy"
   },
