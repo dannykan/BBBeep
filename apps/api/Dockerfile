@@ -23,6 +23,9 @@ RUN pnpm --filter @bbbeeep/shared build
 RUN pnpm --filter @bbbeeep/api prisma:generate
 RUN pnpm --filter @bbbeeep/api build
 
+# Use pnpm deploy to create a standalone package with all dependencies
+RUN pnpm --filter @bbbeeep/api deploy --prod /app/deploy
+
 # Production image
 FROM node:18-slim AS runner
 WORKDIR /app
@@ -35,13 +38,15 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nestjs
 
-# Copy built files from builder
+# Copy deployed package (includes all production dependencies)
+COPY --from=builder /app/deploy ./
+
+# Copy additional required files
 COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/node_modules ./node_modules
-COPY --from=builder /app/apps/api/package.json ./package.json
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/scripts ./scripts
-COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
+
+# Copy shared package dist
 COPY --from=builder /app/packages/shared/dist ./node_modules/@bbbeeep/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./node_modules/@bbbeeep/shared/package.json
 
