@@ -49,7 +49,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
         "NSCameraUsageDescription": "需要使用相機拍攝行照照片",
-        "NSMicrophoneUsageDescription": "需要使用麥克風錄製語音訊息"
+        "NSMicrophoneUsageDescription": "需要使用麥克風錄製語音訊息",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
