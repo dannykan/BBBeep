@@ -30,9 +30,22 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#1E3A5F",
+          "backgroundColor": "#F6F6F4",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 200
+          "imageWidth": 128
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "此應用程式需要存取您的位置以定位事發地點",
+          "locationWhenInUsePermission": "此應用程式需要存取您的位置以定位事發地點"
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": ""
         }
       ],
       "expo-font"
@@ -40,17 +53,21 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1E3A5F"
+      "backgroundColor": "#F6F6F4"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.ubeep.mobile",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
         "NSCameraUsageDescription": "需要使用相機拍攝行照照片",
         "NSMicrophoneUsageDescription": "需要使用麥克風錄製語音訊息",
+        "NSLocationWhenInUseUsageDescription": "需要存取您的位置以定位事發地點",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "googleMapsApiKey": ""
       }
     },
     "android": {
@@ -63,8 +80,15 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -72,7 +96,8 @@
     "extra": {
       "eas": {
         "projectId": "bfb94786-6db3-42d3-a5c2-d2b2ba612e48"
-      }
+      },
+      "googleMapsApiKey": ""
     },
     "owner": "team-ubeep"
   }
