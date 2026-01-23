@@ -3,7 +3,7 @@
  */
 
 import { getApiClient } from '../client';
-import type { User, UserType, VehicleType, BlockedUser, RejectedUser } from '../../types';
+import type { User, UserType, VehicleType, BlockedUser, RejectedUser, TrialStatusResponse } from '../../types';
 
 export const usersApi = {
   getMe: () =>
@@ -59,5 +59,10 @@ export const usersApi = {
   getRejectedList: () =>
     getApiClient()
       .get<RejectedUser[]>('/users/rejected')
+      .then((res) => res.data),
+
+  getTrialStatus: () =>
+    getApiClient()
+      .get<TrialStatusResponse>('/users/me/trial-status')
       .then((res) => res.data),
 };

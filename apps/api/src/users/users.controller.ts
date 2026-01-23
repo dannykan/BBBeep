@@ -104,4 +104,10 @@ export class UsersController {
   ) {
     return this.usersService.getLicensePlateApplication(user.userId, id);
   }
+
+  @Get('me/trial-status')
+  @ApiOperation({ summary: '獲取試用期狀態' })
+  async getTrialStatus(@CurrentUser() user: any) {
+    return this.usersService.getTrialStatus(user.userId);
+  }
 }

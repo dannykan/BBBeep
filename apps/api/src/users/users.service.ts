@@ -6,6 +6,7 @@ import { UpdateUserDto, CompleteOnboardingDto } from './dto/update-user.dto';
 import { BlockUserDto, RejectUserDto } from './dto/block-user.dto';
 import { CreateLicensePlateApplicationDto } from './dto/license-plate-application.dto';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
+import { POINTS_CONFIG, isInTrialPeriod } from '../config/points.config';
 
 @Injectable()
 export class UsersService {
@@ -177,15 +178,30 @@ export class UsersService {
         const updatedPoints = (currentUser.points || 0) + tempUser.points;
 
         // 更新當前用戶，使用臨時用戶的車牌信息
+        // 設定試用期開始，給予試用初始點數
+        const trialInitialPoints = POINTS_CONFIG.trial.enabled ? POINTS_CONFIG.trial.initialPoints : 0;
         const updatedUser = await this.prisma.user.update({
           where: { id: userId },
           data: {
             ...dto,
             licensePlate: normalizedPlate, // 使用格式化後的車牌（不含分隔符）
-            points: updatedPoints,
+            points: updatedPoints + trialInitialPoints,
             hasCompletedOnboarding: true,
+            trialStartDate: POINTS_CONFIG.trial.enabled ? new Date() : null,
           },
         });
+
+        // 記錄試用期點數
+        if (trialInitialPoints > 0) {
+          await this.prisma.pointHistory.create({
+            data: {
+              userId: userId,
+              type: 'bonus',
+              amount: trialInitialPoints,
+              description: '試用期初始點數',
+            },
+          });
+        }
 
         // 刪除臨時用戶
         await this.prisma.user.delete({
@@ -208,10 +224,29 @@ export class UsersService {
       }
       updateData.licensePlate = normalizedPlate;
     }
+
+    // 設定試用期開始，給予試用初始點數
+    if (POINTS_CONFIG.trial.enabled) {
+      updateData.trialStartDate = new Date();
+      updateData.points = (currentUser.points || 0) + POINTS_CONFIG.trial.initialPoints;
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,
     });
+
+    // 記錄試用期點數
+    if (POINTS_CONFIG.trial.enabled && POINTS_CONFIG.trial.initialPoints > 0) {
+      await this.prisma.pointHistory.create({
+        data: {
+          userId: userId,
+          type: 'bonus',
+          amount: POINTS_CONFIG.trial.initialPoints,
+          description: '試用期初始點數',
+        },
+      });
+    }
 
     // 處理邀請獎勵
     await this.inviteService.processInviteReward(userId);
@@ -466,5 +501,53 @@ export class UsersService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // 取得用戶試用期狀態
+  async getTrialStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        trialStartDate: true,
+        trialEndedProcessed: true,
+        points: true,
+        freePoints: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    const isInTrial = isInTrialPeriod(user.trialStartDate);
+    const trialDurationDays = POINTS_CONFIG.trial.durationDays;
+
+    // 計算剩餘天數
+    let daysRemaining = 0;
+    let trialEndDate: Date | null = null;
+
+    if (user.trialStartDate && POINTS_CONFIG.trial.enabled) {
+      trialEndDate = new Date(user.trialStartDate);
+      trialEndDate.setDate(trialEndDate.getDate() + trialDurationDays);
+
+      if (isInTrial) {
+        const now = new Date();
+        const diffMs = trialEndDate.getTime() - now.getTime();
+        daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      }
+    }
+
+    return {
+      isInTrial,
+      trialStartDate: user.trialStartDate,
+      trialEndDate,
+      daysRemaining,
+      trialDurationDays,
+      trialEndedProcessed: user.trialEndedProcessed,
+      trialConfig: {
+        initialPoints: POINTS_CONFIG.trial.initialPoints,
+        oneTimeBonusAfterTrial: POINTS_CONFIG.basic.oneTimeBonus.amount,
+      },
+    };
   }
 }

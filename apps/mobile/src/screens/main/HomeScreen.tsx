@@ -21,8 +21,8 @@ import VehicleIcon from '../../components/VehicleIcon';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import { getTotalPoints, displayLicensePlate, inviteApi } from '@bbbeeep/shared';
-import type { InviteCodeResponse } from '@bbbeeep/shared';
+import { getTotalPoints, displayLicensePlate, inviteApi, usersApi } from '@bbbeeep/shared';
+import type { InviteCodeResponse, TrialStatusResponse } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
 import {
   typography,
@@ -39,11 +39,14 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [inviteData, setInviteData] = useState<InviteCodeResponse | null>(null);
   const [isLoadingInvite, setIsLoadingInvite] = useState(true);
+  const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
+  const [isLoadingTrial, setIsLoadingTrial] = useState(true);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   useEffect(() => {
     loadInviteData();
+    loadTrialStatus();
   }, []);
 
   const loadInviteData = useCallback(async () => {
@@ -57,11 +60,22 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const loadTrialStatus = useCallback(async () => {
+    try {
+      const data = await usersApi.getTrialStatus();
+      setTrialStatus(data);
+    } catch (error) {
+      console.error('Failed to load trial status:', error);
+    } finally {
+      setIsLoadingTrial(false);
+    }
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount()]);
+    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), loadTrialStatus()]);
     setRefreshing(false);
-  }, [refreshUser, loadInviteData, refreshUnreadCount]);
+  }, [refreshUser, loadInviteData, refreshUnreadCount, loadTrialStatus]);
 
   const handleShareInviteCode = async () => {
     if (!inviteData?.inviteCode) return;
@@ -175,6 +189,60 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* Trial Period Card */}
+        {trialStatus?.isInTrial && (
+          <View style={styles.trialCard}>
+            <View style={styles.trialHeader}>
+              <View style={styles.trialIconContainer}>
+                <Ionicons
+                  name="time-outline"
+                  size={20}
+                  color={colors.secondary?.DEFAULT || '#10B981'}
+                />
+              </View>
+              <View style={styles.trialHeaderText}>
+                <Text style={styles.trialTitle}>試用期體驗中</Text>
+                <Text style={styles.trialSubtitle}>
+                  享有 {trialStatus.trialConfig.initialPoints} 點免費體驗
+                </Text>
+              </View>
+            </View>
+            <View style={styles.trialCountdown}>
+              <View style={styles.trialCountdownBox}>
+                <Text style={styles.trialCountdownNumber}>
+                  {trialStatus.daysRemaining}
+                </Text>
+                <Text style={styles.trialCountdownLabel}>天</Text>
+              </View>
+              <Text style={styles.trialCountdownText}>剩餘體驗時間</Text>
+            </View>
+            <View style={styles.trialInfo}>
+              <Ionicons
+                name="information-circle-outline"
+                size={14}
+                color={colors.muted.foreground}
+              />
+              <Text style={styles.trialInfoText}>
+                試用結束後將贈送 {trialStatus.trialConfig.oneTimeBonusAfterTrial} 點
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Trial Ended Notice */}
+        {trialStatus && !trialStatus.isInTrial && trialStatus.trialStartDate && (
+          <View style={styles.trialEndedCard}>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={18}
+              color={colors.muted.foreground}
+            />
+            <Text style={styles.trialEndedText}>
+              試用期已結束，感謝您的體驗！
+            </Text>
+          </View>
+        )}
 
         {/* Send Reminder Button */}
         <TouchableOpacity
@@ -456,6 +524,93 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       fontSize: typography.fontSize.xs,
       color: colors.muted.foreground,
       lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
+    },
+
+    // Trial Card
+    trialCard: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)',
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: 'rgba(16, 185, 129, 0.15)',
+      padding: spacing[4],
+    },
+    trialHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
+      marginBottom: spacing[3],
+    },
+    trialIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: `${'#10B981'}15`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    trialHeaderText: {
+      flex: 1,
+    },
+    trialTitle: {
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.medium as any,
+      color: colors.foreground,
+    },
+    trialSubtitle: {
+      fontSize: typography.fontSize.xs,
+      color: colors.muted.foreground,
+    },
+    trialCountdown: {
+      alignItems: 'center',
+      marginBottom: spacing[3],
+    },
+    trialCountdownBox: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: spacing[1],
+    },
+    trialCountdownNumber: {
+      fontSize: typography.fontSize['4xl'],
+      fontWeight: typography.fontWeight.bold as any,
+      color: '#10B981',
+    },
+    trialCountdownLabel: {
+      fontSize: typography.fontSize.lg,
+      fontWeight: typography.fontWeight.medium as any,
+      color: '#10B981',
+    },
+    trialCountdownText: {
+      fontSize: typography.fontSize.xs,
+      color: colors.muted.foreground,
+      marginTop: spacing[1],
+    },
+    trialInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing[1.5],
+      paddingTop: spacing[3],
+      borderTopWidth: 1,
+      borderTopColor: `${'#10B981'}15`,
+    },
+    trialInfoText: {
+      fontSize: typography.fontSize.xs,
+      color: colors.muted.foreground,
+    },
+    trialEndedCard: {
+      backgroundColor: isDark ? colors.muted.DEFAULT : `${colors.muted.DEFAULT}30`,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.borderSolid,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    trialEndedText: {
+      fontSize: typography.fontSize.xs,
+      color: colors.muted.foreground,
     },
 
     // Send Button

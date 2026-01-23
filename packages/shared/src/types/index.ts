@@ -37,6 +37,9 @@ export interface User {
   // Apple Sign-In 相關
   appleUserId?: string;
   appleEmail?: string;
+  // 試用期相關
+  trialStartDate?: string;
+  trialEndedProcessed?: boolean;
 }
 
 export interface BlockedUser {
@@ -258,4 +261,21 @@ export interface UploadResponse {
   filename: string;
   originalname: string;
   size: number;
+}
+
+// ============================================
+// 試用期相關
+// ============================================
+
+export interface TrialStatusResponse {
+  isInTrial: boolean;
+  trialStartDate: string | null;
+  trialEndDate: string | null;
+  daysRemaining: number;
+  trialDurationDays: number;
+  trialEndedProcessed: boolean;
+  trialConfig: {
+    initialPoints: number;
+    oneTimeBonusAfterTrial: number;
+  };
 }

@@ -86,6 +86,10 @@ model User {
   blockedByAdminAt       DateTime?                    // 封鎖時間
   blockedByAdminReason   String?                      // 封鎖原因
 
+  // 試用期相關
+  trialStartDate         DateTime?                    // 試用開始日期（註冊完成時設定）
+  trialEndedProcessed    Boolean      @default(false) // 是否已處理試用結束（點數歸零、發放一次性獎勵）
+
   // 邀請碼相關
   inviteCode             String?      @unique        // 用戶的個人邀請碼
   invitedById            String?                     // 邀請此用戶的人的 ID
