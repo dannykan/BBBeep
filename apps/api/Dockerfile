@@ -24,7 +24,7 @@ RUN pnpm --filter @bbbeeep/api prisma:generate
 RUN pnpm --filter @bbbeeep/api build
 
 # Use pnpm deploy to create a standalone package with all dependencies
-RUN pnpm --filter @bbbeeep/api deploy --prod /app/deploy
+RUN pnpm --filter @bbbeeep/api deploy --prod --legacy /app/deploy
 
 # Production image
 FROM node:18-slim AS runner
