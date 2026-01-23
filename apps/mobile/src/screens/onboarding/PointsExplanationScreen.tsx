@@ -33,6 +33,18 @@ export default function PointsExplanationScreen({ navigation }: Props) {
       <OnboardingCard>
         <StepHeader title={`每一次提醒\n都需要一點點點數`} />
 
+        {/* 試用期說明卡片 */}
+        <View style={styles.trialCard}>
+          <Text style={styles.trialTitle}>7 天免費試用</Text>
+          <View style={styles.trialPointsRow}>
+            <Text style={styles.trialPointsNumber}>40</Text>
+            <Text style={styles.trialPointsLabel}>點</Text>
+          </View>
+          <Text style={styles.trialDescription}>
+            立即獲得 40 點，盡情體驗所有功能
+          </Text>
+        </View>
+
         <View style={styles.pointsInfoList}>
           <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>📩</Text>
@@ -43,14 +55,18 @@ export default function PointsExplanationScreen({ navigation }: Props) {
             <Text style={styles.pointsInfoText}>收到讚美，可以獲得少量點數</Text>
           </View>
           <View style={styles.pointsInfoItem}>
+            <Text style={styles.pointsInfoIcon}>🎁</Text>
+            <Text style={styles.pointsInfoText}>邀請好友，你我各得點數獎勵</Text>
+          </View>
+          <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>🔒</Text>
             <Text style={styles.pointsInfoText}>車牌與個人資訊都不會公開</Text>
           </View>
         </View>
 
-        <View style={styles.bonusCard}>
-          <Text style={styles.bonusCardText}>
-            🎁 每天免費 2 點，用完隔天自動補滿
+        <View style={styles.noteCard}>
+          <Text style={styles.noteCardText}>
+            試用期結束後可透過儲值或邀請好友獲得更多點數
           </Text>
         </View>
 
@@ -67,6 +83,44 @@ export default function PointsExplanationScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // Trial Card
+  trialCard: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderRadius: borderRadius.xl,
+    padding: spacing[5],
+    marginBottom: spacing[4],
+    alignItems: 'center',
+  },
+  trialTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: '#10B981',
+    marginBottom: spacing[2],
+  },
+  trialPointsRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: spacing[2],
+  },
+  trialPointsNumber: {
+    fontSize: 48,
+    fontWeight: typography.fontWeight.bold as any,
+    color: '#10B981',
+  },
+  trialPointsLabel: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.medium as any,
+    color: '#10B981',
+    marginLeft: spacing[1],
+  },
+  trialDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+  },
+
   // Points Info
   pointsInfoList: {
     backgroundColor: colors.muted.DEFAULT,
@@ -88,18 +142,15 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.foreground,
   },
-  bonusCard: {
-    backgroundColor: `${colors.primary.DEFAULT}08`,
-    borderWidth: 2,
-    borderColor: `${colors.primary.DEFAULT}30`,
+  noteCard: {
+    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
-    padding: spacing[4],
+    padding: spacing[3],
     marginBottom: spacing[4],
   },
-  bonusCardText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.dark,
+  noteCardText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
     textAlign: 'center',
   },
 
