@@ -22,6 +22,7 @@ interface AdminUser {
   vehicleType?: 'car' | 'scooter';
   points: number;
   freePoints?: number;
+  trialPoints?: number;
   hasCompletedOnboarding: boolean;
   createdAt: string;
   // LINE Login 相關
@@ -433,7 +434,7 @@ const AdminPage = React.memo(() => {
                   <div className="flex items-center justify-between pt-2 border-t border-border">
                     <div>
                       <p className="text-xs text-muted-foreground">點數</p>
-                      <p className="text-sm font-medium text-foreground">{(user.points || 0) + (user.freePoints || 0)}</p>
+                      <p className="text-sm font-medium text-foreground">{(user.trialPoints || 0) + (user.freePoints || 0) + (user.points || 0)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">消息</p>

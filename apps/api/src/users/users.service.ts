@@ -174,18 +174,19 @@ export class UsersService {
           });
         }
 
-        // 更新當前用戶的點數
+        // 更新當前用戶的點數（保持購買點數不變）
         const updatedPoints = (currentUser.points || 0) + tempUser.points;
 
         // 更新當前用戶，使用臨時用戶的車牌信息
-        // 設定試用期開始，給予試用初始點數
+        // 設定試用期開始，給予試用初始點數（到 trialPoints，不是 points）
         const trialInitialPoints = POINTS_CONFIG.trial.enabled ? POINTS_CONFIG.trial.initialPoints : 0;
         const updatedUser = await this.prisma.user.update({
           where: { id: userId },
           data: {
             ...dto,
             licensePlate: normalizedPlate, // 使用格式化後的車牌（不含分隔符）
-            points: updatedPoints + trialInitialPoints,
+            points: updatedPoints, // 購買/轉移點數保持獨立
+            trialPoints: trialInitialPoints, // 試用點數獨立存放
             hasCompletedOnboarding: true,
             trialStartDate: POINTS_CONFIG.trial.enabled ? new Date() : null,
           },
@@ -225,10 +226,10 @@ export class UsersService {
       updateData.licensePlate = normalizedPlate;
     }
 
-    // 設定試用期開始，給予試用初始點數
+    // 設定試用期開始，給予試用初始點數（到 trialPoints，不影響 points）
     if (POINTS_CONFIG.trial.enabled) {
       updateData.trialStartDate = new Date();
-      updateData.points = (currentUser.points || 0) + POINTS_CONFIG.trial.initialPoints;
+      updateData.trialPoints = POINTS_CONFIG.trial.initialPoints; // 試用點數獨立存放
     }
 
     const user = await this.prisma.user.update({

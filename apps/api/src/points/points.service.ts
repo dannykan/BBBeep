@@ -60,33 +60,35 @@ export class PointsService {
     }
   }
 
-  // 取得總點數（免費點數 + 購買點數）
+  // 取得總點數（試用點數 + 免費點數 + 購買點數）
   async getPoints(userId: string): Promise<number> {
     // 先檢查並重置免費點數
     await this.checkAndResetFreePoints(userId);
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { points: true, freePoints: true },
+      select: { points: true, freePoints: true, trialPoints: true },
     });
-    return (user?.points || 0) + (user?.freePoints || 0);
+    return (user?.trialPoints || 0) + (user?.freePoints || 0) + (user?.points || 0);
   }
 
   // 取得詳細點數資訊
-  async getPointsDetail(userId: string): Promise<{ total: number; free: number; purchased: number }> {
+  async getPointsDetail(userId: string): Promise<{ total: number; trial: number; free: number; purchased: number }> {
     // 先檢查並重置免費點數
     await this.checkAndResetFreePoints(userId);
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { points: true, freePoints: true },
+      select: { points: true, freePoints: true, trialPoints: true },
     });
 
+    const trial = user?.trialPoints || 0;
     const free = user?.freePoints || 0;
     const purchased = user?.points || 0;
 
     return {
-      total: free + purchased,
+      total: trial + free + purchased,
+      trial,
       free,
       purchased,
     };
@@ -121,7 +123,7 @@ export class PointsService {
     });
   }
 
-  // 扣除點數（先扣免費點數，再扣購買點數）
+  // 扣除點數（先扣試用點數，再扣免費點數，最後扣購買點數）
   async deductPoints(
     userId: string,
     amount: number,
@@ -133,26 +135,39 @@ export class PointsService {
     await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { points: true, freePoints: true },
+        select: { points: true, freePoints: true, trialPoints: true },
       });
 
       if (!user) {
         throw new Error('用戶不存在');
       }
 
-      const totalPoints = (user.points || 0) + (user.freePoints || 0);
+      const totalPoints = (user.trialPoints || 0) + (user.freePoints || 0) + (user.points || 0);
       if (totalPoints < amount) {
         throw new Error('點數不足');
       }
 
-      // 計算如何扣除：先扣免費點數，再扣購買點數
-      let freePointsToDeduct = Math.min(user.freePoints || 0, amount);
-      let purchasedPointsToDeduct = amount - freePointsToDeduct;
+      // 計算如何扣除：先扣試用點數 → 再扣免費點數 → 最後扣購買點數
+      let remaining = amount;
+
+      // 1. 先扣試用點數
+      const trialPointsToDeduct = Math.min(user.trialPoints || 0, remaining);
+      remaining -= trialPointsToDeduct;
+
+      // 2. 再扣免費點數
+      const freePointsToDeduct = Math.min(user.freePoints || 0, remaining);
+      remaining -= freePointsToDeduct;
+
+      // 3. 最後扣購買點數
+      const purchasedPointsToDeduct = remaining;
 
       // 更新點數
       await tx.user.update({
         where: { id: userId },
         data: {
+          trialPoints: {
+            decrement: trialPointsToDeduct,
+          },
           freePoints: {
             decrement: freePointsToDeduct,
           },

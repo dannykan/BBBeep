@@ -63,8 +63,9 @@ model User {
   licensePlate           String?
   userType               UserType
   vehicleType            VehicleType?
-  points                 Int          @default(0)  // 購買的點數（不會每日重置）
-  freePoints             Int          @default(2)  // 每日免費點數（每日重置為2）
+  points                 Int          @default(0)  // 購買/邀請獎勵點數（永久累積，不會重置）
+  freePoints             Int          @default(0)  // 每日免費點數（試用結束後每日重置為2）
+  trialPoints            Int          @default(0)  // 試用期點數（一次性發放，用完不補）
   lastFreePointsReset    DateTime?                 // 上次免費點數重置時間（台北時間）
   hasCompletedOnboarding Boolean      @default(false)
   email                  String?

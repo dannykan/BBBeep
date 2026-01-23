@@ -5,15 +5,16 @@
 import type { User } from '../types';
 
 /**
- * 計算用戶總點數（購買點數 + 每日免費點數）
+ * 計算用戶總點數（試用點數 + 每日免費點數 + 購買點數）
+ * 扣除順序：trialPoints → freePoints → points
  * @param user 用戶物件
  * @returns 總點數
  */
 export function getTotalPoints(
-  user: Pick<User, 'points' | 'freePoints'> | null | undefined
+  user: Pick<User, 'points' | 'freePoints' | 'trialPoints'> | null | undefined
 ): number {
   if (!user) return 0;
-  return (user.points ?? 0) + (user.freePoints ?? 0);
+  return (user.trialPoints ?? 0) + (user.freePoints ?? 0) + (user.points ?? 0);
 }
 
 /**
@@ -23,7 +24,7 @@ export function getTotalPoints(
  * @returns 是否足夠
  */
 export function hasEnoughPoints(
-  user: Pick<User, 'points' | 'freePoints'> | null | undefined,
+  user: Pick<User, 'points' | 'freePoints' | 'trialPoints'> | null | undefined,
   required: number
 ): boolean {
   return getTotalPoints(user) >= required;
@@ -36,7 +37,7 @@ export function hasEnoughPoints(
  * @returns 是否偏低
  */
 export function isLowPoints(
-  user: Pick<User, 'points' | 'freePoints'> | null | undefined,
+  user: Pick<User, 'points' | 'freePoints' | 'trialPoints'> | null | undefined,
   threshold: number = 5
 ): boolean {
   return getTotalPoints(user) < threshold;

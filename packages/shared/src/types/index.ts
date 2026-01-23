@@ -23,8 +23,9 @@ export interface User {
   licensePlate?: string;
   userType: 'driver' | 'pedestrian';
   vehicleType?: 'car' | 'scooter';
-  points: number;
-  freePoints: number;
+  points: number;       // 購買/邀請獎勵點數（永久累積）
+  freePoints: number;   // 每日免費點數（試用結束後每日重置）
+  trialPoints: number;  // 試用期點數（一次性發放，用完不補）
   hasCompletedOnboarding: boolean;
   email?: string;
   blockedUsers?: BlockedUser[];
