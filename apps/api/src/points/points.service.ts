@@ -1,13 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointHistoryType } from '@prisma/client';
+import { POINTS_CONFIG } from '../config/points.config';
 
 interface AddPointHistoryParams {
   type: PointHistoryType;
   description: string;
 }
 
-const DAILY_FREE_POINTS = 2;
+// 從設定檔讀取每日免費點數
+// 注意：根據規則，試用結束後不提供每日免費點數
+// 這裡保留 legacy 設定供過渡期使用
+const DAILY_FREE_POINTS = POINTS_CONFIG.basic.dailyFreePoints.enabled
+  ? POINTS_CONFIG.basic.dailyFreePoints.amount
+  : POINTS_CONFIG.legacy.dailyFreePoints;
+
 const TAIPEI_TIMEZONE = 'Asia/Taipei';
 
 @Injectable()

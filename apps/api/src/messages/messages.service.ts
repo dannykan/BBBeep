@@ -11,6 +11,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageType, PointHistoryType } from '@prisma/client';
 import { toChineseType, toPrismaType, MessageTypeChinese } from '../common/utils/message-type-mapper';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
+import { getMessageCost, getReplyCost, POINTS_CONFIG } from '../config/points.config';
 
 @Injectable()
 export class MessagesService {
@@ -125,25 +126,9 @@ export class MessagesService {
       ? toPrismaType(dto.type as MessageTypeChinese)
       : dto.type as MessageType;
 
-    // 計算點數消耗
-    let pointCost = 0;
-    if (prismaType === MessageType.PRAISE) {
-      // 讚美是免費的，還會獲得1點
-      pointCost = 0;
-    } else {
-      // 車況提醒或行車安全提醒：基礎1點
-      pointCost = 1;
-      
-      // 如果有補充文字：+3點
-      if (dto.customText) {
-        pointCost += 3;
-      }
-      
-      // 如果使用AI改寫：+1點
-      if (dto.useAiRewrite) {
-        pointCost += 1;
-      }
-    }
+    // 計算點數消耗（使用設定檔）
+    const category = prismaType === MessageType.PRAISE ? 'praise' : 'other';
+    const pointCost = getMessageCost(category, !!dto.customText, !!dto.useAiRewrite);
 
     // 檢查點數
     const sender = await this.prisma.user.findUnique({
@@ -358,18 +343,8 @@ export class MessagesService {
       throw new BadRequestException('此訊息已經回覆過了');
     }
 
-    // 計算點數消耗
-    // 快速回覆（預設文字）：免費
-    // 自訂回覆 + AI 優化：2 點
-    // 自訂回覆（不用 AI）：4 點
-    let pointCost = 0;
-    if (!options?.isQuickReply) {
-      if (options?.useAiRewrite) {
-        pointCost = 2;
-      } else {
-        pointCost = 4;
-      }
-    }
+    // 計算點數消耗（使用設定檔）
+    const pointCost = getReplyCost(!!options?.isQuickReply, !!options?.useAiRewrite);
 
     // 檢查點數
     if (pointCost > 0) {
