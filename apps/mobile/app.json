@@ -15,6 +15,12 @@
         {
           "channelId": "2008933864"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "此應用程式需要存取您的相簿以上傳行照照片"
+        }
       ]
     ],
     "splash": {
