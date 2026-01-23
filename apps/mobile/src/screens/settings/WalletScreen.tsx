@@ -20,12 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import {
   initConnection,
-  getProducts,
+  fetchProducts,
   requestPurchase,
   finishTransaction,
   purchaseUpdatedListener,
   purchaseErrorListener,
-  type ProductPurchase,
+  type Purchase,
   type PurchaseError,
   type Product,
 } from 'react-native-iap';
@@ -95,16 +95,21 @@ export default function WalletScreen() {
 
     const initIAP = async () => {
       try {
-        await initConnection();
+        const connected = await initConnection();
+        console.log('[IAP] Connection result:', connected);
         setIapConnected(true);
 
         // 獲取產品資訊
         if (IAP_SKUS && IAP_SKUS.length > 0) {
-          const products = await getProducts({ skus: IAP_SKUS });
-          setIapProducts(products);
+          console.log('[IAP] Fetching products:', IAP_SKUS);
+          const products = await fetchProducts({ skus: IAP_SKUS });
+          if (products && products.length > 0) {
+            console.log('[IAP] Products loaded:', products.length, products.map((p) => p.id));
+            setIapProducts(products as Product[]);
+          }
         }
       } catch (error) {
-        console.warn('IAP init error:', error);
+        console.warn('[IAP] Init error:', error);
       }
     };
 
@@ -112,8 +117,8 @@ export default function WalletScreen() {
 
     // 監聽購買更新
     purchaseUpdateSubscription = purchaseUpdatedListener(
-      async (purchase: ProductPurchase) => {
-        const receipt = purchase.transactionReceipt;
+      async (purchase: Purchase) => {
+        const receipt = purchase.purchaseToken;
         if (receipt) {
           try {
             // TODO: 向後端驗證收據並加點
@@ -136,7 +141,9 @@ export default function WalletScreen() {
     purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
       console.warn('Purchase error:', error);
       setIsRecharging(false);
-      if (error.code !== 'E_USER_CANCELLED') {
+      // error.code 可能是 string 或 ErrorCode enum
+      const errorCode = String(error.code);
+      if (errorCode !== 'E_USER_CANCELLED' && errorCode !== '2') {
         Alert.alert('購買失敗', error.message || '請稍後再試');
       }
     });
@@ -163,14 +170,30 @@ export default function WalletScreen() {
       return;
     }
 
+    // 檢查產品是否已載入
+    const product = iapProducts.find((p) => p.id === option.productId);
+    if (!product) {
+      console.warn('[IAP] Product not found:', option.productId, 'Available:', iapProducts.map((p) => p.id));
+      Alert.alert('提示', '產品資訊載入中，請稍後再試');
+      return;
+    }
+
     setIsRecharging(true);
     setSelectedOption(option.points);
 
     try {
-      await requestPurchase({ sku: option.productId });
+      console.log('[IAP] Requesting purchase for:', option.productId);
+      // react-native-iap v14+ API
+      if (Platform.OS === 'ios') {
+        await requestPurchase({ sku: option.productId } as any);
+      } else {
+        await requestPurchase({ skus: [option.productId] } as any);
+      }
     } catch (error: any) {
+      console.error('[IAP] Purchase error:', error);
       setIsRecharging(false);
-      if (error.code !== 'E_USER_CANCELLED') {
+      const errorCode = String(error.code);
+      if (errorCode !== 'E_USER_CANCELLED' && errorCode !== '2') {
         Alert.alert('購買失敗', error.message || '請稍後再試');
       }
     }
