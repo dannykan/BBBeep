@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "BBBeep",
-    "slug": "bbbeeep-mobile",
+    "name": "UBeep",
+    "slug": "ubeep-mobile",
     "version": "1.0.0",
     "entryPoint": "./index.ts",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "bbbeeep",
+    "scheme": "ubeep",
     "plugins": [
       [
         "@xmartlabs/react-native-line",
@@ -30,7 +30,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bbbeeep.mobile",
+      "bundleIdentifier": "com.ubeep.mobile",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
@@ -38,7 +38,7 @@
       }
     },
     "android": {
-      "package": "com.bbbeeep.mobile",
+      "package": "com.ubeep.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -149,7 +149,7 @@ const SendPage = React.memo(() => {
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&accept-language=zh-TW`,
         {
           headers: {
-            'User-Agent': 'BBBeep App (contact@bbbeep.com)',
+            'User-Agent': 'UBeep App (contact@ubeep.app)',
           },
         }
       );

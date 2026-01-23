@@ -34,7 +34,7 @@ const PrivacyPage = React.memo(() => {
           {/* 前言 */}
           <section className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              「叭叭叭 BBBeep」重視您的隱私權。本政策說明我們如何收集、使用和保護您的個人資料。
+              「UBeep」重視您的隱私權。本政策說明我們如何收集、使用和保護您的個人資料。
             </p>
           </section>
 

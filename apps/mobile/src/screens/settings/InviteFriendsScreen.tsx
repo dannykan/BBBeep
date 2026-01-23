@@ -46,7 +46,7 @@ export default function InviteFriendsScreen() {
   };
 
   const inviteCode = inviteData?.inviteCode || 'XXXXXX';
-  const inviteLink = `https://bbbeeep.com/invite/${inviteCode}`;
+  const inviteLink = `https://ubeep.app/invite/${inviteCode}`;
 
   const handleCopyCode = async () => {
     Alert.alert('邀請碼', inviteCode, [{ text: '確定' }]);
@@ -59,7 +59,7 @@ export default function InviteFriendsScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `我在用 BBBeep 路上提醒平台，用禮貌的方式提醒其他駕駛。使用我的邀請碼 ${inviteCode} 註冊，你我各得 10 點！\n\n${inviteLink}`,
+        message: `我在用 UBeep 路上提醒平台，用禮貌的方式提醒其他駕駛。使用我的邀請碼 ${inviteCode} 註冊，你我各得 10 點！\n\n${inviteLink}`,
       });
     } catch (error) {
       console.error('Share failed:', error);

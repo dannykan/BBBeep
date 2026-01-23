@@ -60,12 +60,12 @@ const HomePage = React.memo(() => {
   const handleShareInviteCode = async () => {
     if (!inviteData?.inviteCode) return;
 
-    const shareText = `來用 BBBeep 提醒路上的朋友吧！使用我的邀請碼 ${inviteData.inviteCode}，你我各得 10 點！`;
+    const shareText = `來用 UBeep 提醒路上的朋友吧！使用我的邀請碼 ${inviteData.inviteCode}，你我各得 10 點！`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'BBBeep 邀請碼',
+          title: 'UBeep 邀請碼',
           text: shareText,
         });
       } catch (error) {

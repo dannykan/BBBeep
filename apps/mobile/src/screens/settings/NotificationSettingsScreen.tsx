@@ -117,7 +117,7 @@ export default function NotificationSettingsScreen() {
             <SettingRow
               icon="notifications"
               label="啟用推播通知"
-              description="接收來自 BBBeep 的即時通知"
+              description="接收來自 UBeep 的即時通知"
               value={pushEnabled}
               onValueChange={setPushEnabled}
             />
@@ -184,7 +184,7 @@ export default function NotificationSettingsScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={20} color={colors.muted.foreground} />
           <Text style={styles.infoText}>
-            如果您在系統設定中關閉了 BBBeep 的通知權限，即使在此處開啟也無法收到推播通知。
+            如果您在系統設定中關閉了 UBeep 的通知權限，即使在此處開啟也無法收到推播通知。
           </Text>
         </View>
       </ScrollView>

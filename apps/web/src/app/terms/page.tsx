@@ -34,7 +34,7 @@ const TermsPage = React.memo(() => {
           <section className="space-y-3">
             <h2 className="text-base text-foreground font-medium">1. 服務說明</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              「叭叭叭 BBBeep」是一個讓駕駛者可以私密發送善意提醒的系統。這不是聊天平台，而是一次性提醒服務。
+              「UBeep」是一個讓駕駛者可以私密發送善意提醒的系統。這不是聊天平台，而是一次性提醒服務。
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               本服務採用點數付費制度，用戶需要消耗點數來發送提醒。收到讚美可以獲得少量點數回饋。

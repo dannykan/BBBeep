@@ -238,7 +238,7 @@ export default function SettingsScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>BBBeep - 路上善意提醒平台</Text>
+          <Text style={styles.footerText}>UBeep - 路上善意提醒平台</Text>
         </View>
       </ScrollView>
     </View>

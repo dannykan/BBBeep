@@ -81,7 +81,7 @@ export default function HomeScreen() {
     if (!inviteData?.inviteCode) return;
     try {
       await Share.share({
-        message: `用我的邀請碼加入 BBBeep，我們各得 10 點！\n\n邀請碼：${inviteData.inviteCode}\n\n下載 App：https://bbbeep.com/download`,
+        message: `用我的邀請碼加入 UBeep，我們各得 10 點！\n\n邀請碼：${inviteData.inviteCode}\n\n下載 App：https://ubeep.app/download`,
       });
     } catch (error) {
       console.error('Failed to share:', error);
