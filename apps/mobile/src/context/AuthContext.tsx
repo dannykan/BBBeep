@@ -29,9 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 初始化 API Client
+  // 初始化 API Client 和 LINE SDK
   useEffect(() => {
     initializeApiClient();
+
+    // 初始化 LINE SDK
+    LineLogin.setup({ channelId: '2008933864' })
+      .catch((error: any) => {
+        // 如果已經初始化過會報錯，可以忽略
+        if (error.code !== 'SETUP_ALREADY_COMPLETED') {
+          console.warn('[LINE_SDK] Setup warning:', error.message);
+        }
+      });
   }, []);
 
   // 檢查登入狀態
