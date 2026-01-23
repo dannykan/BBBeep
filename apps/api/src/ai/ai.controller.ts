@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { RewriteDto } from './dto/rewrite.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -32,5 +32,20 @@ export class AiController {
       dto.category,
     );
     return { rewritten };
+  }
+
+  @Post('moderate')
+  @ApiOperation({ summary: 'AI 內容審核（判斷內容是否適合發送）' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: '要審核的文字內容' },
+      },
+      required: ['text'],
+    },
+  })
+  async moderateContent(@Body('text') text: string) {
+    return this.aiService.moderateContent(text);
   }
 }

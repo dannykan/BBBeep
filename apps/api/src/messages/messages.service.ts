@@ -11,7 +11,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageType, PointHistoryType } from '@prisma/client';
 import { toChineseType, toPrismaType, MessageTypeChinese } from '../common/utils/message-type-mapper';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
-import { getMessageCost, getReplyCost, POINTS_CONFIG } from '../config/points.config';
+import { getMessageCost, getReplyCost, getVoiceMessageCost, POINTS_CONFIG } from '../config/points.config';
 
 @Injectable()
 export class MessagesService {
@@ -122,13 +122,28 @@ export class MessagesService {
     }
 
     // 轉換中文字符串為 Prisma enum
-    const prismaType = typeof dto.type === 'string' 
+    const prismaType = typeof dto.type === 'string'
       ? toPrismaType(dto.type as MessageTypeChinese)
       : dto.type as MessageType;
 
+    // 檢查是否為語音訊息
+    const isVoiceMessage = !!dto.voiceUrl && !!dto.voiceDuration;
+
+    // 語音訊息需要啟用語音功能
+    if (isVoiceMessage && !POINTS_CONFIG.voice.enabled) {
+      throw new BadRequestException('語音功能目前未啟用');
+    }
+
     // 計算點數消耗（使用設定檔）
-    const category = prismaType === MessageType.PRAISE ? 'praise' : 'other';
-    const pointCost = getMessageCost(category, !!dto.customText, !!dto.useAiRewrite);
+    let pointCost: number;
+    if (isVoiceMessage) {
+      // 語音訊息使用語音點數
+      pointCost = getVoiceMessageCost();
+    } else {
+      // 文字訊息使用原有邏輯
+      const category = prismaType === MessageType.PRAISE ? 'praise' : 'other';
+      pointCost = getMessageCost(category, !!dto.customText, !!dto.useAiRewrite);
+    }
 
     // 檢查點數
     const sender = await this.prisma.user.findUnique({
@@ -147,7 +162,7 @@ export class MessagesService {
     if (pointCost > 0) {
       await this.pointsService.deductPoints(userId, pointCost, {
         type: 'spend',
-        description: this.getPointDescription(prismaType, !!dto.customText, !!dto.useAiRewrite),
+        description: this.getPointDescription(prismaType, !!dto.customText, !!dto.useAiRewrite, isVoiceMessage),
       });
     }
 
@@ -161,6 +176,10 @@ export class MessagesService {
         occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : null,
         senderId: userId,
         receiverId: receiver.id,
+        // 語音相關欄位
+        voiceUrl: dto.voiceUrl || null,
+        voiceDuration: dto.voiceDuration || null,
+        hasVoice: isVoiceMessage,
       },
       include: {
         sender: {
@@ -438,10 +457,13 @@ export class MessagesService {
     type: MessageType,
     hasCustomText?: boolean,
     useAiRewrite?: boolean,
+    isVoiceMessage?: boolean,
   ): string {
     const chineseType = toChineseType(type);
     let desc = `發送${chineseType}`;
-    if (hasCustomText) {
+    if (isVoiceMessage) {
+      desc += '（語音）';
+    } else if (hasCustomText) {
       desc += '（含補充文字）';
     }
     if (useAiRewrite) {

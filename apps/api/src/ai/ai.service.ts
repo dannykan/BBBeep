@@ -84,10 +84,11 @@ export class AiService {
       throw new BadRequestException('今日 AI 改寫次數已用盡，請明天再試');
     }
 
-    // 檢查點數（AI改寫需要1點）
+    // 注意：AI 改寫不扣點，點數在實際發送訊息時才扣除
+    // 這裡只檢查用戶是否有足夠點數發送（至少需要 2 點用於 AI 優化訊息）
     const points = await this.pointsService.getPoints(userId);
-    if (points < 1) {
-      throw new BadRequestException('點數不足，無法使用 AI 改寫功能');
+    if (points < 2) {
+      throw new BadRequestException('點數不足，無法使用 AI 改寫功能（發送需要 2 點）');
     }
 
     let rewrittenText: string;
@@ -109,11 +110,7 @@ export class AiService {
         throw new BadRequestException('AI 服務未配置');
       }
 
-      // 扣除點數
-      await this.pointsService.deductPoints(userId, 1, {
-        type: 'spend',
-        description: '使用 AI 改寫功能',
-      });
+      // 注意：不在這裡扣點，點數在訊息發送時扣除
 
       // 記錄使用
       const today = new Date();
@@ -185,5 +182,92 @@ export class AiService {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
+  }
+
+  /**
+   * AI 內容審核
+   * 分析文字是否適合在提醒平台發送
+   */
+  async moderateContent(text: string): Promise<{
+    isAppropriate: boolean;
+    reason: string | null;
+    category: 'ok' | 'emotional' | 'inappropriate' | 'dangerous';
+    suggestion: string | null;
+  }> {
+    if (!this.openai) {
+      // 如果沒有 AI，回傳預設通過
+      return {
+        isAppropriate: true,
+        reason: null,
+        category: 'ok',
+        suggestion: null,
+      };
+    }
+
+    const systemPrompt = `你是一個內容審核助手，專門為台灣的「路上提醒平台」審核訊息內容。
+
+這個平台讓用戶透過車牌號碼發送提醒給其他駕駛，例如：車燈沒關、輪胎沒氣、行車安全提醒等。
+
+你的任務是分析用戶輸入的內容，判斷是否適合發送。
+
+## 判斷標準
+
+### ✅ 適合發送 (category: "ok")
+- 善意的提醒或建議
+- 表達感謝或讚美
+- 描述客觀事實（如：你剛剛切換車道時有點危險）
+
+### ⚠️ 情緒發洩但可接受 (category: "emotional")
+- 帶有輕微髒話但主要是發洩情緒（如：靠北你切那麼近、他媽的你在幹嘛）
+- 使用台灣口語表達不滿但沒有人身攻擊（如：白目、三小、瞎了嗎）
+- 這類內容雖然用詞粗俗，但本質是交通情境下的情緒反應，建議用 AI 優化後發送
+
+### ❌ 不適合發送 (category: "inappropriate")
+- 人身攻擊或歧視言論（如：女人開車就是爛）
+- 索取或提供聯繫方式（如：加我 LINE、打給我）
+- 與交通無關的騷擾內容
+
+### 🚫 危險內容 (category: "dangerous")
+- 威脅傷害對方（如：等著瞧、找人修理你、弄死你）
+- 暴力或犯罪相關
+
+## 回應格式
+請用 JSON 格式回應：
+{
+  "isAppropriate": boolean,  // 是否可以發送（ok 和 emotional 都是 true）
+  "category": "ok" | "emotional" | "inappropriate" | "dangerous",
+  "reason": "判斷原因（如果不適合）",
+  "suggestion": "如果是 emotional，建議用 AI 優化；其他情況可為 null"
+}`;
+
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini', // 使用較快的模型
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `請審核以下內容：\n\n${text}` },
+        ],
+        temperature: 0.1, // 低溫度確保一致性
+        max_tokens: 200,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return { isAppropriate: true, reason: null, category: 'ok', suggestion: null };
+      }
+
+      const result = JSON.parse(content);
+      return {
+        isAppropriate: result.isAppropriate ?? true,
+        reason: result.reason ?? null,
+        category: result.category ?? 'ok',
+        suggestion: result.suggestion ?? null,
+      };
+    } catch (error) {
+      console.error('AI moderation error:', error);
+      // 出錯時預設通過，避免阻擋用戶
+      return { isAppropriate: true, reason: null, category: 'ok', suggestion: null };
+    }
   }
 }

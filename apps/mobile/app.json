@@ -21,6 +21,12 @@
         {
           "photosPermission": "此應用程式需要存取您的相簿以上傳行照照片"
         }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "此應用程式需要使用麥克風錄製語音訊息"
+        }
       ]
     ],
     "splash": {
@@ -34,7 +40,8 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
-        "NSCameraUsageDescription": "需要使用相機拍攝行照照片"
+        "NSCameraUsageDescription": "需要使用相機拍攝行照照片",
+        "NSMicrophoneUsageDescription": "需要使用麥克風錄製語音訊息"
       }
     },
     "android": {
@@ -44,7 +51,10 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

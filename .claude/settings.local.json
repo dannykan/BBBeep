@@ -66,7 +66,11 @@
       "Bash(pnpm --filter @bbbeeep/api exec prisma migrate:*)",
       "Bash(pnpm prisma:generate:*)",
       "Bash(pnpm prisma:migrate:*)",
-      "Bash(pnpm dev:web:*)"
+      "Bash(pnpm dev:web:*)",
+      "Bash(file:*)",
+      "Bash(sips:*)",
+      "Bash(npx expo prebuild:*)",
+      "Bash(pnpm list:*)"
     ]
   }
 }

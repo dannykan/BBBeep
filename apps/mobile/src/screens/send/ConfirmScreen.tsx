@@ -3,7 +3,7 @@
  * 確認並發送
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio, AVPlaybackStatus } from 'expo-av';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
-import { messagesApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints } from '@bbbeeep/shared';
+import { messagesApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints, uploadApi } from '@bbbeeep/shared';
 import { aiApi } from '@bbbeeep/shared';
 import { typography, spacing, borderRadius } from '../../theme';
 
@@ -49,8 +50,26 @@ export default function ConfirmScreen({ navigation }: Props) {
     getPointCost,
     getFinalMessage,
     validateContent,
+    voiceRecording,
+    sendMode,
+    setVoiceUrl,
+    isVoiceMode,
   } = useSend();
   const { colors, isDark } = useTheme();
+
+  // Voice playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackPosition, setPlaybackPosition] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
 
   const pointCost = getPointCost();
   const finalMessage = getFinalMessage();
@@ -73,6 +92,50 @@ export default function ConfirmScreen({ navigation }: Props) {
         setOccurredAt(new Date(now.getTime() - 15 * 60 * 1000));
         break;
     }
+  };
+
+  // Voice playback functions
+  const toggleVoicePlayback = async () => {
+    if (!voiceRecording) return;
+
+    try {
+      if (isPlaying && soundRef.current) {
+        await soundRef.current.pauseAsync();
+        setIsPlaying(false);
+        return;
+      }
+
+      if (!soundRef.current) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: voiceRecording.uri },
+          { shouldPlay: true },
+          onPlaybackStatusUpdate
+        );
+        soundRef.current = sound;
+        setIsPlaying(true);
+      } else {
+        await soundRef.current.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Voice playback error:', error);
+    }
+  };
+
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+    setPlaybackPosition(status.positionMillis / 1000);
+    if (status.didJustFinish) {
+      setIsPlaying(false);
+      setPlaybackPosition(0);
+      soundRef.current?.setPositionAsync(0);
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleConfirm = async () => {
@@ -126,6 +189,35 @@ export default function ConfirmScreen({ navigation }: Props) {
         return;
       }
 
+      // Handle voice upload if sending as voice
+      let uploadedVoiceUrl: string | undefined;
+      let voiceDuration: number | undefined;
+
+      if (sendMode === 'voice' && voiceRecording) {
+        try {
+          // Upload voice file to R2
+          const uploadResult = await uploadApi.uploadVoice(voiceRecording.uri);
+          uploadedVoiceUrl = uploadResult.url;
+          voiceDuration = voiceRecording.duration;
+          setVoiceUrl(uploadResult.url);
+        } catch (uploadError: any) {
+          console.error('Voice upload failed:', uploadError);
+          Alert.alert('錯誤', uploadError.response?.data?.message || '上傳語音失敗');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Determine the template/message content
+      let templateContent = isOtherCase ? customText : generatedMessage || customText;
+      let customTextContent = isOtherCase ? undefined : customText || undefined;
+
+      // If sending voice transcript as text or AI-optimized
+      if (voiceRecording && sendMode !== 'voice') {
+        templateContent = voiceRecording.transcript;
+        customTextContent = undefined;
+      }
+
       await messagesApi.create({
         licensePlate: normalizedPlate,
         type:
@@ -134,11 +226,13 @@ export default function ConfirmScreen({ navigation }: Props) {
             : selectedCategory === '行車安全'
             ? '行車安全提醒'
             : (selectedCategory as any),
-        template: isOtherCase ? customText : generatedMessage || customText,
-        customText: isOtherCase ? undefined : customText || undefined,
+        template: templateContent,
+        customText: customTextContent,
         useAiRewrite: usedAi,
         location: location || undefined,
         occurredAt: occurredAt.toISOString(),
+        voiceUrl: uploadedVoiceUrl,
+        voiceDuration: voiceDuration,
       });
 
       try {
@@ -178,10 +272,58 @@ export default function ConfirmScreen({ navigation }: Props) {
       </View>
 
       {/* Message preview */}
-      <View style={[styles.messageCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
-        <Text style={[styles.messageLabel, { color: colors.muted.foreground }]}>提醒內容</Text>
-        <Text style={[styles.messageText, { color: colors.foreground }]}>{finalMessage}</Text>
-      </View>
+      {sendMode === 'voice' && voiceRecording ? (
+        <View style={[styles.voiceCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+          <Text style={[styles.messageLabel, { color: colors.muted.foreground }]}>語音提醒</Text>
+          <View style={styles.voicePlayer}>
+            <TouchableOpacity
+              style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
+              onPress={toggleVoicePlayback}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={isPlaying ? 'pause' : 'play'}
+                size={20}
+                color={colors.primary.foreground}
+              />
+            </TouchableOpacity>
+            <View style={styles.voiceInfo}>
+              <View style={[styles.progressBar, { backgroundColor: colors.muted.DEFAULT }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: colors.primary.DEFAULT,
+                      width: voiceRecording.duration > 0
+                        ? `${(playbackPosition / voiceRecording.duration) * 100}%`
+                        : '0%',
+                    },
+                  ]}
+                />
+              </View>
+              <View style={styles.timeRow}>
+                <Text style={[styles.timeText, { color: colors.muted.foreground }]}>
+                  {formatDuration(playbackPosition)}
+                </Text>
+                <Text style={[styles.timeText, { color: colors.muted.foreground }]}>
+                  {formatDuration(voiceRecording.duration)}
+                </Text>
+              </View>
+            </View>
+          </View>
+          {voiceRecording.transcript && (
+            <View style={[styles.transcriptPreview, { backgroundColor: colors.muted.DEFAULT }]}>
+              <Text style={[styles.transcriptLabel, { color: colors.muted.foreground }]}>語音轉文字</Text>
+              <Text style={[styles.transcriptText, { color: colors.foreground }]}>{voiceRecording.transcript}</Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={[styles.messageCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+          <Text style={[styles.messageLabel, { color: colors.muted.foreground }]}>提醒內容</Text>
+          <Text style={[styles.messageText, { color: colors.foreground }]}>{finalMessage}</Text>
+        </View>
+      )}
 
       {/* Location input */}
       <View style={styles.inputSection}>
@@ -251,7 +393,7 @@ export default function ConfirmScreen({ navigation }: Props) {
           <>
             <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>確認發送</Text>
             <View style={styles.pointBadge}>
-              <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>{pointCost} 點</Text>
+              <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>{pointCost === 0 ? '免費' : `${pointCost} 點`}</Text>
             </View>
           </>
         )}
@@ -288,6 +430,59 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: typography.fontSize.base,
     lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
+  },
+  voiceCard: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+  },
+  voicePlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    marginTop: spacing[2],
+  },
+  playButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceInfo: {
+    flex: 1,
+    gap: spacing[1],
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeText: {
+    fontSize: typography.fontSize.xs,
+    fontVariant: ['tabular-nums'],
+  },
+  transcriptPreview: {
+    marginTop: spacing[3],
+    borderRadius: borderRadius.md,
+    padding: spacing[3],
+  },
+  transcriptLabel: {
+    fontSize: typography.fontSize.xs,
+    marginBottom: spacing[1],
+  },
+  transcriptText: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.fontSize.sm * 1.4,
   },
   inputSection: {
     marginBottom: spacing[4],

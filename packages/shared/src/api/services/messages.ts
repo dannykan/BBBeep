@@ -14,6 +14,8 @@ export const messagesApi = {
     useAiRewrite?: boolean;
     location?: string;
     occurredAt?: string;
+    voiceUrl?: string;
+    voiceDuration?: number;
   }) =>
     getApiClient()
       .post<Message>('/messages', data)

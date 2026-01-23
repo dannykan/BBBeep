@@ -40,12 +40,12 @@ export const POINTS_CONFIG = {
   },
 
   // ============================================
-  // 二、語音提醒（未來功能）
+  // 二、語音提醒
   // ============================================
 
   voice: {
-    enabled: false,       // 是否啟用語音功能
-    maxDuration: 10,      // 最大秒數
+    enabled: true,        // 是否啟用語音功能
+    maxDuration: 15,      // 最大秒數
     cost: 6,              // 發送成本
     trialMaxUsage: 2,     // 試用期最多使用次數
   },
@@ -203,4 +203,25 @@ export function getDailyFreePointsAmount(isInTrial: boolean): number {
   }
 
   return 0;
+}
+
+/**
+ * 取得語音訊息發送成本
+ */
+export function getVoiceMessageCost(): number {
+  return POINTS_CONFIG.voice.cost;
+}
+
+/**
+ * 檢查語音功能是否啟用
+ */
+export function isVoiceEnabled(): boolean {
+  return POINTS_CONFIG.voice.enabled;
+}
+
+/**
+ * 取得語音最大秒數
+ */
+export function getVoiceMaxDuration(): number {
+  return POINTS_CONFIG.voice.maxDuration;
 }

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsIn, IsOptional, MaxLength, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn, IsOptional, MaxLength, IsDateString, IsNumber, Min, Max, IsUrl, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { MessageType } from '@prisma/client';
 import { IsContentSafe } from '../../common/decorators';
@@ -46,4 +46,16 @@ export class CreateMessageDto {
   @IsDateString()
   @IsOptional()
   occurredAt?: string;
+
+  @ApiProperty({ required: false, example: 'https://r2.example.com/voice/xxx.m4a', description: '語音檔案 URL（可選）' })
+  @IsString()
+  @IsOptional()
+  voiceUrl?: string;
+
+  @ApiProperty({ required: false, example: 10, description: '語音長度（秒）' })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(15)
+  voiceDuration?: number;
 }

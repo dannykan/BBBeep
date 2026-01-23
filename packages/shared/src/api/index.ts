@@ -27,4 +27,4 @@ export {
   adminInviteApi,
 } from './services';
 
-export type { UploadFile } from './services';
+export type { UploadFile, AiModerationResponse } from './services';

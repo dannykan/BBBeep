@@ -131,6 +131,11 @@ model Message {
   read       Boolean     @default(false)
   createdAt  DateTime    @default(now())
 
+  // 語音訊息相關
+  voiceUrl      String?   // 語音檔案 URL（R2 儲存）
+  voiceDuration Int?      // 語音長度（秒）
+  hasVoice      Boolean   @default(false) // 是否為語音訊息
+
   // Relations
   senderId   String
   sender     User            @relation("Sender", fields: [senderId], references: [id])

@@ -11,6 +11,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,15 @@ export default function SettingsScreen() {
         onPress: logout,
       },
     ]);
+  };
+
+  const handleFeedback = async () => {
+    const lineUrl = 'https://line.me/R/ti/p/@556vmzwz';
+    try {
+      await Linking.openURL(lineUrl);
+    } catch (error) {
+      Alert.alert('無法開啟', '請確認已安裝 LINE App');
+    }
   };
 
   const MenuItem = ({
@@ -200,6 +210,18 @@ export default function SettingsScreen() {
               label="外觀模式"
               value={themeModeLabels[themeMode]}
               onPress={() => navigation.navigate('Appearance')}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>支援</Text>
+          <View style={styles.menuGroup}>
+            <MenuItem
+              icon="chatbubble-ellipses-outline"
+              label="問題反饋"
+              value="LINE 客服"
+              onPress={handleFeedback}
             />
           </View>
         </View>

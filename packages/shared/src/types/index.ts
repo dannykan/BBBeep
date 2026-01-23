@@ -77,6 +77,10 @@ export interface Message {
     id: string;
     nickname?: string;
   };
+  // Voice message fields
+  voiceUrl?: string;
+  voiceDuration?: number;
+  hasVoice?: boolean;
 }
 
 export interface SentMessage {
@@ -94,6 +98,10 @@ export interface SentMessage {
     nickname?: string;
     licensePlate?: string;
   };
+  // Voice message fields
+  voiceUrl?: string;
+  voiceDuration?: number;
+  hasVoice?: boolean;
 }
 
 // ============================================
@@ -262,6 +270,13 @@ export interface UploadResponse {
   filename: string;
   originalname: string;
   size: number;
+}
+
+export interface VoiceUploadResponse {
+  url: string;
+  key: string;
+  size: number;
+  originalname: string;
 }
 
 // ============================================

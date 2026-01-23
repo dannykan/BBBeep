@@ -4,10 +4,17 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { aiApi, filterContent, type ContentFilterResult } from '@bbbeeep/shared';
+import { aiApi, filterContent, type ContentFilterResult, type AiModerationResponse } from '@bbbeeep/shared';
 import type { VehicleType, MessageType } from '@bbbeeep/shared';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
+type SendMode = 'text' | 'voice' | 'ai';
+
+interface VoiceRecording {
+  uri: string;
+  duration: number;
+  transcript: string;
+}
 
 interface SendState {
   // Vehicle and plate
@@ -38,6 +45,15 @@ interface SendState {
   // Content filter
   contentWarning: string | null;
   contentFilterResult: ContentFilterResult | null;
+
+  // AI Moderation
+  aiModeration: AiModerationResponse | null;
+  isAiModerating: boolean;
+
+  // Voice
+  voiceRecording: VoiceRecording | null;
+  voiceUrl: string | null;
+  sendMode: SendMode;
 }
 
 interface SendContextType extends SendState {
@@ -58,14 +74,22 @@ interface SendContextType extends SendState {
   setSelectedTimeOption: (option: 'now' | '5min' | '10min' | '15min') => void;
   setIsLoading: (loading: boolean) => void;
 
+  // Voice setters
+  setVoiceRecording: (recording: VoiceRecording | null) => void;
+  setVoiceUrl: (url: string | null) => void;
+  setSendMode: (mode: SendMode) => void;
+
   // Helpers
   resetSend: () => void;
+  clearVoice: () => void;
   checkAiLimit: () => Promise<void>;
   getMessageType: () => MessageType;
   getPointCost: () => number;
   getFinalMessage: () => string;
   checkContentFilter: (text: string) => void;
+  checkAiModeration: (text: string) => Promise<void>;
   validateContent: (text: string) => { isValid: boolean; message: string | null };
+  isVoiceMode: () => boolean;
 }
 
 const SendContext = createContext<SendContextType | null>(null);
@@ -88,6 +112,13 @@ const initialState: SendState = {
   isLoading: false,
   contentWarning: null,
   contentFilterResult: null,
+  // AI Moderation
+  aiModeration: null,
+  isAiModerating: false,
+  // Voice
+  voiceRecording: null,
+  voiceUrl: null,
+  sendMode: 'text',
 };
 
 export function SendProvider({ children }: { children: React.ReactNode }) {
@@ -158,6 +189,27 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, isLoading: loading }));
   }, []);
 
+  const setVoiceRecording = useCallback((recording: VoiceRecording | null) => {
+    setState((prev) => ({ ...prev, voiceRecording: recording }));
+  }, []);
+
+  const setVoiceUrl = useCallback((url: string | null) => {
+    setState((prev) => ({ ...prev, voiceUrl: url }));
+  }, []);
+
+  const setSendMode = useCallback((mode: SendMode) => {
+    setState((prev) => ({ ...prev, sendMode: mode }));
+  }, []);
+
+  const clearVoice = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      voiceRecording: null,
+      voiceUrl: null,
+      sendMode: 'text',
+    }));
+  }, []);
+
   const resetSend = useCallback(() => {
     setState({
       ...initialState,
@@ -190,21 +242,40 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
   }, [state.selectedCategory]);
 
   const getPointCost = useCallback((): number => {
-    // AI 優化版本扣 2 點，直接送出扣 4 點
+    // Voice mode: 6 points for voice
+    if (state.sendMode === 'voice') {
+      return 6;
+    }
+
+    // If we have a voice recording but sending as text (from transcript)
+    if (state.voiceRecording && state.sendMode === 'text') {
+      // Text from voice transcript: same as custom text without AI
+      return 4;
+    }
+
+    // If we have a voice recording and using AI optimization
+    if (state.voiceRecording && state.sendMode === 'ai') {
+      return 2;
+    }
+
+    // AI 優化版本扣 2 點
     if (state.useAiVersion && state.aiSuggestion) {
       return 2;
     }
-    // 讚美感謝只扣 1 點（沒有自訂文字時）
+
+    // 讚美感謝（純模板）：免費
     if (state.selectedCategory === '讚美感謝' && !state.customText.trim()) {
-      return 1;
+      return 0;
     }
+
     // 有自訂文字但沒用 AI：4 點
     if (state.customText.trim()) {
       return 4;
     }
-    // 純系統模板：2 點
-    return 2;
-  }, [state.useAiVersion, state.aiSuggestion, state.selectedCategory, state.customText]);
+
+    // 純系統模板（非讚美）：1 點
+    return 1;
+  }, [state.useAiVersion, state.aiSuggestion, state.selectedCategory, state.customText, state.sendMode, state.voiceRecording]);
 
   const getFinalMessage = useCallback((): string => {
     if (state.useAiVersion && state.aiSuggestion) {
@@ -249,6 +320,49 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // AI content moderation (for more accurate, context-aware filtering)
+  const checkAiModeration = useCallback(async (text: string) => {
+    // Only check if text is 5+ characters
+    if (text.trim().length < 5) {
+      setState((prev) => ({
+        ...prev,
+        aiModeration: null,
+        isAiModerating: false,
+      }));
+      return;
+    }
+
+    console.log('[AI Moderation] Starting check for:', text);
+    setState((prev) => ({ ...prev, isAiModerating: true }));
+
+    try {
+      const result = await aiApi.moderate(text);
+      console.log('[AI Moderation] Result:', result);
+      setState((prev) => ({
+        ...prev,
+        aiModeration: result,
+        isAiModerating: false,
+        // Update content warning based on AI moderation result
+        contentWarning: result.isAppropriate
+          ? null
+          : result.reason || '內容不適合發送',
+      }));
+    } catch (error: any) {
+      console.error('[AI Moderation] Error:', error?.message || error);
+      // On error, fallback to allowing the content (don't block users)
+      setState((prev) => ({
+        ...prev,
+        aiModeration: { isAppropriate: true, reason: null, category: 'ok', suggestion: null },
+        isAiModerating: false,
+      }));
+    }
+  }, []);
+
+  // Check if we're in voice mode
+  const isVoiceMode = useCallback((): boolean => {
+    return state.sendMode === 'voice' && state.voiceRecording !== null;
+  }, [state.sendMode, state.voiceRecording]);
+
   const value: SendContextType = {
     ...state,
     setVehicleType,
@@ -266,13 +380,19 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     setOccurredAt,
     setSelectedTimeOption,
     setIsLoading,
+    setVoiceRecording,
+    setVoiceUrl,
+    setSendMode,
     resetSend,
+    clearVoice,
     checkAiLimit,
     getMessageType,
     getPointCost,
     getFinalMessage,
     checkContentFilter,
+    checkAiModeration,
     validateContent,
+    isVoiceMode,
   };
 
   return <SendContext.Provider value={value}>{children}</SendContext.Provider>;

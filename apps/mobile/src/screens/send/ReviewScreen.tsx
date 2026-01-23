@@ -16,8 +16,9 @@ import { typography, spacing, borderRadius } from '../../theme';
 type Props = NativeStackScreenProps<SendStackParamList, 'Review'>;
 
 export default function ReviewScreen({ navigation }: Props) {
-  const { generatedMessage, aiLimit } = useSend();
+  const { generatedMessage, aiLimit, getPointCost } = useSend();
   const { colors } = useTheme();
+  const pointCost = getPointCost();
 
   const handleDirectSend = () => {
     navigation.navigate('Confirm');
@@ -60,7 +61,7 @@ export default function ReviewScreen({ navigation }: Props) {
         >
           <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>直接送出</Text>
           <View style={styles.pointBadge}>
-            <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
+            <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>{pointCost === 0 ? '免費' : `${pointCost} 點`}</Text>
           </View>
         </TouchableOpacity>
 

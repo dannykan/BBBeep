@@ -13,10 +13,22 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import {
+  initConnection,
+  getProducts,
+  requestPurchase,
+  finishTransaction,
+  purchaseUpdatedListener,
+  purchaseErrorListener,
+  type ProductPurchase,
+  type PurchaseError,
+  type Product,
+} from 'react-native-iap';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { getTotalPoints, pointsApi } from '@bbbeeep/shared';
@@ -27,11 +39,28 @@ import {
   borderRadius,
 } from '../../theme';
 
+// IAP 產品 ID（需要在 App Store Connect 設定對應的產品）
+const IAP_SKUS = Platform.select({
+  ios: [
+    'com.ubeep.mobile.points_10',
+    'com.ubeep.mobile.points_30',
+    'com.ubeep.mobile.points_50',
+    'com.ubeep.mobile.points_100',
+  ],
+  android: [
+    'points_10',
+    'points_30',
+    'points_50',
+    'points_100',
+  ],
+  default: [],
+});
+
 const RECHARGE_OPTIONS = [
-  { points: 10, price: 30, popular: false },
-  { points: 30, price: 80, popular: true },
-  { points: 50, price: 120, popular: false },
-  { points: 100, price: 200, popular: false },
+  { points: 10, price: 30, popular: false, productId: 'com.ubeep.mobile.points_10' },
+  { points: 30, price: 80, popular: true, productId: 'com.ubeep.mobile.points_30' },
+  { points: 50, price: 120, popular: false, productId: 'com.ubeep.mobile.points_50' },
+  { points: 100, price: 200, popular: false, productId: 'com.ubeep.mobile.points_100' },
 ];
 
 export default function WalletScreen() {
@@ -44,6 +73,8 @@ export default function WalletScreen() {
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [iapProducts, setIapProducts] = useState<Product[]>([]);
+  const [iapConnected, setIapConnected] = useState(false);
 
   const loadPointHistory = useCallback(async () => {
     try {
@@ -57,6 +88,65 @@ export default function WalletScreen() {
     }
   }, []);
 
+  // 初始化 IAP
+  useEffect(() => {
+    let purchaseUpdateSubscription: any;
+    let purchaseErrorSubscription: any;
+
+    const initIAP = async () => {
+      try {
+        await initConnection();
+        setIapConnected(true);
+
+        // 獲取產品資訊
+        if (IAP_SKUS && IAP_SKUS.length > 0) {
+          const products = await getProducts({ skus: IAP_SKUS });
+          setIapProducts(products);
+        }
+      } catch (error) {
+        console.warn('IAP init error:', error);
+      }
+    };
+
+    initIAP();
+
+    // 監聽購買更新
+    purchaseUpdateSubscription = purchaseUpdatedListener(
+      async (purchase: ProductPurchase) => {
+        const receipt = purchase.transactionReceipt;
+        if (receipt) {
+          try {
+            // TODO: 向後端驗證收據並加點
+            // await pointsApi.verifyPurchase(receipt);
+            await refreshUser();
+            loadPointHistory();
+            Alert.alert('購買成功', '點數已加入您的帳戶！');
+          } catch (error) {
+            console.error('Purchase verification error:', error);
+          }
+
+          // 完成交易
+          await finishTransaction({ purchase, isConsumable: true });
+        }
+        setIsRecharging(false);
+      }
+    );
+
+    // 監聽購買錯誤
+    purchaseErrorSubscription = purchaseErrorListener((error: PurchaseError) => {
+      console.warn('Purchase error:', error);
+      setIsRecharging(false);
+      if (error.code !== 'E_USER_CANCELLED') {
+        Alert.alert('購買失敗', error.message || '請稍後再試');
+      }
+    });
+
+    return () => {
+      purchaseUpdateSubscription?.remove();
+      purchaseErrorSubscription?.remove();
+    };
+  }, [refreshUser, loadPointHistory]);
+
   useEffect(() => {
     loadPointHistory();
   }, [loadPointHistory]);
@@ -67,8 +157,23 @@ export default function WalletScreen() {
     loadPointHistory();
   };
 
-  const handleRecharge = async (points: number) => {
-    Alert.alert('提示', '儲值功能尚未開通，敬請期待！');
+  const handleRecharge = async (option: typeof RECHARGE_OPTIONS[0]) => {
+    if (!iapConnected) {
+      Alert.alert('提示', '儲值服務暫時無法使用，請稍後再試');
+      return;
+    }
+
+    setIsRecharging(true);
+    setSelectedOption(option.points);
+
+    try {
+      await requestPurchase({ sku: option.productId });
+    } catch (error: any) {
+      setIsRecharging(false);
+      if (error.code !== 'E_USER_CANCELLED') {
+        Alert.alert('購買失敗', error.message || '請稍後再試');
+      }
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -158,15 +263,12 @@ export default function WalletScreen() {
           <Text style={styles.sectionTitle}>儲值方案</Text>
           <View style={styles.rechargeOptions}>
             {RECHARGE_OPTIONS.map((option) => (
-              <TouchableOpacity
+              <View
                 key={option.points}
                 style={[
                   styles.rechargeOption,
-                  selectedOption === option.points && styles.rechargeOptionSelected,
                   option.popular && styles.rechargeOptionPopular,
                 ]}
-                onPress={() => setSelectedOption(option.points)}
-                activeOpacity={0.7}
               >
                 <View style={styles.rechargeOptionLeft}>
                   <View style={styles.rechargePointsRow}>
@@ -180,11 +282,19 @@ export default function WalletScreen() {
                   </View>
                   <Text style={styles.rechargePrice}>NT$ {option.price}</Text>
                 </View>
-                <View style={styles.rechargeOptionRight}>
-                  <Ionicons name="alert-circle-outline" size={16} color="#D97706" />
-                  <Text style={styles.notOpenText}>尚未開通</Text>
-                </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.purchaseButton}
+                  onPress={() => handleRecharge(option)}
+                  disabled={isRecharging}
+                  activeOpacity={0.7}
+                >
+                  {isRecharging && selectedOption === option.points ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.purchaseButtonText}>購買</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>
@@ -389,11 +499,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  rechargeOptionSelected: {
-    borderWidth: 2,
-    borderColor: colors.primary.DEFAULT,
-    backgroundColor: colors.primary.soft,
-  },
   rechargeOptionPopular: {
     borderColor: `${colors.primary.DEFAULT}50`,
   },
@@ -432,14 +537,19 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     marginTop: spacing[1],
     fontVariant: ['tabular-nums'],
   },
-  rechargeOptionRight: {
-    flexDirection: 'row',
+  purchaseButton: {
+    backgroundColor: colors.primary.DEFAULT,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.md,
+    minWidth: 60,
     alignItems: 'center',
-    gap: spacing[1],
+    justifyContent: 'center',
   },
-  notOpenText: {
-    fontSize: typography.fontSize.xs,
-    color: isDark ? '#F0B454' : '#D97706',
+  purchaseButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.primary.foreground,
   },
 
   // History Card

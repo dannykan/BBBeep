@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { R2Module } from './common/storage/r2.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MessagesModule } from './messages/messages.module';
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       envFilePath: '.env',
     }),
     PrismaModule,
+    R2Module,
     RedisModule,
     NotificationsModule,
     AuthModule,
