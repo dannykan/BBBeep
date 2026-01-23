@@ -31,6 +31,7 @@
     "migration:run": "prisma migrate deploy"
   },
   "dependencies": {
+    "@bbbeeep/shared": "workspace:*",
     "@google/generative-ai": "^0.2.1",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.1.1",
@@ -48,6 +49,8 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^3.2.1",
     "openai": "^4.24.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -63,6 +66,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.11",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.0",

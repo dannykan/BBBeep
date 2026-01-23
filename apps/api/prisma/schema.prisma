@@ -77,6 +77,10 @@ model User {
   linePictureUrl         String?              // LINE 頭像 URL
   isLineFriend           Boolean      @default(false) // 是否已加入 LINE 官方帳號好友
 
+  // Apple Sign-In 相關欄位
+  appleUserId            String?      @unique // Apple User ID (sub claim from identity token)
+  appleEmail             String?              // Apple 提供的 email（可能是 private relay）
+
   // 官方封鎖相關欄位
   isBlockedByAdmin       Boolean      @default(false) // 是否被官方封鎖
   blockedByAdminAt       DateTime?                    // 封鎖時間
@@ -103,10 +107,12 @@ model User {
   licensePlateApplications LicensePlateApplication[]
   inviteHistoryAsInviter   InviteHistory[]           @relation("InviterHistory")
   inviteHistoryAsInvitee   InviteHistory?            @relation("InviteeHistory")
+  deviceTokens             DeviceToken[]
 
   @@index([phone])
   @@index([licensePlate])
   @@index([lineUserId])
+  @@index([appleUserId])
 }
 
 model Message {
@@ -261,5 +267,50 @@ model InviteHistory {
 
   @@index([inviterId])
   @@index([status])
+  @@index([createdAt])
+}
+
+// 推播通知相關
+
+enum DevicePlatform {
+  ios
+  android
+}
+
+model DeviceToken {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String         // Expo Push Token (ExponentPushToken[xxx])
+  platform  DevicePlatform
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([token])
+  @@index([isActive])
+}
+
+enum NotificationType {
+  message     // 收到新提醒
+  broadcast   // 管理員推播
+  system      // 系統通知
+}
+
+model NotificationLog {
+  id             String           @id @default(cuid())
+  type           NotificationType
+  title          String
+  body           String
+  data           Json?            // 額外資料（如 messageId）
+  targetUserIds  String[]         // 目標用戶 ID 列表（空陣列表示全體用戶）
+  successCount   Int              @default(0)
+  failureCount   Int              @default(0)
+  sentBy         String?          // 發送者（admin ID 或 system）
+  createdAt      DateTime         @default(now())
+
+  @@index([type])
   @@index([createdAt])
 }

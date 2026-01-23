@@ -803,4 +803,41 @@ export class AdminService {
       })),
     };
   }
+
+  // ========== 推播通知統計 ==========
+
+  async getNotificationStats() {
+    const [totalDevices, activeDevices, iosDevices, androidDevices, recentLogs] =
+      await Promise.all([
+        this.prisma.deviceToken.count(),
+        this.prisma.deviceToken.count({ where: { isActive: true } }),
+        this.prisma.deviceToken.count({ where: { platform: 'ios', isActive: true } }),
+        this.prisma.deviceToken.count({ where: { platform: 'android', isActive: true } }),
+        this.prisma.notificationLog.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        }),
+      ]);
+
+    const totalSent = await this.prisma.notificationLog.aggregate({
+      _sum: {
+        successCount: true,
+        failureCount: true,
+      },
+    });
+
+    return {
+      devices: {
+        total: totalDevices,
+        active: activeDevices,
+        ios: iosDevices,
+        android: androidDevices,
+      },
+      notifications: {
+        totalSent: totalSent._sum.successCount || 0,
+        totalFailed: totalSent._sum.failureCount || 0,
+      },
+      recentLogs,
+    };
+  }
 }

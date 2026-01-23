@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LineLoginDto {
   @ApiProperty({ description: 'LINE OAuth 授權碼', example: 'abc123' })
@@ -11,4 +11,9 @@ export class LineLoginDto {
   @IsString()
   @IsNotEmpty()
   state: string;
+
+  @ApiPropertyOptional({ description: 'Redirect URI（Mobile 專用）', example: 'bbbeeep://' })
+  @IsOptional()
+  @IsString()
+  redirectUri?: string;
 }

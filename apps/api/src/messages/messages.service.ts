@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointsService } from '../points/points.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageType, PointHistoryType } from '@prisma/client';
 import { toChineseType, toPrismaType, MessageTypeChinese } from '../common/utils/message-type-mapper';
@@ -16,6 +17,7 @@ export class MessagesService {
   constructor(
     private prisma: PrismaService,
     private pointsService: PointsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(userId: string, dto: CreateMessageDto) {
@@ -191,6 +193,21 @@ export class MessagesService {
         type: 'earn',
         description: '收到讚美回饋',
       });
+    }
+
+    // 發送推播通知（只有已完成註冊的用戶才發送）
+    if (receiver.hasCompletedOnboarding) {
+      this.notificationsService
+        .sendNewMessageNotification(
+          receiver.id,
+          message.id,
+          message.type,
+          message.sender.nickname || undefined,
+        )
+        .catch((err) => {
+          // 推播失敗不影響主流程，只記錄錯誤
+          console.error('Failed to send push notification:', err);
+        });
     }
 
     // 轉換為中文返回

@@ -32,6 +32,7 @@ import { messagesApi, aiApi } from '@/lib/api-services';
 import type { MessageType } from '@/types';
 import { normalizeLicensePlate, displayLicensePlate } from '@/lib/license-plate-format';
 import { getTotalPoints } from '@/lib/utils';
+import { filterContent, type ContentFilterResult } from '@bbbeeep/shared';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
 type SendStep = 'vehicle-type' | 'plate-input' | 'category' | 'situation' | 'review' | 'custom' | 'ai-suggest' | 'confirm' | 'success';
@@ -63,6 +64,37 @@ const SendPage = React.memo(() => {
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [showInsufficientPointsDialog, setShowInsufficientPointsDialog] = useState(false);
   const [requiredPoints, setRequiredPoints] = useState(0);
+
+  // 內容過濾相關 state
+  const [contentWarning, setContentWarning] = useState<string | null>(null);
+  const [contentFilterResult, setContentFilterResult] = useState<ContentFilterResult | null>(null);
+
+  // 內容過濾檢查（防抖）
+  const checkContentFilter = useCallback((text: string) => {
+    // 只檢查 5 字以上的內容
+    if (text.trim().length < 5) {
+      setContentWarning(null);
+      setContentFilterResult(null);
+      return;
+    }
+
+    const result = filterContent(text);
+    setContentFilterResult(result);
+
+    if (!result.isValid && result.violations.length > 0) {
+      setContentWarning(result.violations[0].message);
+    } else {
+      setContentWarning(null);
+    }
+  }, []);
+
+  // 防抖處理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkContentFilter(customText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customText, checkContentFilter]);
 
   useEffect(() => {
     if (!user) {
@@ -405,6 +437,14 @@ const SendPage = React.memo(() => {
       return;
     }
 
+    // 內容過濾驗證
+    const filterResult = filterContent(customText);
+    if (!filterResult.isValid) {
+      const errorMsg = filterResult.violations[0]?.message || '內容包含不當資訊';
+      toast.error(errorMsg);
+      return;
+    }
+
     // 其他讚美可以使用AI，其他讚美選項直接送出
     if (selectedCategory === '讚美感謝' && selectedSituation !== 'other-praise') {
       setStep('confirm');
@@ -452,6 +492,16 @@ const SendPage = React.memo(() => {
     if (!location.trim()) {
       toast.error('請填寫事發地點');
       return;
+    }
+
+    // 內容過濾驗證（最終檢查）
+    if (customText.trim()) {
+      const filterResult = filterContent(customText);
+      if (!filterResult.isValid) {
+        const errorMsg = filterResult.violations[0]?.message || '內容包含不當資訊';
+        toast.error(errorMsg);
+        return;
+      }
     }
 
     // "其他情況"和"其他讚美"不需要 generatedMessage，只需要 customText
@@ -556,6 +606,9 @@ const SendPage = React.memo(() => {
     setAiSuggestion('');
     setUseAiVersion(false);
     setUsedAi(false);
+    // 重置內容過濾
+    setContentWarning(null);
+    setContentFilterResult(null);
     // 重置地點和時間
     setLocation('');
     setLocationSource(null);
@@ -970,6 +1023,23 @@ const SendPage = React.memo(() => {
                 </span>
               </div>
             </div>
+
+            {/* 內容過濾警告 */}
+            {contentWarning && customText.trim().length >= 5 && (
+              <Card className="p-3 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                      {contentWarning}
+                    </span>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      送出時將無法通過驗證
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* AI 使用次數提示 */}
             {(selectedCategory !== '讚美感謝' || (selectedCategory === '讚美感謝' && selectedSituation === 'other-praise')) && customText.trim() && (

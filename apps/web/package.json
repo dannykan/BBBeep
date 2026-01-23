@@ -15,6 +15,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@bbbeeep/shared": "workspace:*",
     "@hookform/resolvers": "^3.3.4",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",

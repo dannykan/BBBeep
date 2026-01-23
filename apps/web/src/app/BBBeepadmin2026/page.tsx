@@ -257,6 +257,13 @@ const AdminPage = React.memo(() => {
             >
               邀請碼設定
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/BBBeepadmin2026/notifications')}
+            >
+              推播管理
+            </Button>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               登出

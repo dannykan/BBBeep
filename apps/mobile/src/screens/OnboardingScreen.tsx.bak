@@ -1,0 +1,1290 @@
+/**
+ * Onboarding Screen
+ * 首次登入設定頁面 - 對齊 Web 版本設計（6 步驟流程）
+ * 步驟順序：身份選擇 → 車牌(駕駛) → 暱稱 → 點數說明 → 邀請碼 → 歡迎
+ */
+
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import {
+  usersApi,
+  inviteApi,
+  licensePlateApi,
+  normalizeLicensePlate,
+  displayLicensePlate,
+} from '@bbbeeep/shared';
+import type {
+  UserType,
+  VehicleType,
+  ValidateCodeResponse,
+  LicensePlateCheckResponse,
+} from '@bbbeeep/shared';
+import {
+  colors,
+  typography,
+  spacing,
+  borderRadius,
+} from '../theme';
+
+type OnboardingStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+export default function OnboardingScreen() {
+  const { refreshUser } = useAuth();
+  const [step, setStep] = useState<OnboardingStep>(1);
+  const [userType, setUserType] = useState<UserType | null>(null);
+  const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
+  const [nickname, setNickname] = useState('');
+  const [licensePlate, setLicensePlate] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Invite code state
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCodeValidation, setInviteCodeValidation] = useState<ValidateCodeResponse | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [inviteCodeApplied, setInviteCodeApplied] = useState(false);
+
+  // License plate state
+  const [showLicensePlateDialog, setShowLicensePlateDialog] = useState(false);
+  const [licensePlateCheckResult, setLicensePlateCheckResult] = useState<LicensePlateCheckResponse | null>(null);
+  const [showApplicationDialog, setShowApplicationDialog] = useState(false);
+  const [applicationEmail, setApplicationEmail] = useState('');
+
+  // Calculate steps - memoized to prevent recalculation
+  const { totalSteps, currentDisplayStep } = useMemo(() => {
+    const total = userType === 'pedestrian' ? 5 : 6;
+    let display = step;
+    if (userType === 'pedestrian') {
+      // Pedestrians skip step 2 (license plate), so steps 3-6 display as 2-5
+      if (step >= 3) display = step - 1;
+    }
+    return { totalSteps: total, currentDisplayStep: display };
+  }, [step, userType]);
+
+  // Simple back handler - no async operations
+  const handleBack = useCallback(() => {
+    switch (step) {
+      case 2:
+        setStep(1);
+        break;
+      case 3:
+        setStep(userType === 'pedestrian' ? 1 : 2);
+        break;
+      case 4:
+        setStep(3);
+        break;
+      case 5:
+        setStep(4);
+        break;
+      case 6:
+        setStep(5);
+        break;
+    }
+  }, [step, userType]);
+
+  // Step 1: User type selection
+  const handleUserTypeSelect = useCallback((type: UserType, vehicle?: VehicleType) => {
+    setUserType(type);
+    if (vehicle) setVehicleType(vehicle);
+    // Pedestrians skip license plate step
+    setStep(type === 'pedestrian' ? 3 : 2);
+  }, []);
+
+  // Step 2: License plate submit
+  const handleLicensePlateSubmit = useCallback(async () => {
+    if (!licensePlate) return;
+
+    const normalizedPlate = normalizeLicensePlate(licensePlate);
+    if (!normalizedPlate) {
+      Alert.alert('錯誤', '車牌號碼格式無效');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const checkResult = await licensePlateApi.checkAvailability(normalizedPlate);
+      if (checkResult.isBound) {
+        setLicensePlateCheckResult(checkResult);
+        setShowLicensePlateDialog(true);
+      } else {
+        setStep(3); // Go to nickname
+      }
+    } catch (error: any) {
+      Alert.alert('錯誤', error.response?.data?.message || '檢查車牌失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [licensePlate]);
+
+  // License plate application handlers
+  const handleConfirmApplication = useCallback(() => {
+    setShowLicensePlateDialog(false);
+    setShowApplicationDialog(true);
+  }, []);
+
+  const handleSubmitApplication = useCallback(async () => {
+    if (!licensePlate) return;
+
+    const normalizedPlate = normalizeLicensePlate(licensePlate);
+    if (!normalizedPlate) {
+      Alert.alert('錯誤', '車牌號碼格式無效');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await licensePlateApi.createApplication({
+        licensePlate: normalizedPlate,
+        vehicleType: vehicleType || undefined,
+        email: applicationEmail || undefined,
+      });
+      Alert.alert('成功', '申請已提交，我們會在 1-2 個工作天內以 Email 通知');
+      setShowApplicationDialog(false);
+      setStep(3); // Go to nickname
+    } catch (error: any) {
+      Alert.alert('錯誤', error.response?.data?.message || '提交申請失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [licensePlate, vehicleType, applicationEmail]);
+
+  // Step 3: Nickname submit
+  const handleNicknameSubmit = useCallback(() => {
+    setStep(4); // Go to points explanation - no async needed here
+  }, []);
+
+  // Step 4: Points explanation next
+  const handlePointsNext = useCallback(() => {
+    setStep(5); // Go to invite code
+  }, []);
+
+  // Step 5: Invite code
+  const handleValidateInviteCode = useCallback(async (code: string) => {
+    if (code.length !== 6) {
+      setInviteCodeValidation(null);
+      return;
+    }
+
+    setIsValidatingCode(true);
+    try {
+      const result = await inviteApi.validateCode(code);
+      setInviteCodeValidation(result);
+    } catch (error) {
+      setInviteCodeValidation({ valid: false, message: '驗證失敗' });
+    } finally {
+      setIsValidatingCode(false);
+    }
+  }, []);
+
+  const handleApplyInviteCode = useCallback(async () => {
+    if (!inviteCodeValidation?.valid || !inviteCode) return;
+
+    setIsLoading(true);
+    try {
+      await inviteApi.applyCode(inviteCode);
+      setInviteCodeApplied(true);
+      Alert.alert('成功', '邀請碼已套用！完成註冊後你和邀請人各得 10 點');
+      setStep(6);
+    } catch (error: any) {
+      Alert.alert('錯誤', error.response?.data?.message || '使用邀請碼失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [inviteCodeValidation, inviteCode]);
+
+  const handleSkipInviteCode = useCallback(() => {
+    setStep(6);
+  }, []);
+
+  // Step 6: Complete onboarding
+  const handleCompleteOnboarding = useCallback(async () => {
+    if (!userType) return;
+
+    const normalizedPlate = licensePlate ? normalizeLicensePlate(licensePlate) : undefined;
+    if (licensePlate && !normalizedPlate) {
+      Alert.alert('錯誤', '車牌號碼格式無效');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await usersApi.completeOnboarding({
+        userType,
+        vehicleType: vehicleType || undefined,
+        licensePlate: normalizedPlate || undefined,
+        nickname: nickname || undefined,
+      });
+      await refreshUser();
+    } catch (error: any) {
+      Alert.alert('錯誤', error.response?.data?.message || '完成註冊失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userType, vehicleType, licensePlate, nickname, refreshUser]);
+
+  // Invite code input handler
+  const handleInviteCodeChange = useCallback((text: string) => {
+    const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (cleaned.length <= 6) {
+      setInviteCode(cleaned);
+      if (cleaned.length === 6) {
+        handleValidateInviteCode(cleaned);
+      } else {
+        setInviteCodeValidation(null);
+      }
+    }
+  }, [handleValidateInviteCode]);
+
+  // License plate input handler
+  const handleLicensePlateChange = useCallback((text: string) => {
+    const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    setLicensePlate(cleaned);
+  }, []);
+
+  // Swipe gesture for back navigation
+  const swipeStartX = useRef(0);
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+      ) => {
+        // Only capture horizontal swipes starting from the left edge (first 50px)
+        const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+        const isSwipingRight = gestureState.dx > 0;
+        const startedFromLeftEdge = swipeStartX.current < 50;
+        return isHorizontalSwipe && isSwipingRight && startedFromLeftEdge && step > 1;
+      },
+      onPanResponderGrant: (evt: GestureResponderEvent) => {
+        swipeStartX.current = evt.nativeEvent.pageX;
+      },
+      onPanResponderRelease: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+      ) => {
+        // Trigger back if swiped more than 100px to the right
+        if (gestureState.dx > 100 && step > 1) {
+          handleBack();
+        }
+      },
+    });
+  }, [step, handleBack]);
+
+  return (
+    <View style={styles.container} {...panResponder.panHandlers}>
+      {/* Header - 統一格式（固定高度） */}
+      <View style={styles.headerContainer}>
+        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              {step > 1 ? (
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handleBack}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="chevron-back" size={20} color={colors.muted.foreground} />
+                  <Text style={styles.backText}>返回</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <Text style={styles.headerTitle}>
+              註冊流程 ({currentDisplayStep}/{totalSteps})
+            </Text>
+            <View style={styles.headerRight} />
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Progress Indicator */}
+          <View style={styles.progressContainer}>
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
+              <View
+                key={s}
+                style={[
+                  styles.progressDot,
+                  s === currentDisplayStep && styles.progressDotActive,
+                  s < currentDisplayStep && styles.progressDotCompleted,
+                ]}
+              />
+            ))}
+          </View>
+
+          {/* Step 1: User Type Selection */}
+          {step === 1 && (
+            <View style={styles.stepContent}>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>你今天是用什麼方式在路上？</Text>
+                <Text style={styles.stepSubtitle}>不同身分，能使用的功能會不一樣</Text>
+              </View>
+
+              <View style={styles.userTypeOptions}>
+                <TouchableOpacity
+                  style={styles.userTypeOption}
+                  onPress={() => handleUserTypeSelect('driver', 'car')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.userTypeContent}>
+                    <Ionicons name="car-outline" size={32} color={colors.primary.DEFAULT} />
+                    <View style={styles.userTypeTextContainer}>
+                      <Text style={styles.userTypeTitle}>汽車駕駛</Text>
+                      <Text style={styles.userTypeDescription}>
+                        填寫車牌｜可以發送，也可以接收提醒
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.userTypeOption}
+                  onPress={() => handleUserTypeSelect('driver', 'scooter')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.userTypeContent}>
+                    <Ionicons name="bicycle-outline" size={32} color={colors.primary.DEFAULT} />
+                    <View style={styles.userTypeTextContainer}>
+                      <Text style={styles.userTypeTitle}>機車騎士</Text>
+                      <Text style={styles.userTypeDescription}>
+                        填寫車牌｜可以發送，也可以接收提醒
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.userTypeOption}
+                  onPress={() => handleUserTypeSelect('pedestrian')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.userTypeContent}>
+                    <Ionicons name="person-outline" size={32} color={colors.primary.DEFAULT} />
+                    <View style={styles.userTypeTextContainer}>
+                      <Text style={styles.userTypeTitle}>行人 / 腳踏車</Text>
+                      <Text style={styles.userTypeDescription}>
+                        不需車牌｜只能發送提醒
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.infoCard}>
+                <Text style={styles.infoText}>
+                  💡 行人 / 腳踏車沒有車牌，因此不會收到別人的提醒
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Step 2: License Plate (Drivers only) */}
+          {step === 2 && userType === 'driver' && (
+            <View style={styles.card}>
+              <View style={styles.stepHeader}>
+                <View style={styles.vehicleTypeBadge}>
+                  <Ionicons
+                    name={vehicleType === 'car' ? 'car-outline' : 'bicycle-outline'}
+                    size={20}
+                    color={colors.primary.DEFAULT}
+                  />
+                  <Text style={styles.vehicleTypeBadgeText}>
+                    {vehicleType === 'car' ? '汽車駕駛' : '機車騎士'}
+                  </Text>
+                </View>
+                <Text style={styles.stepTitle}>填寫你的車牌</Text>
+                <Text style={styles.stepSubtitle}>
+                  只用來接收提醒{'\n'}不會公開、不會被其他人看到
+                </Text>
+              </View>
+
+              <View style={styles.inputSection}>
+                <Text style={styles.label}>
+                  {vehicleType === 'car' ? '汽車車牌' : '機車車牌'}
+                </Text>
+                <TextInput
+                  style={styles.licensePlateInput}
+                  placeholder={vehicleType === 'car' ? 'ABC1234' : 'ABC123'}
+                  placeholderTextColor={colors.muted.foreground}
+                  value={licensePlate}
+                  onChangeText={handleLicensePlateChange}
+                  maxLength={8}
+                  autoCapitalize="characters"
+                />
+                <Text style={styles.inputHintCenter}>
+                  {vehicleType === 'car'
+                    ? '格式範例：ABC1234 或 ABC-1234'
+                    : '格式範例：ABC123 或 ABC-123'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, styles.buttonMarginTop, !licensePlate && styles.buttonDisabled]}
+                onPress={handleLicensePlateSubmit}
+                disabled={!licensePlate || isLoading}
+                activeOpacity={0.7}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.primary.foreground} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>下一步</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Step 3: Nickname */}
+          {step === 3 && (
+            <View style={styles.card}>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>設定一個暱稱（可跳過）</Text>
+                <Text style={styles.stepSubtitle}>
+                  暱稱只會以匿名方式顯示{'\n'}不設定也能完整使用所有功能
+                </Text>
+              </View>
+
+              <View style={styles.inputSection}>
+                <Text style={styles.label}>暱稱</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="例如：熱心駕駛、路過提醒一下"
+                  placeholderTextColor={colors.muted.foreground}
+                  value={nickname}
+                  onChangeText={setNickname}
+                  maxLength={12}
+                />
+                <Text style={styles.inputHint}>最多 12 個字</Text>
+              </View>
+
+              <View style={styles.buttonGroup}>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={handleNicknameSubmit}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    {nickname.trim() ? '設定暱稱並繼續' : '跳過'}
+                  </Text>
+                </TouchableOpacity>
+                {nickname.trim() !== '' && (
+                  <TouchableOpacity
+                    style={styles.textButton}
+                    onPress={() => {
+                      setNickname('');
+                      handleNicknameSubmit();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.textButtonText}>跳過</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Step 4: Points Explanation */}
+          {step === 4 && (
+            <View style={styles.card}>
+              <View style={styles.stepHeader}>
+                <Text style={styles.stepTitle}>
+                  每一次提醒{'\n'}都需要一點點點數
+                </Text>
+              </View>
+
+              <View style={styles.pointsInfoList}>
+                <View style={styles.pointsInfoItem}>
+                  <Text style={styles.pointsInfoIcon}>📩</Text>
+                  <Text style={styles.pointsInfoText}>發送提醒會消耗點數</Text>
+                </View>
+                <View style={styles.pointsInfoItem}>
+                  <Text style={styles.pointsInfoIcon}>👍</Text>
+                  <Text style={styles.pointsInfoText}>收到讚美，可以獲得少量點數</Text>
+                </View>
+                <View style={styles.pointsInfoItem}>
+                  <Text style={styles.pointsInfoIcon}>🔒</Text>
+                  <Text style={styles.pointsInfoText}>車牌與個人資訊都不會公開</Text>
+                </View>
+              </View>
+
+              <View style={styles.bonusCard}>
+                <Text style={styles.bonusCardText}>
+                  🎁 每天免費 2 點，用完隔天自動補滿
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handlePointsNext}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.primaryButtonText}>下一步</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Step 5: Invite Code */}
+          {step === 5 && (
+            <View style={styles.card}>
+              <View style={styles.stepHeader}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="gift-outline" size={28} color={colors.primary.DEFAULT} />
+                </View>
+                <Text style={styles.stepTitle}>有邀請碼嗎？</Text>
+                <View style={styles.rewardBadge}>
+                  <Text style={styles.rewardBadgeText}>輸入邀請碼，你我各得 10 點！</Text>
+                </View>
+              </View>
+
+              <View style={styles.inputSection}>
+                <Text style={styles.label}>邀請碼</Text>
+                <TextInput
+                  style={styles.inviteCodeInput}
+                  placeholder="輸入 6 位邀請碼"
+                  placeholderTextColor={colors.muted.foreground}
+                  value={inviteCode}
+                  onChangeText={handleInviteCodeChange}
+                  maxLength={6}
+                  autoCapitalize="characters"
+                />
+
+                {isValidatingCode && (
+                  <Text style={styles.validatingText}>驗證中...</Text>
+                )}
+
+                {inviteCodeValidation?.valid && (
+                  <View style={styles.validCodeCard}>
+                    <View style={styles.validCodeIcon}>
+                      <Ionicons name="checkmark" size={16} color="#16A34A" />
+                    </View>
+                    <View style={styles.validCodeContent}>
+                      <Text style={styles.validCodeTitle}>
+                        來自「{inviteCodeValidation.inviterNickname}」的邀請
+                      </Text>
+                      <Text style={styles.validCodeSubtitle}>
+                        完成註冊後，你和邀請人各得 10 點
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {inviteCodeValidation && !inviteCodeValidation.valid && (
+                  <Text style={styles.invalidCodeText}>
+                    {inviteCodeValidation.message || '無效的邀請碼'}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.buttonGroup}>
+                {inviteCodeValidation?.valid ? (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                      onPress={handleApplyInviteCode}
+                      disabled={isLoading}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {isLoading ? '處理中...' : '使用邀請碼，一起賺點數！'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.textButton}
+                      onPress={handleSkipInviteCode}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.textButtonText}>不使用邀請碼</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.outlineButton}
+                    onPress={handleSkipInviteCode}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.outlineButtonText}>沒有邀請碼，跳過此步驟</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Step 6: Welcome */}
+          {step === 6 && (
+            <View style={styles.card}>
+              <View style={styles.stepHeader}>
+                <View style={styles.welcomeIconCircle}>
+                  <Ionicons
+                    name={
+                      userType === 'pedestrian'
+                        ? 'person-outline'
+                        : vehicleType === 'car'
+                        ? 'car-outline'
+                        : 'bicycle-outline'
+                    }
+                    size={32}
+                    color={colors.primary.DEFAULT}
+                  />
+                </View>
+                <Text style={styles.stepTitle}>
+                  {userType === 'pedestrian' ? '🙌 歡迎加入！' : '🚦 歡迎上路！'}
+                </Text>
+                <Text style={styles.stepSubtitle}>
+                  {userType === 'pedestrian'
+                    ? '你可以開始提醒路上的汽車與機車'
+                    : '每天都有 2 點免費額度，用一個更文明的方式提醒彼此'}
+                </Text>
+              </View>
+
+              <Text style={styles.missionText}>
+                我們相信，多數人不是故意的，只是沒被提醒。
+              </Text>
+
+              {userType === 'pedestrian' && (
+                <View style={styles.pedestrianInfoCard}>
+                  <Text style={styles.pedestrianInfoItem}>✅ 可以發送提醒</Text>
+                  <Text style={styles.pedestrianInfoItem}>✅ 每天免費 2 點</Text>
+                  <Text style={styles.pedestrianInfoItemWarning}>⚠️ 因沒有車牌，無法接收提醒</Text>
+                </View>
+              )}
+
+              {inviteCodeApplied && (
+                <View style={styles.inviteAppliedCard}>
+                  <Text style={styles.inviteAppliedText}>
+                    🎉 已使用邀請碼，完成註冊即可獲得獎勵點數
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                onPress={handleCompleteOnboarding}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.primary.foreground} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>開始使用</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* License Plate Bound Dialog */}
+      <Modal visible={showLicensePlateDialog} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>車牌已被登記</Text>
+            <Text style={styles.modalDescription}>
+              該車牌號碼 <Text style={styles.boldText}>{displayLicensePlate(licensePlate)}</Text> 已被綁定到手機號碼{' '}
+              <Text style={styles.boldText}>{licensePlateCheckResult?.boundPhone}</Text>
+              {licensePlateCheckResult?.boundNickname && ` (${licensePlateCheckResult.boundNickname})`}。
+              {'\n\n'}這是否為您的車輛？
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalSecondaryButton}
+                onPress={() => {
+                  setShowLicensePlateDialog(false);
+                  setLicensePlate('');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalSecondaryButtonText}>不是，重新輸入</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalPrimaryButton}
+                onPress={handleConfirmApplication}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalPrimaryButtonText}>是，提交申請</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* License Plate Application Dialog */}
+      <Modal visible={showApplicationDialog} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>提交車牌申請</Text>
+            <Text style={styles.modalDescription}>
+              請提供 Email 以接收審核通知，我們會在 1-2 個工作天內審核。
+            </Text>
+
+            <View style={styles.applicationForm}>
+              <Text style={styles.label}>Email（用於接收審核通知）</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="請輸入您的 Email"
+                placeholderTextColor={colors.muted.foreground}
+                value={applicationEmail}
+                onChangeText={setApplicationEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <View style={styles.applicationInfo}>
+                <Text style={styles.applicationInfoTitle}>申請資訊</Text>
+                <Text style={styles.applicationInfoItem}>
+                  車牌號碼：{displayLicensePlate(licensePlate)}
+                </Text>
+                <Text style={styles.applicationInfoItem}>
+                  車輛類型：{vehicleType === 'car' ? '汽車' : '機車'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalSecondaryButton}
+                onPress={() => setShowApplicationDialog(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalSecondaryButtonText}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalPrimaryButton, isLoading && styles.buttonDisabled]}
+                onPress={handleSubmitApplication}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalPrimaryButtonText}>
+                  {isLoading ? '提交中...' : '提交申請'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  flex1: {
+    flex: 1,
+  },
+
+  // Header - 統一格式（固定高度）
+  headerContainer: {
+    backgroundColor: colors.card.DEFAULT,
+  },
+  headerSafeArea: {
+    backgroundColor: colors.card.DEFAULT,
+  },
+  header: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSolid,
+    paddingHorizontal: spacing[6],
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    width: 80,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  headerRight: {
+    width: 80,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing[2],
+    paddingRight: spacing[4],
+  },
+  backText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    marginLeft: spacing[1],
+  },
+  headerTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.normal as any,
+    color: colors.foreground,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+  },
+
+  // Scroll Content
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: spacing[6],
+  },
+
+  // Progress
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[6],
+  },
+  progressDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.borderSolid,
+  },
+  progressDotActive: {
+    width: 32,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  progressDotCompleted: {
+    backgroundColor: `${colors.primary.DEFAULT}40`,
+  },
+
+  // Card
+  card: {
+    backgroundColor: colors.card.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[6],
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+  },
+
+  // Step Content
+  stepContent: {
+    gap: spacing[6],
+  },
+  stepHeader: {
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  stepTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.foreground,
+    marginBottom: spacing[2],
+    textAlign: 'center',
+  },
+  stepSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+  },
+
+  // User Type Options (Step 1)
+  userTypeOptions: {
+    gap: spacing[3],
+  },
+  userTypeOption: {
+    padding: spacing[5],
+    borderWidth: 2,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius['2xl'],
+    backgroundColor: colors.card.DEFAULT,
+  },
+  userTypeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+  },
+  userTypeTextContainer: {
+    flex: 1,
+  },
+  userTypeTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.foreground,
+    marginBottom: spacing[1],
+  },
+  userTypeDescription: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+  },
+
+  // Info Card
+  infoCard: {
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+  },
+  infoText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+    lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
+  },
+
+  // Icon Circle
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: `${colors.primary.DEFAULT}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[2],
+  },
+
+  // Reward Badge
+  rewardBadge: {
+    backgroundColor: `${colors.primary.DEFAULT}10`,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    borderRadius: 100,
+    marginTop: spacing[2],
+  },
+  rewardBadgeText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.primary.DEFAULT,
+  },
+
+  // Input Section
+  inputSection: {
+    gap: spacing[2],
+  },
+  label: {
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    fontSize: typography.fontSize.base,
+    color: colors.foreground,
+    backgroundColor: colors.card.DEFAULT,
+  },
+  inviteCodeInput: {
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[4],
+    fontSize: typography.fontSize.xl,
+    textAlign: 'center',
+    color: colors.foreground,
+    backgroundColor: colors.card.DEFAULT,
+  },
+  licensePlateInput: {
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3.5],
+    fontSize: typography.fontSize.lg,
+    textAlign: 'center',
+    color: colors.foreground,
+    backgroundColor: colors.card.DEFAULT,
+  },
+  inputHint: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+  },
+  inputHintCenter: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+  },
+
+  // Validation
+  validatingText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+  },
+  validCodeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    padding: spacing[3],
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: borderRadius.lg,
+  },
+  validCodeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  validCodeContent: {
+    flex: 1,
+  },
+  validCodeTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: '#166534',
+  },
+  validCodeSubtitle: {
+    fontSize: typography.fontSize.xs,
+    color: '#16A34A',
+  },
+  invalidCodeText: {
+    fontSize: typography.fontSize.xs,
+    color: '#DC2626',
+    textAlign: 'center',
+  },
+
+  // Buttons
+  buttonGroup: {
+    gap: spacing[2],
+    marginTop: spacing[4],
+  },
+  primaryButton: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing[3.5],
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  primaryButtonText: {
+    color: colors.primary.foreground,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+  },
+  outlineButtonText: {
+    color: colors.foreground,
+    fontSize: typography.fontSize.base,
+  },
+  textButton: {
+    paddingVertical: spacing[2],
+    alignItems: 'center',
+  },
+  textButtonText: {
+    color: colors.muted.foreground,
+    fontSize: typography.fontSize.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonMarginTop: {
+    marginTop: spacing[4],
+  },
+
+  // Vehicle Type Badge
+  vehicleTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[4],
+  },
+  vehicleTypeBadgeText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.primary.DEFAULT,
+  },
+
+  // Points Info (Step 4)
+  pointsInfoList: {
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    gap: spacing[2],
+    marginBottom: spacing[4],
+  },
+  pointsInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[3],
+  },
+  pointsInfoIcon: {
+    fontSize: typography.fontSize.sm,
+  },
+  pointsInfoText: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.foreground,
+  },
+  bonusCard: {
+    backgroundColor: `${colors.primary.DEFAULT}08`,
+    borderWidth: 2,
+    borderColor: `${colors.primary.DEFAULT}30`,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+  },
+  bonusCardText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.primary.dark,
+    textAlign: 'center',
+  },
+
+  // Welcome (Step 6)
+  welcomeIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${colors.primary.DEFAULT}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[4],
+  },
+  missionText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: spacing[4],
+  },
+  pedestrianInfoCard: {
+    backgroundColor: colors.muted.DEFAULT,
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    gap: spacing[1],
+    marginBottom: spacing[4],
+  },
+  pedestrianInfoItem: {
+    fontSize: typography.fontSize.xs,
+    color: colors.foreground,
+  },
+  pedestrianInfoItemWarning: {
+    fontSize: typography.fontSize.xs,
+    color: colors.foreground,
+  },
+  inviteAppliedCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+  },
+  inviteAppliedText: {
+    fontSize: typography.fontSize.sm,
+    color: '#166534',
+    textAlign: 'center',
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[6],
+  },
+  modalContent: {
+    backgroundColor: colors.card.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[6],
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold as any,
+    color: colors.foreground,
+    marginBottom: spacing[2],
+  },
+  modalDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+    marginBottom: spacing[4],
+  },
+  boldText: {
+    fontWeight: typography.fontWeight.semibold as any,
+    color: colors.foreground,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing[3],
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+  },
+  modalSecondaryButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.foreground,
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[3],
+    alignItems: 'center',
+  },
+  modalPrimaryButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.primary.foreground,
+  },
+
+  // Application Form
+  applicationForm: {
+    gap: spacing[3],
+    marginBottom: spacing[4],
+  },
+  applicationInfo: {
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+  },
+  applicationInfoTitle: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.foreground,
+    marginBottom: spacing[2],
+  },
+  applicationInfoItem: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+  },
+});

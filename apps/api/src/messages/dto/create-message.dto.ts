@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, IsIn, IsOptional, MaxLength, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { MessageType } from '@prisma/client';
+import { IsContentSafe } from '../../common/decorators';
 
 export class CreateMessageDto {
   @ApiProperty({ example: 'ABC-1234', description: '目標車牌號碼' })
@@ -21,12 +22,14 @@ export class CreateMessageDto {
   @ApiProperty({ example: '您的車燈未開', description: '範本內容' })
   @IsString()
   @IsNotEmpty()
+  @IsContentSafe()
   template: string;
 
   @ApiProperty({ required: false, example: '補充說明', description: '補充說明（可選）' })
   @IsString()
   @IsOptional()
   @MaxLength(100, { message: '補充說明最多100字元' })
+  @IsContentSafe()
   customText?: string;
 
   @ApiProperty({ required: false, example: false, description: '是否使用AI改寫' })

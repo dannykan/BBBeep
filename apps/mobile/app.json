@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "BBBeep",
+    "slug": "bbbeeep-mobile",
+    "version": "1.0.0",
+    "entryPoint": "./index.ts",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "bbbeeep",
+    "plugins": [
+      [
+        "@xmartlabs/react-native-line",
+        {
+          "channelId": "2008933864"
+        }
+      ]
+    ],
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bbbeeep.mobile",
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "package": "com.bbbeeep.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

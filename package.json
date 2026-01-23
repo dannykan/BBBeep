@@ -7,16 +7,18 @@
     "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:web": "pnpm --filter @bbbeeep/web dev",
     "dev:api": "pnpm --filter @bbbeeep/api start:dev",
-    "build": "pnpm build:api && pnpm build:web",
+    "dev:mobile": "cd apps/mobile && npm start",
+    "build": "pnpm build:shared && pnpm build:api && pnpm build:web",
+    "build:shared": "pnpm --filter @bbbeeep/shared build",
     "build:web": "pnpm --filter @bbbeeep/web build",
     "build:api": "pnpm --filter @bbbeeep/api build",
     "lint": "pnpm -r lint",
     "test": "pnpm --filter @bbbeeep/api test",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules packages/shared/dist",
     "prisma:generate": "pnpm --filter @bbbeeep/api prisma:generate",
     "prisma:migrate": "pnpm --filter @bbbeeep/api prisma:migrate",
     "prisma:studio": "pnpm --filter @bbbeeep/api prisma:studio",
-    "postinstall": "pnpm prisma:generate"
+    "postinstall": "pnpm build:shared && pnpm prisma:generate"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
@@ -32,6 +34,10 @@
       "@nestjs/core",
       "workerd",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    }
   }
 }

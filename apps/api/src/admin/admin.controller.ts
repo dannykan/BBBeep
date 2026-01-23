@@ -13,7 +13,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { AIPromptService } from '../ai/ai-prompt.service';
-import { UserType, VehicleType, InviteStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UserType, VehicleType, InviteStatus, NotificationType } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Admin')
@@ -23,6 +24,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly aiPromptService: AIPromptService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Post('login')
@@ -381,5 +383,75 @@ export class AdminController {
       throw new UnauthorizedException('無效的管理員 token');
     }
     return this.adminService.getUserInviteStats(id);
+  }
+
+  // ========== 推播通知管理 ==========
+
+  @Post('notifications/broadcast')
+  @ApiOperation({ summary: '發送推播通知給全體用戶' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async sendBroadcastNotification(
+    @Headers('x-admin-token') token: string,
+    @Body() data: { title: string; body: string },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.notificationsService.sendBroadcast(
+      data.title,
+      data.body,
+      'admin',
+    );
+  }
+
+  @Post('notifications/send')
+  @ApiOperation({ summary: '發送推播通知給指定用戶' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async sendNotificationToUsers(
+    @Headers('x-admin-token') token: string,
+    @Body() data: { userIds: string[]; title: string; body: string },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.notificationsService.sendToUsers(
+      data.userIds,
+      data.title,
+      data.body,
+      'admin',
+    );
+  }
+
+  @Get('notifications/logs')
+  @ApiOperation({ summary: '取得推播通知記錄' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getNotificationLogs(
+    @Headers('x-admin-token') token: string,
+    @Query('type') type?: NotificationType,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.notificationsService.getNotificationLogs({
+      type,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
+  }
+
+  @Get('notifications/stats')
+  @ApiOperation({ summary: '取得推播通知統計' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getNotificationStats(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getNotificationStats();
   }
 }

@@ -9,7 +9,10 @@ import { SetPasswordDto } from './dto/set-password.dto';
 import { PasswordLoginDto } from './dto/password-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LineLoginDto } from './dto/line-login.dto';
+import { AppleLoginDto } from './dto/apple-login.dto';
 import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+import * as jwksClient from 'jwks-rsa';
 import axios from 'axios';
 
 @Injectable()
@@ -404,7 +407,7 @@ export class AuthService {
   async lineLogin(dto: LineLoginDto) {
     try {
       // 1. 用授權碼換取 access token
-      const tokenResponse = await this.exchangeLineCode(dto.code);
+      const tokenResponse = await this.exchangeLineCode(dto.code, dto.redirectUri);
 
       // 2. 用 access token 取得用戶資料
       const lineProfile = await this.getLineProfile(tokenResponse.access_token);
@@ -481,10 +484,10 @@ export class AuthService {
     }
   }
 
-  private async exchangeLineCode(code: string): Promise<{ access_token: string; id_token?: string }> {
+  private async exchangeLineCode(code: string, redirectUri?: string): Promise<{ access_token: string; id_token?: string }> {
     const channelId = this.configService.get<string>('LINE_CHANNEL_ID');
     const channelSecret = this.configService.get<string>('LINE_CHANNEL_SECRET');
-    const callbackUrl = this.configService.get<string>('LINE_CALLBACK_URL');
+    const callbackUrl = redirectUri || this.configService.get<string>('LINE_CALLBACK_URL');
 
     if (!channelId || !channelSecret || !callbackUrl) {
       throw new BadRequestException('LINE 設定不完整');
@@ -561,5 +564,242 @@ export class AuthService {
     });
 
     return `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
+  }
+
+  // 產生 Mobile LINE 登入 URL（使用後端作為 callback）
+  getLineMobileLoginUrl(state: string): string {
+    const channelId = this.configService.get<string>('LINE_CHANNEL_ID');
+    const mobileCallbackUrl = this.configService.get<string>('LINE_MOBILE_CALLBACK_URL');
+
+    if (!channelId || !mobileCallbackUrl) {
+      throw new BadRequestException('LINE Mobile 設定不完整');
+    }
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: channelId,
+      redirect_uri: mobileCallbackUrl,
+      state: state,
+      scope: 'profile openid',
+    });
+
+    return `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
+  }
+
+  // Mobile LINE Login（使用 mobile callback URL 交換 token）
+  async lineMobileLogin(code: string, state: string) {
+    const mobileCallbackUrl = this.configService.get<string>('LINE_MOBILE_CALLBACK_URL');
+    // 使用 mobile callback URL 作為 redirect_uri
+    return this.lineLogin({ code, state, redirectUri: mobileCallbackUrl });
+  }
+
+  // LINE Token Login（Mobile SDK 用，直接用 accessToken）
+  async lineTokenLogin(accessToken: string) {
+    try {
+      // 1. 用 accessToken 取得用戶資料
+      const lineProfile = await this.getLineProfile(accessToken);
+
+      // 2. 檢查是否已加入 LINE 官方帳號好友
+      const isLineFriend = await this.checkLineFriendshipStatus(accessToken);
+      console.log(`[LINE_TOKEN_LOGIN] Friendship status: ${isLineFriend}`);
+
+      // 3. 查找或創建用戶
+      let user = await this.prisma.user.findUnique({
+        where: { lineUserId: lineProfile.userId },
+      });
+
+      if (!user) {
+        // 新用戶，創建帳號
+        user = await this.prisma.user.create({
+          data: {
+            lineUserId: lineProfile.userId,
+            lineDisplayName: lineProfile.displayName,
+            linePictureUrl: lineProfile.pictureUrl,
+            nickname: lineProfile.displayName,
+            userType: 'driver',
+            lastFreePointsReset: new Date(),
+            isLineFriend: isLineFriend,
+          },
+        });
+        console.log(`[LINE_TOKEN_LOGIN] New user created: ${user.id}`);
+      } else {
+        // 檢查用戶是否被封鎖
+        if (user.isBlockedByAdmin) {
+          throw new UnauthorizedException('您的帳號已被停用，如有疑問請聯繫客服');
+        }
+
+        // 更新 LINE 資料和好友狀態
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lineDisplayName: lineProfile.displayName,
+            linePictureUrl: lineProfile.pictureUrl,
+            isLineFriend: isLineFriend,
+          },
+        });
+        console.log(`[LINE_TOKEN_LOGIN] Existing user logged in: ${user.id}`);
+      }
+
+      // 4. 生成 JWT token
+      const payload = { sub: user.id, lineUserId: user.lineUserId };
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          nickname: user.nickname,
+          licensePlate: user.licensePlate,
+          userType: user.userType,
+          vehicleType: user.vehicleType,
+          points: user.points,
+          freePoints: user.freePoints,
+          hasCompletedOnboarding: user.hasCompletedOnboarding,
+          email: user.email,
+          lineUserId: user.lineUserId,
+          lineDisplayName: user.lineDisplayName,
+          linePictureUrl: user.linePictureUrl,
+          isLineFriend: user.isLineFriend,
+        },
+      };
+    } catch (error) {
+      console.error('[LINE_TOKEN_LOGIN] Error:', error.response?.data || error.message);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('LINE 登入失敗，請稍後再試');
+    }
+  }
+
+  // Apple Sign-In 相關方法
+  async appleLogin(dto: AppleLoginDto) {
+    try {
+      // 1. 驗證 Apple Identity Token
+      const appleUser = await this.verifyAppleToken(dto.identityToken);
+
+      // 2. 查找或創建用戶
+      let user = await this.prisma.user.findUnique({
+        where: { appleUserId: appleUser.sub },
+      });
+
+      if (!user) {
+        // 新用戶，創建帳號
+        user = await this.prisma.user.create({
+          data: {
+            appleUserId: appleUser.sub,
+            appleEmail: dto.email || appleUser.email,
+            nickname: dto.fullName || undefined,
+            email: dto.email || appleUser.email,
+            userType: 'driver', // 預設值，會在 onboarding 時更新
+            lastFreePointsReset: new Date(),
+          },
+        });
+
+        console.log(`[APPLE_LOGIN] New user created: ${user.id}`);
+      } else {
+        // 檢查用戶是否被封鎖
+        if (user.isBlockedByAdmin) {
+          throw new UnauthorizedException('您的帳號已被停用，如有疑問請聯繫客服');
+        }
+
+        // 更新 Apple 資料（只有在首次登入時才會有 email 和 fullName）
+        const updateData: Record<string, string | undefined> = {};
+        if (dto.email && !user.appleEmail) {
+          updateData.appleEmail = dto.email;
+          updateData.email = dto.email;
+        }
+        if (dto.fullName && !user.nickname) {
+          updateData.nickname = dto.fullName;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: updateData,
+          });
+        }
+
+        console.log(`[APPLE_LOGIN] Existing user logged in: ${user.id}`);
+      }
+
+      // 3. 生成 JWT token
+      const payload = { sub: user.id, appleUserId: user.appleUserId };
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          nickname: user.nickname,
+          licensePlate: user.licensePlate,
+          userType: user.userType,
+          vehicleType: user.vehicleType,
+          points: user.points,
+          freePoints: user.freePoints,
+          hasCompletedOnboarding: user.hasCompletedOnboarding,
+          email: user.email,
+          appleUserId: user.appleUserId,
+          appleEmail: user.appleEmail,
+        },
+      };
+    } catch (error) {
+      console.error('[APPLE_LOGIN] Error:', error.message);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Apple 登入失敗，請稍後再試');
+    }
+  }
+
+  // 驗證 Apple Identity Token
+  private async verifyAppleToken(identityToken: string): Promise<{
+    sub: string;
+    email?: string;
+    email_verified?: boolean;
+  }> {
+    // Apple 的 JWKS 端點
+    const client = jwksClient({
+      jwksUri: 'https://appleid.apple.com/auth/keys',
+      cache: true,
+      rateLimit: true,
+    });
+
+    // 解碼 JWT header 獲取 kid
+    const decodedHeader = jwt.decode(identityToken, { complete: true });
+    if (!decodedHeader || typeof decodedHeader === 'string') {
+      throw new Error('Invalid identity token format');
+    }
+
+    const kid = decodedHeader.header.kid;
+    if (!kid) {
+      throw new Error('No kid found in token header');
+    }
+
+    // 獲取公鑰
+    const key = await client.getSigningKey(kid);
+    const publicKey = key.getPublicKey();
+
+    // 驗證 token
+    const appleClientId = this.configService.get<string>('APPLE_CLIENT_ID') || 'com.bbbeeep.mobile';
+
+    const decoded = jwt.verify(identityToken, publicKey, {
+      algorithms: ['RS256'],
+      issuer: 'https://appleid.apple.com',
+      audience: appleClientId,
+    }) as {
+      sub: string;
+      email?: string;
+      email_verified?: string;
+      iss: string;
+      aud: string;
+    };
+
+    return {
+      sub: decoded.sub,
+      email: decoded.email,
+      email_verified: decoded.email_verified === 'true',
+    };
   }
 }
