@@ -3,8 +3,8 @@
  * 用於在發送提醒各步驟之間共享狀態
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { aiApi } from '@bbbeeep/shared';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { aiApi, filterContent, type ContentFilterResult } from '@bbbeeep/shared';
 import type { VehicleType, MessageType } from '@bbbeeep/shared';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
@@ -34,6 +34,10 @@ interface SendState {
 
   // Loading
   isLoading: boolean;
+
+  // Content filter
+  contentWarning: string | null;
+  contentFilterResult: ContentFilterResult | null;
 }
 
 interface SendContextType extends SendState {
@@ -60,6 +64,8 @@ interface SendContextType extends SendState {
   getMessageType: () => MessageType;
   getPointCost: () => number;
   getFinalMessage: () => string;
+  checkContentFilter: (text: string) => void;
+  validateContent: (text: string) => { isValid: boolean; message: string | null };
 }
 
 const SendContext = createContext<SendContextType | null>(null);
@@ -80,6 +86,8 @@ const initialState: SendState = {
   occurredAt: new Date(),
   selectedTimeOption: 'now',
   isLoading: false,
+  contentWarning: null,
+  contentFilterResult: null,
 };
 
 export function SendProvider({ children }: { children: React.ReactNode }) {
@@ -208,6 +216,39 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     return state.generatedMessage;
   }, [state.useAiVersion, state.aiSuggestion, state.customText, state.generatedMessage]);
 
+  // Content filter check (for real-time feedback)
+  const checkContentFilter = useCallback((text: string) => {
+    // Only check if text is 5+ characters
+    if (text.trim().length < 5) {
+      setState((prev) => ({
+        ...prev,
+        contentWarning: null,
+        contentFilterResult: null,
+      }));
+      return;
+    }
+
+    const result = filterContent(text);
+    setState((prev) => ({
+      ...prev,
+      contentFilterResult: result,
+      contentWarning: result.isValid ? null : result.violations[0]?.message || null,
+    }));
+  }, []);
+
+  // Validate content (for submission)
+  const validateContent = useCallback((text: string): { isValid: boolean; message: string | null } => {
+    if (!text.trim()) {
+      return { isValid: true, message: null };
+    }
+
+    const result = filterContent(text);
+    return {
+      isValid: result.isValid,
+      message: result.isValid ? null : result.violations[0]?.message || '內容包含不當資訊',
+    };
+  }, []);
+
   const value: SendContextType = {
     ...state,
     setVehicleType,
@@ -230,6 +271,8 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     getMessageType,
     getPointCost,
     getFinalMessage,
+    checkContentFilter,
+    validateContent,
   };
 
   return <SendContext.Provider value={value}>{children}</SendContext.Provider>;

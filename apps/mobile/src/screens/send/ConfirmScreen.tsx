@@ -47,6 +47,7 @@ export default function ConfirmScreen({ navigation }: Props) {
     setIsLoading,
     getPointCost,
     getFinalMessage,
+    validateContent,
   } = useSend();
 
   const pointCost = getPointCost();
@@ -103,6 +104,15 @@ export default function ConfirmScreen({ navigation }: Props) {
     if (isOtherCase && (!customText.trim() || customText.trim().length < 5)) {
       Alert.alert('錯誤', '說明內容至少需要 5 個字');
       return;
+    }
+
+    // Content filter validation (final check)
+    if (customText.trim()) {
+      const validation = validateContent(customText);
+      if (!validation.isValid) {
+        Alert.alert('內容不當', validation.message || '請修改內容後再試');
+        return;
+      }
     }
 
     setIsLoading(true);

@@ -1,8 +1,8 @@
 name = "bbbeeep-frontend"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+pages_build_output_dir = "apps/web/.vercel/output/static"
 
 # 注意：Cloudflare Pages 不支持 [build] 配置段
 # 构建配置应在 cloudflare.json 中设置
-# 本地開發用，Root = apps/web 時使用此設定
+# Root directory 設為 / (專案根目錄) 時，output 路徑需要包含 apps/web
