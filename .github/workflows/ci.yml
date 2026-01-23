@@ -10,9 +10,6 @@ jobs:
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
 
     services:
       postgres:
@@ -31,53 +28,66 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build shared package
+        run: pnpm --filter @bbbeeep/shared build
 
       - name: Generate Prisma Client
-        run: npx prisma generate
+        run: pnpm --filter @bbbeeep/api prisma:generate
 
       - name: Run migrations
-        run: npx prisma migrate deploy
+        run: pnpm --filter @bbbeeep/api exec prisma migrate deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bbbeeep_test
 
       - name: Run linter
-        run: npm run lint
+        run: pnpm --filter @bbbeeep/api lint
 
       - name: Run tests
-        run: npm run test
+        run: pnpm --filter @bbbeeep/api test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bbbeeep_test
 
-  frontend-test:
-    name: Frontend Tests
+  web-build:
+    name: Web Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build shared package
+        run: pnpm --filter @bbbeeep/shared build
 
       - name: Run linter
-        run: npm run lint
+        run: pnpm --filter @bbbeeep/web lint
 
       - name: Build
-        run: npm run build
+        run: pnpm --filter @bbbeeep/web build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001

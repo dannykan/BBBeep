@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'railway.json'
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
@@ -19,5 +23,4 @@ jobs:
         uses: bervProject/railway-deploy@v1.0.0
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: backend
-          # Railway will automatically detect and deploy from the backend directory
+          service: bbbeeep-backend
