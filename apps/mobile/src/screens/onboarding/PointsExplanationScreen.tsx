@@ -37,11 +37,11 @@ export default function PointsExplanationScreen({ navigation }: Props) {
         <View style={styles.trialCard}>
           <Text style={styles.trialTitle}>7 天免費試用</Text>
           <View style={styles.trialPointsRow}>
-            <Text style={styles.trialPointsNumber}>40</Text>
+            <Text style={styles.trialPointsNumber}>50</Text>
             <Text style={styles.trialPointsLabel}>點</Text>
           </View>
           <Text style={styles.trialDescription}>
-            立即獲得 40 點，盡情體驗所有功能
+            立即獲得 50 點，盡情體驗所有功能
           </Text>
         </View>
 

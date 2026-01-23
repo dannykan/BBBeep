@@ -80,7 +80,7 @@ export const POINTS_CONFIG = {
   trial: {
     enabled: true,        // 是否啟用試用期機制
     durationDays: 7,      // 試用天數
-    initialPoints: 40,    // 試用起始點數
+    initialPoints: 50,    // 試用起始點數
     carryOverPoints: false, // 試用結束後是否保留剩餘點數
   },
 
@@ -194,7 +194,7 @@ export function isInTrialPeriod(trialStartDate: Date | null): boolean {
  */
 export function getDailyFreePointsAmount(isInTrial: boolean): number {
   if (isInTrial) {
-    // 試用期間不需要每日補點（因為有 40 點）
+    // 試用期間不需要每日補點（因為有 50 點）
     return 0;
   }
 
