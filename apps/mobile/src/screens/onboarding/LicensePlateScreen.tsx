@@ -92,47 +92,75 @@ export default function LicensePlateScreen({ navigation }: Props) {
     setShowApplicationDialog(true);
   }, []);
 
-  const handlePickImage = useCallback(async () => {
-    // 請求權限
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('需要權限', '請允許存取相簿以上傳行照照片');
-      return;
-    }
-
-    // 開啟圖片選擇器
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    setLicenseImageUri(asset.uri);
-
-    // 上傳圖片
-    setIsUploadingImage(true);
+  const launchImagePicker = useCallback(async () => {
     try {
-      const fileName = asset.uri.split('/').pop() || 'license.jpg';
-      const fileType = asset.mimeType || 'image/jpeg';
-
-      const uploadResult = await uploadApi.uploadImage({
-        uri: asset.uri,
-        name: fileName,
-        type: fileType,
+      // 開啟圖片選擇器
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
       });
 
-      setLicenseImageUrl(uploadResult.url);
+      if (result.canceled || !result.assets?.[0]) {
+        // 重新顯示 Modal
+        setShowApplicationDialog(true);
+        return;
+      }
+
+      const asset = result.assets[0];
+      setLicenseImageUri(asset.uri);
+
+      // 重新顯示 Modal
+      setShowApplicationDialog(true);
+
+      // 上傳圖片
+      setIsUploadingImage(true);
+      try {
+        const fileName = asset.uri.split('/').pop() || 'license.jpg';
+        const fileType = asset.mimeType || 'image/jpeg';
+
+        const uploadResult = await uploadApi.uploadImage({
+          uri: asset.uri,
+          name: fileName,
+          type: fileType,
+        });
+
+        setLicenseImageUrl(uploadResult.url);
+      } catch (uploadError: any) {
+        console.error('[IMAGE_UPLOAD] Upload error:', uploadError);
+        Alert.alert('上傳失敗', uploadError.response?.data?.message || '圖片上傳失敗，請重試');
+        setLicenseImageUri(null);
+      } finally {
+        setIsUploadingImage(false);
+      }
     } catch (error: any) {
-      Alert.alert('上傳失敗', error.response?.data?.message || '圖片上傳失敗，請重試');
-      setLicenseImageUri(null);
-    } finally {
-      setIsUploadingImage(false);
+      console.error('[IMAGE_PICKER] Error:', error);
+      Alert.alert('錯誤', '無法開啟相簿，請稍後再試');
+      setShowApplicationDialog(true);
     }
   }, []);
+
+  const handlePickImage = useCallback(async () => {
+    try {
+      // 請求權限
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('需要權限', '請允許存取相簿以上傳行照照片');
+        return;
+      }
+
+      // 先關閉 Modal，避免衝突
+      setShowApplicationDialog(false);
+
+      // 延遲一下再開啟圖片選擇器
+      setTimeout(() => {
+        launchImagePicker();
+      }, 300);
+    } catch (error: any) {
+      console.error('[IMAGE_PICKER] Permission error:', error);
+      Alert.alert('錯誤', '無法存取相簿權限');
+    }
+  }, [launchImagePicker]);
 
   const handleRemoveImage = useCallback(() => {
     setLicenseImageUri(null);
