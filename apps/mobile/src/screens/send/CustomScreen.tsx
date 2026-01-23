@@ -151,24 +151,22 @@ export default function CustomScreen({ navigation }: Props) {
       return;
     }
 
-    try {
-      // Save current state before clearing (for cancel restoration)
-      previousStateRef.current = {
-        voiceRecording: voiceRecording,
-        customText: customText,
-      };
+    // Save current state before anything (for cancel restoration)
+    previousStateRef.current = {
+      voiceRecording: voiceRecording,
+      customText: customText,
+    };
 
-      // Stop any existing playback and clear for new recording
+    try {
+      // Stop any existing playback
       if (soundRef.current) {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
       setIsPlaying(false);
       setPlaybackPosition(0);
-      clearVoice();
-      setCustomText('');
 
-      // Clean up any existing recording object first
+      // Clean up any existing recording object first (technical requirement)
       if (recordingRef.current) {
         try {
           await recordingRef.current.stopAndUnloadAsync();
@@ -188,6 +186,10 @@ export default function CustomScreen({ navigation }: Props) {
       );
       recordingRef.current = recording;
 
+      // Only clear UI state after recording successfully started
+      clearVoice();
+      setCustomText('');
+
       setIsRecording(true);
       setRecordingDuration(0);
       startPulseAnimation();
@@ -203,6 +205,14 @@ export default function CustomScreen({ navigation }: Props) {
       }, 1000);
     } catch (error) {
       console.error('Failed to start recording:', error);
+      // Restore previous state on error
+      if (previousStateRef.current) {
+        if (previousStateRef.current.voiceRecording) {
+          setVoiceRecording(previousStateRef.current.voiceRecording);
+        }
+        setCustomText(previousStateRef.current.customText);
+        previousStateRef.current = null;
+      }
       Alert.alert('錯誤', '無法開始錄音，請稍後再試');
     }
   };
