@@ -6,16 +6,13 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "prebuildCommand": "cd ../../packages/shared && npm run build"
+      "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "prebuildCommand": "cd ../../packages/shared && npm run build"
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "prebuildCommand": "cd ../../packages/shared && npm run build"
+      "autoIncrement": true
     }
   },
   "submit": {
