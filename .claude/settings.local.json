@@ -70,7 +70,9 @@
       "Bash(file:*)",
       "Bash(sips:*)",
       "Bash(npx expo prebuild:*)",
-      "Bash(pnpm list:*)"
+      "Bash(pnpm list:*)",
+      "Bash(npx eas:*)",
+      "Bash(npx eas-cli:*)"
     ]
   }
 }

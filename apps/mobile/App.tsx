@@ -3,16 +3,21 @@
  * React Native (Expo) 行動應用程式
  */
 
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from './src/context/AuthContext';
 import { UnreadProvider } from './src/context/UnreadContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import CustomSplashScreen from './src/components/CustomSplashScreen';
+
+// 防止 native splash screen 自動隱藏
+SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { isDark, colors } = useTheme();
@@ -53,6 +58,40 @@ function AppContent() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [appReady, setAppReady] = useState(false);
+
+  // 當 app 準備好後，隱藏 native splash 並顯示 custom splash
+  useEffect(() => {
+    async function prepare() {
+      // 模擬一些初始化工作（如果需要）
+      await new Promise(resolve => setTimeout(resolve, 100));
+      setAppReady(true);
+    }
+    prepare();
+  }, []);
+
+  // 當 app ready 時隱藏 native splash
+  useEffect(() => {
+    if (appReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appReady]);
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  // 顯示 custom splash screen
+  if (showSplash && appReady) {
+    return <CustomSplashScreen onFinish={handleSplashFinish} />;
+  }
+
+  // 還在載入中，顯示空白（native splash 還在顯示）
+  if (!appReady) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

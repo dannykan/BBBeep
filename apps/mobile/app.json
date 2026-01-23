@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "UBeep",
-    "slug": "ubeep-mobile",
+    "slug": "ubeep",
     "version": "1.0.0",
     "entryPoint": "./index.ts",
     "orientation": "portrait",
@@ -27,12 +27,20 @@
         {
           "microphonePermission": "此應用程式需要使用麥克風錄製語音訊息"
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1E3A5F",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
       ]
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1E3A5F"
     },
     "ios": {
       "supportsTablet": true,
@@ -48,16 +56,23 @@
       "package": "com.ubeep.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1E3A5F"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bfb94786-6db3-42d3-a5c2-d2b2ba612e48"
+      }
+    },
+    "owner": "team-ubeep"
   }
 }
