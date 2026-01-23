@@ -36,14 +36,17 @@ interface NotificationLog {
 }
 
 interface NotificationStats {
-  totalDevices: number;
-  activeDevices: number;
-  iosDevices: number;
-  androidDevices: number;
-  totalNotifications: number;
-  broadcastNotifications: number;
-  totalSuccessCount: number;
-  totalFailureCount: number;
+  devices: {
+    total: number;
+    active: number;
+    ios: number;
+    android: number;
+  };
+  notifications: {
+    totalSent: number;
+    totalFailed: number;
+  };
+  recentLogs: NotificationLog[];
 }
 
 interface SearchUser {
@@ -121,7 +124,8 @@ export default function NotificationsPage() {
         headers: { 'x-admin-token': adminToken },
         params: { limit: 20 },
       });
-      setLogs(response.data);
+      // API 回傳 { logs, total }，取出 logs 陣列
+      setLogs(response.data.logs || []);
     } catch (error: any) {
       if (error.response?.status === 401) {
         router.push('/BBBeepadmin2026');
@@ -292,7 +296,7 @@ export default function NotificationsPage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">已註冊裝置</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {isLoadingStats ? '...' : stats?.activeDevices || 0}
+                  {isLoadingStats ? '...' : stats?.devices?.active || 0}
                 </p>
               </div>
               <Bell className="h-8 w-8 text-primary" />
@@ -306,7 +310,7 @@ export default function NotificationsPage() {
                 <p className="text-2xl font-bold text-foreground">
                   {isLoadingStats
                     ? '...'
-                    : `${stats?.iosDevices || 0} / ${stats?.androidDevices || 0}`}
+                    : `${stats?.devices?.ios || 0} / ${stats?.devices?.android || 0}`}
                 </p>
               </div>
               <Users className="h-8 w-8 text-muted-foreground" />
@@ -316,9 +320,9 @@ export default function NotificationsPage() {
           <Card className="p-4 bg-card border-border shadow-none">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">全體推播次數</p>
+                <p className="text-xs text-muted-foreground mb-1">總裝置數</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {isLoadingStats ? '...' : stats?.broadcastNotifications || 0}
+                  {isLoadingStats ? '...' : stats?.devices?.total || 0}
                 </p>
               </div>
               <Send className="h-8 w-8 text-muted-foreground" />
@@ -332,7 +336,7 @@ export default function NotificationsPage() {
                 <p className="text-2xl font-bold text-foreground">
                   {isLoadingStats
                     ? '...'
-                    : `${stats?.totalSuccessCount || 0} / ${stats?.totalFailureCount || 0}`}
+                    : `${stats?.notifications?.totalSent || 0} / ${stats?.notifications?.totalFailed || 0}`}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-500" />
