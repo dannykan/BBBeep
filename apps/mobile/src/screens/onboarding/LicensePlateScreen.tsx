@@ -13,14 +13,18 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
+  ScrollView,
 } from 'react-native';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome6, Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import {
   licensePlateApi,
+  uploadApi,
   normalizeLicensePlate,
   displayLicensePlate,
 } from '@bbbeeep/shared';
@@ -47,7 +51,11 @@ export default function LicensePlateScreen({ navigation }: Props) {
 
   const [showLicensePlateDialog, setShowLicensePlateDialog] = useState(false);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
+  const [showPendingDialog, setShowPendingDialog] = useState(false);
   const [applicationEmail, setApplicationEmail] = useState('');
+  const [licenseImageUri, setLicenseImageUri] = useState<string | null>(null);
+  const [licenseImageUrl, setLicenseImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleLicensePlateChange = useCallback((text: string) => {
     const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -84,6 +92,53 @@ export default function LicensePlateScreen({ navigation }: Props) {
     setShowApplicationDialog(true);
   }, []);
 
+  const handlePickImage = useCallback(async () => {
+    // 請求權限
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('需要權限', '請允許存取相簿以上傳行照照片');
+      return;
+    }
+
+    // 開啟圖片選擇器
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setLicenseImageUri(asset.uri);
+
+    // 上傳圖片
+    setIsUploadingImage(true);
+    try {
+      const fileName = asset.uri.split('/').pop() || 'license.jpg';
+      const fileType = asset.mimeType || 'image/jpeg';
+
+      const uploadResult = await uploadApi.uploadImage({
+        uri: asset.uri,
+        name: fileName,
+        type: fileType,
+      });
+
+      setLicenseImageUrl(uploadResult.url);
+    } catch (error: any) {
+      Alert.alert('上傳失敗', error.response?.data?.message || '圖片上傳失敗，請重試');
+      setLicenseImageUri(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }, []);
+
+  const handleRemoveImage = useCallback(() => {
+    setLicenseImageUri(null);
+    setLicenseImageUrl(null);
+  }, []);
+
   const handleSubmitApplication = useCallback(async () => {
     if (!licensePlate) return;
 
@@ -98,17 +153,18 @@ export default function LicensePlateScreen({ navigation }: Props) {
       await licensePlateApi.createApplication({
         licensePlate: normalizedPlate,
         vehicleType: vehicleType || undefined,
+        licenseImage: licenseImageUrl || undefined,
         email: applicationEmail || undefined,
       });
-      Alert.alert('成功', '申請已提交，我們會在 1-2 個工作天內以 Email 通知');
+      // 關閉申請對話框，顯示等待審核對話框
       setShowApplicationDialog(false);
-      navigation.navigate('Nickname');
+      setShowPendingDialog(true);
     } catch (error: any) {
       Alert.alert('錯誤', error.response?.data?.message || '提交申請失敗');
     } finally {
       setIsLoading(false);
     }
-  }, [licensePlate, vehicleType, applicationEmail, navigation, setIsLoading]);
+  }, [licensePlate, vehicleType, licenseImageUrl, applicationEmail, navigation, setIsLoading]);
 
   return (
     <OnboardingLayout currentStep={2} totalSteps={getTotalSteps()}>
@@ -219,28 +275,70 @@ export default function LicensePlateScreen({ navigation }: Props) {
               請提供 Email 以接收審核通知，我們會在 1-2 個工作天內審核。
             </Text>
 
-            <View style={styles.applicationForm}>
-              <Text style={styles.label}>Email（用於接收審核通知）</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="請輸入您的 Email"
-                placeholderTextColor={colors.muted.foreground}
-                value={applicationEmail}
-                onChangeText={setApplicationEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+            <ScrollView style={styles.applicationFormScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.applicationForm}>
+                {/* 行照照片上傳 */}
+                <View style={styles.imageUploadSection}>
+                  <Text style={styles.label}>行照照片（可加速審核）</Text>
+                  {licenseImageUri ? (
+                    <View style={styles.imagePreviewContainer}>
+                      <Image source={{ uri: licenseImageUri }} style={styles.imagePreview} />
+                      {isUploadingImage && (
+                        <View style={styles.imageUploadingOverlay}>
+                          <ActivityIndicator color={colors.primary.foreground} />
+                          <Text style={styles.imageUploadingText}>上傳中...</Text>
+                        </View>
+                      )}
+                      {!isUploadingImage && (
+                        <TouchableOpacity
+                          style={styles.imageRemoveButton}
+                          onPress={handleRemoveImage}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="close-circle" size={28} color={colors.destructive.DEFAULT} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.imageUploadButton}
+                      onPress={handlePickImage}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="camera-outline" size={32} color={colors.muted.foreground} />
+                      <Text style={styles.imageUploadButtonText}>點擊上傳行照照片</Text>
+                      <Text style={styles.imageUploadHint}>拍攝或選擇行照正面照片</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-              <View style={styles.applicationInfo}>
-                <Text style={styles.applicationInfoTitle}>申請資訊</Text>
-                <Text style={styles.applicationInfoItem}>
-                  車牌號碼：{displayLicensePlate(licensePlate)}
-                </Text>
-                <Text style={styles.applicationInfoItem}>
-                  車輛類型：{vehicleType === 'car' ? '汽車' : '機車'}
-                </Text>
+                <Text style={styles.label}>Email（用於接收審核通知）</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="請輸入您的 Email"
+                  placeholderTextColor={colors.muted.foreground}
+                  value={applicationEmail}
+                  onChangeText={setApplicationEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.applicationInfo}>
+                  <Text style={styles.applicationInfoTitle}>申請資訊</Text>
+                  <Text style={styles.applicationInfoItem}>
+                    車牌號碼：{displayLicensePlate(licensePlate)}
+                  </Text>
+                  <Text style={styles.applicationInfoItem}>
+                    車輛類型：{vehicleType === 'car' ? '汽車' : '機車'}
+                  </Text>
+                  {licenseImageUrl && (
+                    <Text style={styles.applicationInfoItemSuccess}>
+                      行照照片：已上傳
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
+            </ScrollView>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -264,6 +362,64 @@ export default function LicensePlateScreen({ navigation }: Props) {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Application Pending Dialog */}
+      <Modal visible={showPendingDialog} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.pendingModalContent}>
+            <View style={styles.pendingIconContainer}>
+              <Ionicons name="time-outline" size={64} color={colors.primary.DEFAULT} />
+            </View>
+
+            <Text style={styles.pendingTitle}>申請已送出</Text>
+
+            <Text style={styles.pendingDescription}>
+              我們會在 <Text style={styles.boldText}>1-2 個工作天內</Text> 審核您的申請。
+              {applicationEmail ? (
+                <>
+                  {'\n\n'}審核結果將發送至：{'\n'}
+                  <Text style={styles.boldText}>{applicationEmail}</Text>
+                </>
+              ) : (
+                <>
+                  {'\n\n'}請留意您的信箱通知。
+                </>
+              )}
+            </Text>
+
+            <View style={styles.pendingInfoCard}>
+              <Text style={styles.pendingInfoTitle}>申請車牌</Text>
+              <Text style={styles.pendingInfoPlate}>{displayLicensePlate(licensePlate)}</Text>
+            </View>
+
+            <View style={styles.pendingNotes}>
+              <View style={styles.pendingNoteItem}>
+                <Ionicons name="checkmark-circle" size={18} color={colors.primary.DEFAULT} />
+                <Text style={styles.pendingNoteText}>審核通過後，您可以繼續完成註冊</Text>
+              </View>
+              <View style={styles.pendingNoteItem}>
+                <Ionicons name="mail-outline" size={18} color={colors.primary.DEFAULT} />
+                <Text style={styles.pendingNoteText}>請查收 Email 獲取審核結果</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.pendingButton}
+              onPress={() => {
+                // 清除狀態，讓用戶可以重新開始或關閉 app
+                setShowPendingDialog(false);
+                setLicensePlate('');
+                setLicenseImageUri(null);
+                setLicenseImageUrl(null);
+                setApplicationEmail('');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.pendingButtonText}>我知道了</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -402,6 +558,9 @@ const styles = StyleSheet.create({
   },
 
   // Application Form
+  applicationFormScroll: {
+    maxHeight: 350,
+  },
   applicationForm: {
     gap: spacing[3],
     marginBottom: spacing[4],
@@ -420,5 +579,149 @@ const styles = StyleSheet.create({
   applicationInfoItem: {
     fontSize: typography.fontSize.sm,
     color: colors.muted.foreground,
+  },
+  applicationInfoItemSuccess: {
+    fontSize: typography.fontSize.sm,
+    color: '#10B981',
+    marginTop: spacing[1],
+  },
+
+  // Image Upload
+  imageUploadSection: {
+    gap: spacing[2],
+  },
+  imageUploadButton: {
+    borderWidth: 2,
+    borderColor: colors.borderSolid,
+    borderStyle: 'dashed',
+    borderRadius: borderRadius.lg,
+    padding: spacing[5],
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.muted.DEFAULT,
+  },
+  imageUploadButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    color: colors.foreground,
+    marginTop: spacing[2],
+  },
+  imageUploadHint: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    marginTop: spacing[1],
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: borderRadius.lg,
+  },
+  imageUploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageUploadingText: {
+    color: colors.primary.foreground,
+    fontSize: typography.fontSize.sm,
+    marginTop: spacing[2],
+  },
+  imageRemoveButton: {
+    position: 'absolute',
+    top: spacing[2],
+    right: spacing[2],
+    backgroundColor: colors.card.DEFAULT,
+    borderRadius: 14,
+  },
+
+  // Pending Dialog
+  pendingModalContent: {
+    backgroundColor: colors.card.DEFAULT,
+    borderRadius: borderRadius.xl,
+    padding: spacing[6],
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  pendingIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: `${colors.primary.DEFAULT}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[4],
+  },
+  pendingTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold as any,
+    color: colors.foreground,
+    marginBottom: spacing[3],
+  },
+  pendingDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+    marginBottom: spacing[4],
+  },
+  pendingInfoCard: {
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  pendingInfoTitle: {
+    fontSize: typography.fontSize.xs,
+    color: colors.muted.foreground,
+    marginBottom: spacing[1],
+  },
+  pendingInfoPlate: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold as any,
+    color: colors.foreground,
+    letterSpacing: 2,
+  },
+  pendingNotes: {
+    width: '100%',
+    gap: spacing[2],
+    marginBottom: spacing[5],
+  },
+  pendingNoteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  pendingNoteText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.muted.foreground,
+    flex: 1,
+  },
+  pendingButton: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing[3.5],
+    paddingHorizontal: spacing[8],
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    width: '100%',
+  },
+  pendingButtonText: {
+    color: colors.primary.foreground,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
   },
 });
