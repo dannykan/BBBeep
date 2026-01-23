@@ -31,7 +31,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bbbeeep.mobile",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
+        "NSCameraUsageDescription": "需要使用相機拍攝行照照片"
+      }
     },
     "android": {
       "package": "com.bbbeeep.mobile",

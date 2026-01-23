@@ -16,9 +16,10 @@ config.watchFolders = [
   path.resolve(monorepoRoot, 'packages/shared'),
 ];
 
-// Add shared package to resolver - mobile has its own node_modules
+// Add shared package to resolver - include monorepo root for shared package dependencies
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
 ];
 
 // Map workspace package to actual location

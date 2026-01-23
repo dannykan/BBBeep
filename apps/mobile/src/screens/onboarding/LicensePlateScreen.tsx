@@ -92,54 +92,6 @@ export default function LicensePlateScreen({ navigation }: Props) {
     setShowApplicationDialog(true);
   }, []);
 
-  const launchImagePicker = useCallback(async () => {
-    try {
-      // 開啟圖片選擇器
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (result.canceled || !result.assets?.[0]) {
-        // 重新顯示 Modal
-        setShowApplicationDialog(true);
-        return;
-      }
-
-      const asset = result.assets[0];
-      setLicenseImageUri(asset.uri);
-
-      // 重新顯示 Modal
-      setShowApplicationDialog(true);
-
-      // 上傳圖片
-      setIsUploadingImage(true);
-      try {
-        const fileName = asset.uri.split('/').pop() || 'license.jpg';
-        const fileType = asset.mimeType || 'image/jpeg';
-
-        const uploadResult = await uploadApi.uploadImage({
-          uri: asset.uri,
-          name: fileName,
-          type: fileType,
-        });
-
-        setLicenseImageUrl(uploadResult.url);
-      } catch (uploadError: any) {
-        console.error('[IMAGE_UPLOAD] Upload error:', uploadError);
-        Alert.alert('上傳失敗', uploadError.response?.data?.message || '圖片上傳失敗，請重試');
-        setLicenseImageUri(null);
-      } finally {
-        setIsUploadingImage(false);
-      }
-    } catch (error: any) {
-      console.error('[IMAGE_PICKER] Error:', error);
-      Alert.alert('錯誤', '無法開啟相簿，請稍後再試');
-      setShowApplicationDialog(true);
-    }
-  }, []);
-
   const handlePickImage = useCallback(async () => {
     try {
       // 請求權限
@@ -149,18 +101,59 @@ export default function LicensePlateScreen({ navigation }: Props) {
         return;
       }
 
-      // 先關閉 Modal，避免衝突
+      // 先關閉 Modal，避免 iOS 衝突
       setShowApplicationDialog(false);
 
-      // 延遲一下再開啟圖片選擇器
-      setTimeout(() => {
-        launchImagePicker();
+      // 延遲後開啟圖片選擇器
+      setTimeout(async () => {
+        try {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.5,
+            maxWidth: 1200,
+            maxHeight: 900,
+          });
+
+          // 重新顯示 Modal
+          setShowApplicationDialog(true);
+
+          if (result.canceled || !result.assets?.[0]) return;
+
+          const asset = result.assets[0];
+          setLicenseImageUri(asset.uri);
+
+          // 上傳圖片
+          setIsUploadingImage(true);
+          try {
+            const fileName = asset.uri.split('/').pop() || 'license.jpg';
+            const fileType = asset.mimeType || 'image/jpeg';
+
+            const uploadResult = await uploadApi.uploadImage({
+              uri: asset.uri,
+              name: fileName,
+              type: fileType,
+            });
+
+            setLicenseImageUrl(uploadResult.url);
+          } catch (uploadError: any) {
+            console.error('[IMAGE_UPLOAD] Upload error:', uploadError);
+            Alert.alert('上傳失敗', uploadError.response?.data?.message || '圖片上傳失敗，請重試');
+            setLicenseImageUri(null);
+          } finally {
+            setIsUploadingImage(false);
+          }
+        } catch (pickerError: any) {
+          console.error('[IMAGE_PICKER] Error:', pickerError);
+          Alert.alert('錯誤', '無法開啟相簿');
+          setShowApplicationDialog(true);
+        }
       }, 300);
     } catch (error: any) {
       console.error('[IMAGE_PICKER] Permission error:', error);
       Alert.alert('錯誤', '無法存取相簿權限');
     }
-  }, [launchImagePicker]);
+  }, []);
 
   const handleRemoveImage = useCallback(() => {
     setLicenseImageUri(null);
