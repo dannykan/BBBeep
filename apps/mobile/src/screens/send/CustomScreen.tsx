@@ -87,6 +87,11 @@ export default function CustomScreen({ navigation }: Props) {
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
+      // Cleanup recording on unmount
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
     };
   }, []);
 
@@ -162,6 +167,16 @@ export default function CustomScreen({ navigation }: Props) {
       setPlaybackPosition(0);
       clearVoice();
       setCustomText('');
+
+      // Clean up any existing recording object first
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          // Ignore errors from already stopped recordings
+        }
+        recordingRef.current = null;
+      }
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
