@@ -114,8 +114,10 @@ const AdminPage = React.memo(() => {
           'x-admin-token': adminToken,
         },
       });
-      setUsers(response.data);
-      setFilteredUsers(response.data);
+      // 確保 response.data 是陣列
+      const usersData = Array.isArray(response.data) ? response.data : [];
+      setUsers(usersData);
+      setFilteredUsers(usersData);
     } catch (error: any) {
       console.error('Load users error:', error.response?.data || error.message);
       if (error.response?.status === 401) {
