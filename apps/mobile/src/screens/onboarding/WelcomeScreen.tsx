@@ -87,7 +87,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
           subtitle={
             userType === 'pedestrian'
               ? '你可以開始提醒路上的汽車與機車'
-              : '每天都有 2 點免費額度，用一個更文明的方式提醒彼此'
+              : '7 天免費試用，50 點讓你盡情體驗'
           }
         >
           <View style={styles.welcomeIconCircle}>
@@ -113,7 +113,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
         {userType === 'pedestrian' && (
           <View style={styles.pedestrianInfoCard}>
             <Text style={styles.pedestrianInfoItem}>✅ 可以發送提醒</Text>
-            <Text style={styles.pedestrianInfoItem}>✅ 每天免費 2 點</Text>
+            <Text style={styles.pedestrianInfoItem}>✅ 7 天試用期，50 點免費體驗</Text>
             <Text style={styles.pedestrianInfoItemWarning}>
               ⚠️ 因沒有車牌，無法接收提醒
             </Text>
