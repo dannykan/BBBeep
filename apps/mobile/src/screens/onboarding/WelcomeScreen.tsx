@@ -18,10 +18,10 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import { usersApi, normalizeLicensePlate } from '@bbbeeep/shared';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -32,6 +32,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 export default function WelcomeScreen({ navigation: _navigation }: Props) {
   const { refreshUser } = useAuth();
   const { requestPermissions } = useNotifications();
+  const { colors, isDark } = useTheme();
   const {
     userType,
     vehicleType,
@@ -90,7 +91,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
               : '7 天免費試用，50 點讓你盡情體驗'
           }
         >
-          <View style={styles.welcomeIconCircle}>
+          <View style={[styles.welcomeIconCircle, { backgroundColor: `${colors.primary.DEFAULT}10` }]}>
             {userType === 'pedestrian' ? (
               <View style={styles.dualIconContainer}>
                 <FontAwesome6 name="person-walking" size={20} color={colors.primary.DEFAULT} style={styles.iconTopLeft} />
@@ -106,30 +107,30 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
           </View>
         </StepHeader>
 
-        <Text style={styles.missionText}>
+        <Text style={[styles.missionText, { color: colors.muted.foreground }]}>
           我們相信，多數人不是故意的，只是沒被提醒。
         </Text>
 
         {userType === 'pedestrian' && (
-          <View style={styles.pedestrianInfoCard}>
-            <Text style={styles.pedestrianInfoItem}>✅ 可以發送提醒</Text>
-            <Text style={styles.pedestrianInfoItem}>✅ 7 天試用期，50 點免費體驗</Text>
-            <Text style={styles.pedestrianInfoItemWarning}>
+          <View style={[styles.pedestrianInfoCard, { backgroundColor: colors.muted.DEFAULT, borderColor: colors.borderSolid }]}>
+            <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 可以發送提醒</Text>
+            <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 7 天試用期，50 點免費體驗</Text>
+            <Text style={[styles.pedestrianInfoItemWarning, { color: colors.foreground }]}>
               ⚠️ 因沒有車牌，無法接收提醒
             </Text>
           </View>
         )}
 
         {inviteCodeApplied && (
-          <View style={styles.inviteAppliedCard}>
-            <Text style={styles.inviteAppliedText}>
+          <View style={[styles.inviteAppliedCard, { backgroundColor: isDark ? '#052e16' : '#F0FDF4', borderColor: isDark ? '#166534' : '#BBF7D0' }]}>
+            <Text style={[styles.inviteAppliedText, { color: isDark ? '#4ade80' : '#166534' }]}>
               🎉 已使用邀請碼，完成註冊即可獲得獎勵點數
             </Text>
           </View>
         )}
 
         <TouchableOpacity
-          style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+          style={[styles.primaryButton, { backgroundColor: colors.primary.DEFAULT }, isLoading && styles.buttonDisabled]}
           onPress={handleCompleteOnboarding}
           disabled={isLoading}
           activeOpacity={0.7}
@@ -137,7 +138,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
           {isLoading ? (
             <ActivityIndicator color={colors.primary.foreground} />
           ) : (
-            <Text style={styles.primaryButtonText}>開始使用</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>開始使用</Text>
           )}
         </TouchableOpacity>
       </OnboardingCard>
@@ -151,7 +152,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: `${colors.primary.DEFAULT}10`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
@@ -175,7 +175,6 @@ const styles = StyleSheet.create({
   // Mission Text
   missionText: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
     transform: [{ skewX: '-8deg' }],
     marginBottom: spacing[4],
@@ -183,9 +182,7 @@ const styles = StyleSheet.create({
 
   // Pedestrian Info
   pedestrianInfoCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     gap: spacing[1],
@@ -193,31 +190,25 @@ const styles = StyleSheet.create({
   },
   pedestrianInfoItem: {
     fontSize: typography.fontSize.xs,
-    color: colors.foreground,
   },
   pedestrianInfoItemWarning: {
     fontSize: typography.fontSize.xs,
-    color: colors.foreground,
   },
 
   // Invite Applied
   inviteAppliedCard: {
-    backgroundColor: '#F0FDF4',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
   inviteAppliedText: {
     fontSize: typography.fontSize.sm,
-    color: '#166534',
     textAlign: 'center',
   },
 
   // Buttons
   primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
@@ -225,7 +216,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },

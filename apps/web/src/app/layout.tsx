@@ -7,19 +7,26 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: '叭叭叭 BBBeep',
-  description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+  title: 'UBeep - 路上提醒平台',
+  description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
+  icons: {
+    icon: [
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: '/icon-192.png',
+  },
   openGraph: {
-    title: '叭叭叭 BBBeep',
-    description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+    title: 'UBeep - 路上提醒平台',
+    description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
     type: 'website',
     locale: 'zh_TW',
-    siteName: '叭叭叭 BBBeep',
+    siteName: 'UBeep',
   },
   twitter: {
     card: 'summary',
-    title: '叭叭叭 BBBeep',
-    description: '道路提醒互助平台，一個可以匿名發送善意提醒的管道！',
+    title: 'UBeep - 路上提醒平台',
+    description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
   },
 };
 

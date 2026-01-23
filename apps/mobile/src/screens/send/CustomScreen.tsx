@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
 import { aiApi } from '@bbbeeep/shared';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 const MIN_CHARS = 5;
 const MAX_CHARS = 30;
@@ -37,6 +38,7 @@ export default function CustomScreen({ navigation }: Props) {
     checkContentFilter,
     validateContent,
   } = useSend();
+  const { colors, isDark } = useTheme();
 
   // Debounced content filter check
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,6 +119,12 @@ export default function CustomScreen({ navigation }: Props) {
     }
   };
 
+  // Warning colors for dark mode
+  const warningBgColor = isDark ? '#78350F' : '#FEF3C7';
+  const warningBorderColor = isDark ? '#D97706' : '#F59E0B';
+  const warningTextColor = isDark ? '#FCD34D' : '#B45309';
+  const warningHintColor = isDark ? '#FBBF24' : '#D97706';
+
   return (
     <SendLayout currentStep={4} totalSteps={5}>
       <StepHeader
@@ -129,18 +137,18 @@ export default function CustomScreen({ navigation }: Props) {
       />
 
       {!isOtherCase && generatedMessage && (
-        <View style={styles.generatedCard}>
-          <Text style={styles.generatedLabel}>系統生成</Text>
-          <Text style={styles.generatedText}>{generatedMessage}</Text>
+        <View style={[styles.generatedCard, { backgroundColor: colors.muted.DEFAULT }]}>
+          <Text style={[styles.generatedLabel, { color: colors.muted.foreground }]}>系統生成</Text>
+          <Text style={[styles.generatedText, { color: colors.foreground }]}>{generatedMessage}</Text>
         </View>
       )}
 
       <View style={styles.inputSection}>
-        <Text style={styles.inputLabel}>
+        <Text style={[styles.inputLabel, { color: colors.foreground }]}>
           {isOtherCase ? '說明內容' : '補充說明'}
         </Text>
         <TextInput
-          style={styles.textArea}
+          style={[styles.textArea, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid, color: colors.foreground }]}
           value={customText}
           onChangeText={setCustomText}
           placeholder={
@@ -154,18 +162,18 @@ export default function CustomScreen({ navigation }: Props) {
           textAlignVertical="top"
           maxLength={MAX_CHARS}
         />
-        <Text style={[styles.charCount, trimmedLength > 0 && !isValidLength && styles.charCountError]}>
+        <Text style={[styles.charCount, { color: colors.muted.foreground }, trimmedLength > 0 && !isValidLength && { color: colors.destructive.DEFAULT }]}>
           {trimmedLength} / {MAX_CHARS}（最少 {MIN_CHARS} 字）
         </Text>
       </View>
 
       {/* 內容過濾警告 */}
       {contentWarning && trimmedLength >= MIN_CHARS && (
-        <View style={styles.warningCard}>
+        <View style={[styles.warningCard, { backgroundColor: warningBgColor, borderColor: warningBorderColor }]}>
           <Ionicons name="warning" size={16} color="#D97706" />
           <View style={styles.warningContent}>
-            <Text style={styles.warningText}>{contentWarning}</Text>
-            <Text style={styles.warningHint}>送出時將無法通過驗證</Text>
+            <Text style={[styles.warningText, { color: warningTextColor }]}>{contentWarning}</Text>
+            <Text style={[styles.warningHint, { color: warningHintColor }]}>送出時將無法通過驗證</Text>
           </View>
         </View>
       )}
@@ -176,7 +184,7 @@ export default function CustomScreen({ navigation }: Props) {
           {/* AI 優化選項 */}
           {aiLimit.canUse && (
             <TouchableOpacity
-              style={[styles.submitOption, styles.aiOption, (isLoading || !isValidLength) && styles.buttonDisabled]}
+              style={[styles.submitOption, styles.aiOption, { backgroundColor: colors.primary.DEFAULT }, (isLoading || !isValidLength) && styles.buttonDisabled]}
               onPress={handleAiSubmit}
               disabled={isLoading || !isValidLength}
               activeOpacity={0.8}
@@ -187,10 +195,10 @@ export default function CustomScreen({ navigation }: Props) {
                 <>
                   <View style={styles.optionMain}>
                     <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
-                    <Text style={styles.aiOptionText}>AI 優化送出</Text>
+                    <Text style={[styles.aiOptionText, { color: colors.primary.foreground }]}>AI 優化送出</Text>
                   </View>
                   <View style={styles.pointBadge}>
-                    <Text style={styles.pointBadgeText}>2 點</Text>
+                    <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
                   </View>
                 </>
               )}
@@ -199,21 +207,21 @@ export default function CustomScreen({ navigation }: Props) {
 
           {/* 直接送出選項 */}
           <TouchableOpacity
-            style={[styles.submitOption, styles.directOption, (isLoading || !isValidLength) && styles.buttonDisabled]}
+            style={[styles.submitOption, styles.directOption, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }, (isLoading || !isValidLength) && styles.buttonDisabled]}
             onPress={handleDirectSubmit}
             disabled={isLoading || !isValidLength}
             activeOpacity={0.8}
           >
             <View style={styles.optionMain}>
-              <Text style={styles.directOptionText}>直接送出</Text>
+              <Text style={[styles.directOptionText, { color: colors.foreground }]}>直接送出</Text>
             </View>
-            <View style={[styles.pointBadge, styles.pointBadgeDirect]}>
-              <Text style={[styles.pointBadgeText, styles.pointBadgeTextDirect]}>4 點</Text>
+            <View style={[styles.pointBadge, styles.pointBadgeDirect, { backgroundColor: colors.muted.DEFAULT }]}>
+              <Text style={[styles.pointBadgeText, styles.pointBadgeTextDirect, { color: colors.muted.foreground }]}>4 點</Text>
             </View>
           </TouchableOpacity>
 
           {aiLimit.canUse && (
-            <Text style={styles.aiHint}>
+            <Text style={[styles.aiHint, { color: colors.muted.foreground }]}>
               <Ionicons name="information-circle-outline" size={14} color={colors.muted.foreground} />
               {' '}AI 會幫你優化文字，讓提醒更專業友善
             </Text>
@@ -224,11 +232,11 @@ export default function CustomScreen({ navigation }: Props) {
       {/* 沒有輸入時顯示跳過按鈕（僅非必填情況） */}
       {!isOtherCase && customText.trim().length === 0 && (
         <TouchableOpacity
-          style={styles.skipButton}
+          style={[styles.skipButton, { backgroundColor: colors.muted.DEFAULT }]}
           onPress={handleDirectSubmit}
           activeOpacity={0.8}
         >
-          <Text style={styles.skipButtonText}>跳過，直接送出</Text>
+          <Text style={[styles.skipButtonText, { color: colors.muted.foreground }]}>跳過，直接送出</Text>
         </TouchableOpacity>
       )}
     </SendLayout>
@@ -237,19 +245,16 @@ export default function CustomScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   generatedCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
   generatedLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     marginBottom: spacing[1],
   },
   generatedText: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
   },
   inputSection: {
     marginBottom: spacing[4],
@@ -257,35 +262,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
   },
   textArea: {
-    backgroundColor: colors.card.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
     minHeight: 120,
   },
   charCount: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'right',
     marginTop: spacing[1],
-  },
-  charCountError: {
-    color: colors.destructive.DEFAULT,
   },
   warningCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FEF3C7', // amber-100
     borderWidth: 1,
-    borderColor: '#F59E0B', // amber-500
     borderRadius: borderRadius.lg,
     padding: spacing[3],
     marginBottom: spacing[4],
@@ -297,11 +292,9 @@ const styles = StyleSheet.create({
   warningText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: '#B45309', // amber-700
   },
   warningHint: {
     fontSize: typography.fontSize.xs,
-    color: '#D97706', // amber-600
     marginTop: spacing[0.5],
   },
   submitOptions: {
@@ -316,12 +309,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
   },
   aiOption: {
-    backgroundColor: colors.primary.DEFAULT,
   },
   directOption: {
-    backgroundColor: colors.card.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
   },
   optionMain: {
     flexDirection: 'row',
@@ -329,12 +319,10 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   aiOptionText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
   directOptionText: {
-    color: colors.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
@@ -345,30 +333,24 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[1],
   },
   pointBadgeDirect: {
-    backgroundColor: colors.muted.DEFAULT,
   },
   pointBadgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.primary.foreground,
   },
   pointBadgeTextDirect: {
-    color: colors.muted.foreground,
   },
   aiHint: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
     marginTop: spacing[1],
   },
   skipButton: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
   },
   skipButtonText: {
-    color: colors.muted.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },

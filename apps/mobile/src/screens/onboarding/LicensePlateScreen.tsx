@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import {
   licensePlateApi,
@@ -29,7 +30,6 @@ import {
   displayLicensePlate,
 } from '@bbbeeep/shared';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -48,6 +48,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
     setIsLoading,
     getTotalSteps,
   } = useOnboarding();
+  const { colors, isDark } = useTheme();
 
   const [showLicensePlateDialog, setShowLicensePlateDialog] = useState(false);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
@@ -200,18 +201,18 @@ export default function LicensePlateScreen({ navigation }: Props) {
               size={18}
               color={colors.primary.DEFAULT}
             />
-            <Text style={styles.vehicleTypeBadgeText}>
+            <Text style={[styles.vehicleTypeBadgeText, { color: colors.primary.DEFAULT }]}>
               {vehicleType === 'car' ? '汽車駕駛' : '機車騎士'}
             </Text>
           </View>
         </StepHeader>
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, { color: colors.foreground }]}>
             {vehicleType === 'car' ? '汽車車牌' : '機車車牌'}
           </Text>
           <TextInput
-            style={styles.licensePlateInput}
+            style={[styles.licensePlateInput, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
             placeholder={vehicleType === 'car' ? 'ABC1234' : 'ABC123'}
             placeholderTextColor={colors.muted.foreground}
             value={licensePlate}
@@ -219,7 +220,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
             maxLength={8}
             autoCapitalize="characters"
           />
-          <Text style={styles.inputHintCenter}>
+          <Text style={[styles.inputHintCenter, { color: colors.muted.foreground }]}>
             {vehicleType === 'car'
               ? '格式範例：ABC1234 或 ABC-1234'
               : '格式範例：ABC123 或 ABC-123'}
@@ -229,6 +230,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
         <TouchableOpacity
           style={[
             styles.primaryButton,
+            { backgroundColor: colors.primary.DEFAULT },
             styles.buttonMarginTop,
             !licensePlate && styles.buttonDisabled,
           ]}
@@ -239,23 +241,23 @@ export default function LicensePlateScreen({ navigation }: Props) {
           {isLoading ? (
             <ActivityIndicator color={colors.primary.foreground} />
           ) : (
-            <Text style={styles.primaryButtonText}>下一步</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>下一步</Text>
           )}
         </TouchableOpacity>
       </OnboardingCard>
 
       {/* License Plate Bound Dialog */}
       <Modal visible={showLicensePlateDialog} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>車牌已被登記</Text>
-            <Text style={styles.modalDescription}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card.DEFAULT }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>車牌已被登記</Text>
+            <Text style={[styles.modalDescription, { color: colors.muted.foreground }]}>
               該車牌號碼{' '}
-              <Text style={styles.boldText}>
+              <Text style={[styles.boldText, { color: colors.foreground }]}>
                 {displayLicensePlate(licensePlate)}
               </Text>{' '}
               已被綁定到手機號碼{' '}
-              <Text style={styles.boldText}>
+              <Text style={[styles.boldText, { color: colors.foreground }]}>
                 {licensePlateCheckResult?.boundPhone}
               </Text>
               {licensePlateCheckResult?.boundNickname &&
@@ -264,23 +266,23 @@ export default function LicensePlateScreen({ navigation }: Props) {
             </Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalSecondaryButton}
+                style={[styles.modalSecondaryButton, { backgroundColor: colors.muted.DEFAULT }]}
                 onPress={() => {
                   setShowLicensePlateDialog(false);
                   setLicensePlate('');
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalSecondaryButtonText}>
+                <Text style={[styles.modalSecondaryButtonText, { color: colors.foreground }]}>
                   不是，重新輸入
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalPrimaryButton}
+                style={[styles.modalPrimaryButton, { backgroundColor: colors.primary.DEFAULT }]}
                 onPress={handleConfirmApplication}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalPrimaryButtonText}>是，提交申請</Text>
+                <Text style={[styles.modalPrimaryButtonText, { color: colors.primary.foreground }]}>是，提交申請</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -289,10 +291,10 @@ export default function LicensePlateScreen({ navigation }: Props) {
 
       {/* License Plate Application Dialog */}
       <Modal visible={showApplicationDialog} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>提交車牌申請</Text>
-            <Text style={styles.modalDescription}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card.DEFAULT }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>提交車牌申請</Text>
+            <Text style={[styles.modalDescription, { color: colors.muted.foreground }]}>
               請提供 Email 以接收審核通知，我們會在 1-2 個工作天內審核。
             </Text>
 
@@ -300,19 +302,19 @@ export default function LicensePlateScreen({ navigation }: Props) {
               <View style={styles.applicationForm}>
                 {/* 行照照片上傳 */}
                 <View style={styles.imageUploadSection}>
-                  <Text style={styles.label}>行照照片（可加速審核）</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>行照照片（可加速審核）</Text>
                   {licenseImageUri ? (
                     <View style={styles.imagePreviewContainer}>
                       <Image source={{ uri: licenseImageUri }} style={styles.imagePreview} />
                       {isUploadingImage && (
                         <View style={styles.imageUploadingOverlay}>
                           <ActivityIndicator color={colors.primary.foreground} />
-                          <Text style={styles.imageUploadingText}>上傳中...</Text>
+                          <Text style={[styles.imageUploadingText, { color: colors.primary.foreground }]}>上傳中...</Text>
                         </View>
                       )}
                       {!isUploadingImage && (
                         <TouchableOpacity
-                          style={styles.imageRemoveButton}
+                          style={[styles.imageRemoveButton, { backgroundColor: colors.card.DEFAULT }]}
                           onPress={handleRemoveImage}
                           activeOpacity={0.7}
                         >
@@ -322,20 +324,20 @@ export default function LicensePlateScreen({ navigation }: Props) {
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={styles.imageUploadButton}
+                      style={[styles.imageUploadButton, { borderColor: colors.borderSolid, backgroundColor: colors.muted.DEFAULT }]}
                       onPress={handlePickImage}
                       activeOpacity={0.7}
                     >
                       <Ionicons name="camera-outline" size={32} color={colors.muted.foreground} />
-                      <Text style={styles.imageUploadButtonText}>點擊上傳行照照片</Text>
-                      <Text style={styles.imageUploadHint}>拍攝或選擇行照正面照片</Text>
+                      <Text style={[styles.imageUploadButtonText, { color: colors.foreground }]}>點擊上傳行照照片</Text>
+                      <Text style={[styles.imageUploadHint, { color: colors.muted.foreground }]}>拍攝或選擇行照正面照片</Text>
                     </TouchableOpacity>
                   )}
                 </View>
 
-                <Text style={styles.label}>Email（用於接收審核通知）</Text>
+                <Text style={[styles.label, { color: colors.foreground }]}>Email（用於接收審核通知）</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
                   placeholder="請輸入您的 Email"
                   placeholderTextColor={colors.muted.foreground}
                   value={applicationEmail}
@@ -344,12 +346,12 @@ export default function LicensePlateScreen({ navigation }: Props) {
                   autoCapitalize="none"
                 />
 
-                <View style={styles.applicationInfo}>
-                  <Text style={styles.applicationInfoTitle}>申請資訊</Text>
-                  <Text style={styles.applicationInfoItem}>
+                <View style={[styles.applicationInfo, { backgroundColor: colors.muted.DEFAULT }]}>
+                  <Text style={[styles.applicationInfoTitle, { color: colors.foreground }]}>申請資訊</Text>
+                  <Text style={[styles.applicationInfoItem, { color: colors.muted.foreground }]}>
                     車牌號碼：{displayLicensePlate(licensePlate)}
                   </Text>
-                  <Text style={styles.applicationInfoItem}>
+                  <Text style={[styles.applicationInfoItem, { color: colors.muted.foreground }]}>
                     車輛類型：{vehicleType === 'car' ? '汽車' : '機車'}
                   </Text>
                   {licenseImageUrl && (
@@ -363,22 +365,23 @@ export default function LicensePlateScreen({ navigation }: Props) {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalSecondaryButton}
+                style={[styles.modalSecondaryButton, { backgroundColor: colors.muted.DEFAULT }]}
                 onPress={() => setShowApplicationDialog(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalSecondaryButtonText}>取消</Text>
+                <Text style={[styles.modalSecondaryButtonText, { color: colors.foreground }]}>取消</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.modalPrimaryButton,
+                  { backgroundColor: colors.primary.DEFAULT },
                   isLoading && styles.buttonDisabled,
                 ]}
                 onPress={handleSubmitApplication}
                 disabled={isLoading}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalPrimaryButtonText}>
+                <Text style={[styles.modalPrimaryButtonText, { color: colors.primary.foreground }]}>
                   {isLoading ? '提交中...' : '提交申請'}
                 </Text>
               </TouchableOpacity>
@@ -389,20 +392,20 @@ export default function LicensePlateScreen({ navigation }: Props) {
 
       {/* Application Pending Dialog */}
       <Modal visible={showPendingDialog} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.pendingModalContent}>
-            <View style={styles.pendingIconContainer}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)' }]}>
+          <View style={[styles.pendingModalContent, { backgroundColor: colors.card.DEFAULT }]}>
+            <View style={[styles.pendingIconContainer, { backgroundColor: `${colors.primary.DEFAULT}15` }]}>
               <Ionicons name="time-outline" size={64} color={colors.primary.DEFAULT} />
             </View>
 
-            <Text style={styles.pendingTitle}>申請已送出</Text>
+            <Text style={[styles.pendingTitle, { color: colors.foreground }]}>申請已送出</Text>
 
-            <Text style={styles.pendingDescription}>
-              我們會在 <Text style={styles.boldText}>1-2 個工作天內</Text> 審核您的申請。
+            <Text style={[styles.pendingDescription, { color: colors.muted.foreground }]}>
+              我們會在 <Text style={[styles.boldText, { color: colors.foreground }]}>1-2 個工作天內</Text> 審核您的申請。
               {applicationEmail ? (
                 <>
                   {'\n\n'}審核結果將發送至：{'\n'}
-                  <Text style={styles.boldText}>{applicationEmail}</Text>
+                  <Text style={[styles.boldText, { color: colors.foreground }]}>{applicationEmail}</Text>
                 </>
               ) : (
                 <>
@@ -411,24 +414,24 @@ export default function LicensePlateScreen({ navigation }: Props) {
               )}
             </Text>
 
-            <View style={styles.pendingInfoCard}>
-              <Text style={styles.pendingInfoTitle}>申請車牌</Text>
-              <Text style={styles.pendingInfoPlate}>{displayLicensePlate(licensePlate)}</Text>
+            <View style={[styles.pendingInfoCard, { backgroundColor: colors.muted.DEFAULT }]}>
+              <Text style={[styles.pendingInfoTitle, { color: colors.muted.foreground }]}>申請車牌</Text>
+              <Text style={[styles.pendingInfoPlate, { color: colors.foreground }]}>{displayLicensePlate(licensePlate)}</Text>
             </View>
 
             <View style={styles.pendingNotes}>
               <View style={styles.pendingNoteItem}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.primary.DEFAULT} />
-                <Text style={styles.pendingNoteText}>審核通過後，您可以繼續完成註冊</Text>
+                <Text style={[styles.pendingNoteText, { color: colors.muted.foreground }]}>審核通過後，您可以繼續完成註冊</Text>
               </View>
               <View style={styles.pendingNoteItem}>
                 <Ionicons name="mail-outline" size={18} color={colors.primary.DEFAULT} />
-                <Text style={styles.pendingNoteText}>請查收 Email 獲取審核結果</Text>
+                <Text style={[styles.pendingNoteText, { color: colors.muted.foreground }]}>請查收 Email 獲取審核結果</Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.pendingButton}
+              style={[styles.pendingButton, { backgroundColor: colors.primary.DEFAULT }]}
               onPress={() => {
                 // 清除狀態，讓用戶可以重新開始或關閉 app
                 setShowPendingDialog(false);
@@ -439,7 +442,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.pendingButtonText}>我知道了</Text>
+              <Text style={[styles.pendingButtonText, { color: colors.primary.foreground }]}>我知道了</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -459,7 +462,6 @@ const styles = StyleSheet.create({
   vehicleTypeBadgeText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.DEFAULT,
   },
 
   // Input Section
@@ -468,38 +470,29 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
-    backgroundColor: colors.card.DEFAULT,
   },
   licensePlateInput: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
     fontSize: typography.fontSize.lg,
     textAlign: 'center',
-    color: colors.foreground,
-    backgroundColor: colors.card.DEFAULT,
   },
   inputHintCenter: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
   },
 
   // Buttons
   primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
@@ -507,7 +500,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
@@ -521,13 +513,11 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[6],
   },
   modalContent: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[6],
     width: '100%',
@@ -536,18 +526,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
   },
   modalDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
   boldText: {
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -555,7 +542,6 @@ const styles = StyleSheet.create({
   },
   modalSecondaryButton: {
     flex: 1,
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing[3],
     alignItems: 'center',
@@ -563,11 +549,9 @@ const styles = StyleSheet.create({
   modalSecondaryButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
   },
   modalPrimaryButton: {
     flex: 1,
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing[3],
     alignItems: 'center',
@@ -575,7 +559,6 @@ const styles = StyleSheet.create({
   modalPrimaryButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.foreground,
   },
 
   // Application Form
@@ -587,19 +570,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   applicationInfo: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
   },
   applicationInfoTitle: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
   },
   applicationInfoItem: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
   },
   applicationInfoItemSuccess: {
     fontSize: typography.fontSize.sm,
@@ -613,23 +593,19 @@ const styles = StyleSheet.create({
   },
   imageUploadButton: {
     borderWidth: 2,
-    borderColor: colors.borderSolid,
     borderStyle: 'dashed',
     borderRadius: borderRadius.lg,
     padding: spacing[5],
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.muted.DEFAULT,
   },
   imageUploadButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     marginTop: spacing[2],
   },
   imageUploadHint: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     marginTop: spacing[1],
   },
   imagePreviewContainer: {
@@ -653,7 +629,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   imageUploadingText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.sm,
     marginTop: spacing[2],
   },
@@ -661,13 +636,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing[2],
     right: spacing[2],
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: 14,
   },
 
   // Pending Dialog
   pendingModalContent: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.xl,
     padding: spacing[6],
     width: '100%',
@@ -678,7 +651,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: `${colors.primary.DEFAULT}15`,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
@@ -686,18 +658,15 @@ const styles = StyleSheet.create({
   pendingTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold as any,
-    color: colors.foreground,
     marginBottom: spacing[3],
   },
   pendingDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     textAlign: 'center',
     lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
   pendingInfoCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     width: '100%',
@@ -706,13 +675,11 @@ const styles = StyleSheet.create({
   },
   pendingInfoTitle: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     marginBottom: spacing[1],
   },
   pendingInfoPlate: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold as any,
-    color: colors.foreground,
     letterSpacing: 2,
   },
   pendingNotes: {
@@ -727,11 +694,9 @@ const styles = StyleSheet.create({
   },
   pendingNoteText: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     flex: 1,
   },
   pendingButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[8],
@@ -741,7 +706,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pendingButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },

@@ -21,8 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -32,6 +32,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
   const { appleLogin, lineLogin } = useAuth();
+  const { colors, isDark } = useTheme();
   const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [isLineLoading, setIsLineLoading] = useState(false);
 
@@ -62,11 +63,11 @@ export default function LoginScreen({ navigation }: Props) {
   const isLoading = isAppleLoading || isLineLoading;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with safe area */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
+          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.backButton}
@@ -76,9 +77,9 @@ export default function LoginScreen({ navigation }: Props) {
                 size={20}
                 color={colors.muted.foreground}
               />
-              <Text style={styles.backText}>返回</Text>
+              <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>登入</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>登入</Text>
             <View style={styles.headerSpacer} />
           </View>
         </SafeAreaView>
@@ -90,11 +91,11 @@ export default function LoginScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>註冊/登入</Text>
-            <Text style={styles.subtitle}>選擇登入方式</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>註冊/登入</Text>
+            <Text style={[styles.subtitle, { color: colors.muted.foreground }]}>選擇登入方式</Text>
           </View>
 
           {/* Login Buttons */}
@@ -103,7 +104,9 @@ export default function LoginScreen({ navigation }: Props) {
             {Platform.OS === 'ios' && (
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                buttonStyle={isDark
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
                 cornerRadius={borderRadius.lg}
                 style={styles.appleButton}
                 onPress={handleAppleLogin}
@@ -113,9 +116,9 @@ export default function LoginScreen({ navigation }: Props) {
             {/* Divider (only show if both options are available) */}
             {Platform.OS === 'ios' && (
               <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>或</Text>
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
+                <Text style={[styles.dividerText, { color: colors.muted.foreground }]}>或</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
               </View>
             )}
 
@@ -140,7 +143,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           {/* Terms */}
-          <Text style={styles.terms}>
+          <Text style={[styles.terms, { color: colors.muted.foreground }]}>
             繼續即表示您同意我們的服務條款和隱私權政策
           </Text>
         </View>
@@ -152,19 +155,12 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
+  headerContainer: {},
   header: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],
     flexDirection: 'row',
@@ -178,13 +174,11 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     marginLeft: spacing[1],
   },
   headerTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -204,11 +198,9 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[6],
     borderWidth: 1,
-    borderColor: colors.borderSolid,
   },
 
   // Title Section
@@ -218,12 +210,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
     marginBottom: spacing[1],
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
   },
 
   // Login Buttons
@@ -248,12 +238,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.borderSolid,
   },
   dividerText: {
     paddingHorizontal: spacing[2],
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textTransform: 'uppercase',
   },
 
@@ -289,7 +277,6 @@ const styles = StyleSheet.create({
   terms: {
     textAlign: 'center',
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
   },
 });

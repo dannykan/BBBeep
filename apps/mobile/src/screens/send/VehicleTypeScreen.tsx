@@ -9,9 +9,10 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
 import type { VehicleType } from '../../data/vehicleTemplates';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_SIZE = (SCREEN_WIDTH - spacing[6] * 2 - spacing[4]) / 2;
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<SendStackParamList, 'VehicleType'>;
 
 export default function VehicleTypeScreen({ navigation }: Props) {
   const { setVehicleType } = useSend();
+  const { colors } = useTheme();
 
   const handleSelect = (type: VehicleType) => {
     setVehicleType(type);
@@ -35,21 +37,21 @@ export default function VehicleTypeScreen({ navigation }: Props) {
 
       <View style={styles.vehicleGrid}>
         <TouchableOpacity
-          style={styles.vehicleCard}
+          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
           onPress={() => handleSelect('car')}
           activeOpacity={0.7}
         >
           <FontAwesome6 name="car" size={56} color={colors.primary.DEFAULT} />
-          <Text style={styles.vehicleCardText}>汽車</Text>
+          <Text style={[styles.vehicleCardText, { color: colors.foreground }]}>汽車</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.vehicleCard}
+          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
           onPress={() => handleSelect('scooter')}
           activeOpacity={0.7}
         >
           <FontAwesome6 name="motorcycle" size={56} color={colors.primary.DEFAULT} />
-          <Text style={styles.vehicleCardText}>機車</Text>
+          <Text style={[styles.vehicleCardText, { color: colors.foreground }]}>機車</Text>
         </TouchableOpacity>
       </View>
     </SendLayout>
@@ -64,10 +66,8 @@ const styles = StyleSheet.create({
   vehicleCard: {
     width: CARD_SIZE,
     aspectRatio: 1,
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[3],
@@ -75,6 +75,5 @@ const styles = StyleSheet.create({
   vehicleCardText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
   },
 });

@@ -8,13 +8,15 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useSend } from '../../context/SendContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout } from './components';
 import { displayLicensePlate } from '@bbbeeep/shared';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 export default function SuccessScreen() {
   const navigation = useNavigation<any>();
   const { targetPlate, resetSend } = useSend();
+  const { colors, isDark } = useTheme();
 
   const handleGoHome = () => {
     // Navigate to Home tab
@@ -32,6 +34,10 @@ export default function SuccessScreen() {
     );
   };
 
+  // Success colors for dark mode
+  const successIconBgColor = isDark ? '#166534' : '#DCFCE7';
+  const successIconColor = isDark ? '#86EFAC' : '#16A34A';
+
   return (
     <SendLayout
       currentStep={5}
@@ -42,19 +48,19 @@ export default function SuccessScreen() {
     >
       <View style={styles.content}>
         {/* Success icon */}
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark" size={48} color="#16A34A" />
+        <View style={[styles.successIcon, { backgroundColor: successIconBgColor }]}>
+          <Ionicons name="checkmark" size={48} color={successIconColor} />
         </View>
 
         {/* Success message */}
-        <Text style={styles.title}>提醒已送出</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.foreground }]}>提醒已送出</Text>
+        <Text style={[styles.subtitle, { color: colors.muted.foreground }]}>
           已成功送出提醒給 {displayLicensePlate(targetPlate)}
         </Text>
 
         {/* Info card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.muted.DEFAULT }]}>
+          <Text style={[styles.infoText, { color: colors.muted.foreground }]}>
             對方會在下次開啟 App 時收到你的提醒
           </Text>
         </View>
@@ -62,19 +68,19 @@ export default function SuccessScreen() {
         {/* Action buttons */}
         <View style={styles.buttonGroup}>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { backgroundColor: colors.primary.DEFAULT }]}
             onPress={handleGoHome}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>返回首頁</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>返回首頁</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
             onPress={handleSendAnother}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>繼續發送</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.foreground }]}>繼續發送</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -91,7 +97,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[6],
@@ -99,17 +104,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: colors.muted.foreground,
     textAlign: 'center',
     marginBottom: spacing[6],
   },
   infoCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     marginBottom: spacing[8],
@@ -117,7 +119,6 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     textAlign: 'center',
   },
   buttonGroup: {
@@ -125,26 +126,21 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
   secondaryButton: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: colors.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },

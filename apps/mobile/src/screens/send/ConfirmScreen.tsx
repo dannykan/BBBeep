@@ -18,10 +18,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
 import { messagesApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints } from '@bbbeeep/shared';
 import { aiApi } from '@bbbeeep/shared';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'Confirm'>;
 
@@ -49,6 +50,7 @@ export default function ConfirmScreen({ navigation }: Props) {
     getFinalMessage,
     validateContent,
   } = useSend();
+  const { colors, isDark } = useTheme();
 
   const pointCost = getPointCost();
   const finalMessage = getFinalMessage();
@@ -162,30 +164,33 @@ export default function ConfirmScreen({ navigation }: Props) {
     { id: '15min', label: '15 分鐘前' },
   ] as const;
 
+  // Warning colors for dark mode
+  const warningBgColor = isDark ? `${colors.destructive.DEFAULT}30` : `${colors.destructive.DEFAULT}10`;
+
   return (
     <SendLayout currentStep={5} totalSteps={5}>
       <StepHeader title="確認並發送" subtitle="請確認以下資訊" />
 
       {/* Target plate */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoLabel}>對象車牌</Text>
-        <Text style={styles.infoValue}>{displayLicensePlate(targetPlate)}</Text>
+      <View style={[styles.infoCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+        <Text style={[styles.infoLabel, { color: colors.muted.foreground }]}>對象車牌</Text>
+        <Text style={[styles.infoValue, { color: colors.foreground }]}>{displayLicensePlate(targetPlate)}</Text>
       </View>
 
       {/* Message preview */}
-      <View style={styles.messageCard}>
-        <Text style={styles.messageLabel}>提醒內容</Text>
-        <Text style={styles.messageText}>{finalMessage}</Text>
+      <View style={[styles.messageCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+        <Text style={[styles.messageLabel, { color: colors.muted.foreground }]}>提醒內容</Text>
+        <Text style={[styles.messageText, { color: colors.foreground }]}>{finalMessage}</Text>
       </View>
 
       {/* Location input */}
       <View style={styles.inputSection}>
         <View style={styles.inputLabelRow}>
           <Ionicons name="location-outline" size={16} color={colors.muted.foreground} />
-          <Text style={styles.inputLabel}>事發地點</Text>
+          <Text style={[styles.inputLabel, { color: colors.foreground }]}>事發地點</Text>
         </View>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid, color: colors.foreground }]}
           value={location}
           onChangeText={setLocation}
           placeholder="例如：中正路與民生路口"
@@ -197,7 +202,7 @@ export default function ConfirmScreen({ navigation }: Props) {
       <View style={styles.inputSection}>
         <View style={styles.inputLabelRow}>
           <Ionicons name="time-outline" size={16} color={colors.muted.foreground} />
-          <Text style={styles.inputLabel}>發生時間</Text>
+          <Text style={[styles.inputLabel, { color: colors.foreground }]}>發生時間</Text>
         </View>
         <View style={styles.timeOptions}>
           {timeOptions.map((option) => (
@@ -205,7 +210,8 @@ export default function ConfirmScreen({ navigation }: Props) {
               key={option.id}
               style={[
                 styles.timeOption,
-                selectedTimeOption === option.id && styles.timeOptionSelected,
+                { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+                selectedTimeOption === option.id && { backgroundColor: colors.primary.DEFAULT, borderColor: colors.primary.DEFAULT },
               ]}
               onPress={() => handleTimeOptionSelect(option.id)}
               activeOpacity={0.7}
@@ -213,7 +219,8 @@ export default function ConfirmScreen({ navigation }: Props) {
               <Text
                 style={[
                   styles.timeOptionText,
-                  selectedTimeOption === option.id && styles.timeOptionTextSelected,
+                  { color: colors.foreground },
+                  selectedTimeOption === option.id && { color: colors.primary.foreground },
                 ]}
               >
                 {option.label}
@@ -225,15 +232,15 @@ export default function ConfirmScreen({ navigation }: Props) {
 
       {/* Point cost warning */}
       {!canAfford && (
-        <View style={styles.warningCard}>
+        <View style={[styles.warningCard, { backgroundColor: warningBgColor }]}>
           <Ionicons name="alert-circle" size={16} color={colors.destructive.DEFAULT} />
-          <Text style={styles.warningText}>點數不足，請先儲值</Text>
+          <Text style={[styles.warningText, { color: colors.destructive.DEFAULT }]}>點數不足，請先儲值</Text>
         </View>
       )}
 
       {/* Confirm button */}
       <TouchableOpacity
-        style={[styles.primaryButton, (isLoading || !canAfford || !location.trim()) && styles.buttonDisabled]}
+        style={[styles.primaryButton, { backgroundColor: colors.primary.DEFAULT }, (isLoading || !canAfford || !location.trim()) && styles.buttonDisabled]}
         onPress={handleConfirm}
         disabled={isLoading || !canAfford || !location.trim()}
         activeOpacity={0.8}
@@ -242,9 +249,9 @@ export default function ConfirmScreen({ navigation }: Props) {
           <ActivityIndicator color={colors.primary.foreground} />
         ) : (
           <>
-            <Text style={styles.primaryButtonText}>確認發送</Text>
+            <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>確認發送</Text>
             <View style={styles.pointBadge}>
-              <Text style={styles.pointBadgeText}>{pointCost} 點</Text>
+              <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>{pointCost} 點</Text>
             </View>
           </>
         )}
@@ -255,39 +262,31 @@ export default function ConfirmScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   infoCard: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
   infoLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     marginBottom: spacing[1],
   },
   infoValue: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
   },
   messageCard: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
   messageLabel: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     marginBottom: spacing[2],
   },
   messageText: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
     lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
   },
   inputSection: {
@@ -302,17 +301,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
   },
   input: {
-    backgroundColor: colors.card.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
   },
   timeOptions: {
     flexDirection: 'row',
@@ -320,48 +315,34 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   timeOption: {
-    backgroundColor: colors.card.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
   },
-  timeOptionSelected: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderColor: colors.primary.DEFAULT,
-  },
   timeOptionText: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-  },
-  timeOptionTextSelected: {
-    color: colors.primary.foreground,
   },
   warningCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: `${colors.destructive.DEFAULT}10`,
     borderRadius: borderRadius.lg,
     padding: spacing[3],
     marginBottom: spacing[4],
   },
   warningText: {
     fontSize: typography.fontSize.sm,
-    color: colors.destructive.DEFAULT,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
@@ -374,7 +355,6 @@ const styles = StyleSheet.create({
   pointBadgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.primary.foreground,
   },
   buttonDisabled: {
     opacity: 0.5,

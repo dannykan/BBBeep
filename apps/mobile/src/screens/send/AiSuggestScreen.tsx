@@ -9,8 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'AiSuggest'>;
 
@@ -24,6 +25,7 @@ export default function AiSuggestScreen({ navigation }: Props) {
     useAiVersion,
     setUseAiVersion,
   } = useSend();
+  const { colors } = useTheme();
 
   const isOtherCase =
     selectedCategory === '其他情況' ||
@@ -51,43 +53,43 @@ export default function AiSuggestScreen({ navigation }: Props) {
       />
 
       {/* AI suggestion card */}
-      <View style={styles.optionCard}>
+      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
         <View style={styles.optionHeader}>
-          <View style={styles.optionBadge}>
+          <View style={[styles.optionBadge, { backgroundColor: `${colors.primary.DEFAULT}20` }]}>
             <Ionicons name="sparkles" size={14} color={colors.primary.DEFAULT} />
-            <Text style={styles.optionBadgeText}>AI 優化版</Text>
+            <Text style={[styles.optionBadgeText, { color: colors.primary.DEFAULT }]}>AI 優化版</Text>
           </View>
         </View>
-        <Text style={styles.optionText}>{aiSuggestion}</Text>
+        <Text style={[styles.optionText, { color: colors.foreground }]}>{aiSuggestion}</Text>
         <TouchableOpacity
-          style={styles.aiButton}
+          style={[styles.aiButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={handleUseAi}
           activeOpacity={0.8}
         >
           <View style={styles.buttonContent}>
             <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
-            <Text style={styles.aiButtonText}>使用 AI 版本</Text>
+            <Text style={[styles.aiButtonText, { color: colors.primary.foreground }]}>使用 AI 版本</Text>
           </View>
           <View style={styles.pointBadgeAi}>
-            <Text style={styles.pointBadgeAiText}>2 點</Text>
+            <Text style={[styles.pointBadgeAiText, { color: colors.primary.foreground }]}>2 點</Text>
           </View>
         </TouchableOpacity>
       </View>
 
       {/* Original text card */}
-      <View style={styles.optionCard}>
+      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
         <View style={styles.optionHeader}>
-          <Text style={styles.optionLabel}>原始版本</Text>
+          <Text style={[styles.optionLabel, { color: colors.foreground }]}>原始版本</Text>
         </View>
-        <Text style={styles.optionText}>{originalText}</Text>
+        <Text style={[styles.optionText, { color: colors.foreground }]}>{originalText}</Text>
         <TouchableOpacity
-          style={styles.originalButton}
+          style={[styles.originalButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
           onPress={handleUseOriginal}
           activeOpacity={0.8}
         >
-          <Text style={styles.originalButtonText}>使用原始版本</Text>
-          <View style={styles.pointBadgeOriginal}>
-            <Text style={styles.pointBadgeOriginalText}>4 點</Text>
+          <Text style={[styles.originalButtonText, { color: colors.foreground }]}>使用原始版本</Text>
+          <View style={[styles.pointBadgeOriginal, { backgroundColor: colors.muted.DEFAULT }]}>
+            <Text style={[styles.pointBadgeOriginalText, { color: colors.muted.foreground }]}>4 點</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -97,10 +99,8 @@ export default function AiSuggestScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   optionCard: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     padding: spacing[4],
     marginBottom: spacing[4],
   },
@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
-    backgroundColor: `${colors.primary.DEFAULT}10`,
     paddingHorizontal: spacing[2],
     paddingVertical: spacing[1],
     borderRadius: borderRadius.full,
@@ -122,16 +121,13 @@ const styles = StyleSheet.create({
   optionBadgeText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.DEFAULT,
   },
   optionLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
   },
   optionText: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
     lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
     marginBottom: spacing[4],
   },
@@ -139,7 +135,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
@@ -152,7 +147,6 @@ const styles = StyleSheet.create({
   aiButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.foreground,
   },
   pointBadgeAi: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -163,26 +157,21 @@ const styles = StyleSheet.create({
   pointBadgeAiText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.primary.foreground,
   },
   originalButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     paddingVertical: spacing[3.5],
     paddingHorizontal: spacing[4],
   },
   originalButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
   },
   pointBadgeOriginal: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing[2.5],
     paddingVertical: spacing[1],
@@ -190,6 +179,5 @@ const styles = StyleSheet.create({
   pointBadgeOriginalText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.muted.foreground,
   },
 });

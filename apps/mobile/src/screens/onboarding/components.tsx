@@ -16,8 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -37,13 +37,14 @@ export function OnboardingLayout({
   showBackButton = true,
 }: OnboardingLayoutProps) {
   const navigation = useNavigation();
+  const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
+          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
             <View style={styles.headerLeft}>
               {showBackButton && navigation.canGoBack() ? (
                 <TouchableOpacity
@@ -57,11 +58,11 @@ export function OnboardingLayout({
                     size={20}
                     color={colors.muted.foreground}
                   />
-                  <Text style={styles.backText}>返回</Text>
+                  <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
               註冊流程 ({currentStep}/{totalSteps})
             </Text>
             <View style={styles.headerRight} />
@@ -86,8 +87,9 @@ export function OnboardingLayout({
                 key={s}
                 style={[
                   styles.progressDot,
-                  s === currentStep && styles.progressDotActive,
-                  s < currentStep && styles.progressDotCompleted,
+                  { backgroundColor: colors.borderSolid },
+                  s === currentStep && [styles.progressDotActive, { backgroundColor: colors.primary.DEFAULT }],
+                  s < currentStep && { backgroundColor: `${colors.primary.DEFAULT}40` },
                 ]}
               />
             ))}
@@ -101,7 +103,12 @@ export function OnboardingLayout({
 }
 
 export function OnboardingCard({ children }: { children: React.ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+      {children}
+    </View>
+  );
 }
 
 export function StepHeader({
@@ -113,11 +120,12 @@ export function StepHeader({
   subtitle?: string;
   children?: React.ReactNode;
 }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.stepHeader}>
       {children}
-      <Text style={styles.stepTitle}>{title}</Text>
-      {subtitle && <Text style={styles.stepSubtitle}>{subtitle}</Text>}
+      <Text style={[styles.stepTitle, { color: colors.foreground }]}>{title}</Text>
+      {subtitle && <Text style={[styles.stepSubtitle, { color: colors.muted.foreground }]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -125,22 +133,15 @@ export function StepHeader({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   flex1: {
     flex: 1,
   },
 
   // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
+  headerContainer: {},
   header: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
     paddingHorizontal: spacing[6],
     height: 52,
     flexDirection: 'row',
@@ -164,13 +165,11 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     marginLeft: spacing[1],
   },
   headerTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -196,23 +195,16 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.borderSolid,
   },
   progressDotActive: {
     width: 32,
-    backgroundColor: colors.primary.DEFAULT,
-  },
-  progressDotCompleted: {
-    backgroundColor: `${colors.primary.DEFAULT}40`,
   },
 
   // Card
   card: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[6],
     borderWidth: 1,
-    borderColor: colors.borderSolid,
   },
 
   // Step Header
@@ -223,13 +215,11 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
     textAlign: 'center',
   },
   stepSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     textAlign: 'center',
     lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
   },

@@ -16,8 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -43,6 +43,7 @@ export function SendLayout({
   onBack,
 }: SendLayoutProps) {
   const navigation = useNavigation();
+  const { colors } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
@@ -53,11 +54,11 @@ export function SendLayout({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
+          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
             <View style={styles.headerLeft}>
               {showBackButton ? (
                 <TouchableOpacity
@@ -71,11 +72,11 @@ export function SendLayout({
                     size={20}
                     color={colors.muted.foreground}
                   />
-                  <Text style={styles.backText}>返回</Text>
+                  <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
               {title || `發送提醒 (${currentStep}/${totalSteps})`}
             </Text>
             <View style={styles.headerRight} />
@@ -85,14 +86,15 @@ export function SendLayout({
 
       {/* Progress indicator */}
       {showProgress && (
-        <View style={styles.progressContainer}>
+        <View style={[styles.progressContainer, { backgroundColor: colors.background }]}>
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
             <View
               key={s}
               style={[
                 styles.progressDot,
-                s === currentStep && styles.progressDotActive,
-                s < currentStep && styles.progressDotCompleted,
+                { backgroundColor: colors.borderSolid },
+                s === currentStep && [styles.progressDotActive, { backgroundColor: colors.primary.DEFAULT }],
+                s < currentStep && { backgroundColor: `${colors.primary.DEFAULT}40` },
               ]}
             />
           ))}
@@ -123,10 +125,11 @@ export function StepHeader({
   title: string;
   subtitle?: string;
 }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.stepHeader}>
-      <Text style={styles.stepTitle}>{title}</Text>
-      {subtitle && <Text style={styles.stepSubtitle}>{subtitle}</Text>}
+      <Text style={[styles.stepTitle, { color: colors.foreground }]}>{title}</Text>
+      {subtitle && <Text style={[styles.stepSubtitle, { color: colors.muted.foreground }]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -134,22 +137,15 @@ export function StepHeader({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   flex1: {
     flex: 1,
   },
 
   // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
+  headerContainer: {},
   header: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
     paddingHorizontal: spacing[6],
     height: 52,
     flexDirection: 'row',
@@ -173,13 +169,11 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     marginLeft: spacing[1],
   },
   headerTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -192,20 +186,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[2],
     paddingVertical: spacing[4],
-    backgroundColor: colors.background,
   },
   progressDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.borderSolid,
   },
   progressDotActive: {
     width: 32,
-    backgroundColor: colors.primary.DEFAULT,
-  },
-  progressDotCompleted: {
-    backgroundColor: `${colors.primary.DEFAULT}40`,
   },
 
   // Scroll Content
@@ -223,12 +211,10 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
     marginBottom: spacing[2],
   },
   stepSubtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
   },
 });

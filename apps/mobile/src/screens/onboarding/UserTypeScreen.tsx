@@ -9,10 +9,10 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, StepHeader } from './components';
 import type { UserType, VehicleType } from '@bbbeeep/shared';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -22,6 +22,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'UserType'>;
 
 export default function UserTypeScreen({ navigation }: Props) {
   const { setUserType, setVehicleType, setLicensePlate, getTotalSteps } = useOnboarding();
+  const { colors } = useTheme();
 
   const handleSelect = (type: UserType, vehicle?: VehicleType) => {
     setUserType(type);
@@ -55,7 +56,7 @@ export default function UserTypeScreen({ navigation }: Props) {
 
         <View style={styles.userTypeOptions}>
           <TouchableOpacity
-            style={styles.userTypeOption}
+            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('driver', 'car')}
             activeOpacity={0.7}
           >
@@ -64,8 +65,8 @@ export default function UserTypeScreen({ navigation }: Props) {
                 <FontAwesome6 name="car" size={28} color={colors.primary.DEFAULT} />
               </View>
               <View style={styles.userTypeTextContainer}>
-                <Text style={styles.userTypeTitle}>汽車駕駛</Text>
-                <Text style={styles.userTypeDescription}>
+                <Text style={[styles.userTypeTitle, { color: colors.foreground }]}>汽車駕駛</Text>
+                <Text style={[styles.userTypeDescription, { color: colors.muted.foreground }]}>
                   填寫車牌｜可以發送，也可以接收提醒
                 </Text>
               </View>
@@ -73,7 +74,7 @@ export default function UserTypeScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.userTypeOption}
+            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('driver', 'scooter')}
             activeOpacity={0.7}
           >
@@ -82,8 +83,8 @@ export default function UserTypeScreen({ navigation }: Props) {
                 <FontAwesome6 name="motorcycle" size={28} color={colors.primary.DEFAULT} />
               </View>
               <View style={styles.userTypeTextContainer}>
-                <Text style={styles.userTypeTitle}>機車騎士</Text>
-                <Text style={styles.userTypeDescription}>
+                <Text style={[styles.userTypeTitle, { color: colors.foreground }]}>機車騎士</Text>
+                <Text style={[styles.userTypeDescription, { color: colors.muted.foreground }]}>
                   填寫車牌｜可以發送，也可以接收提醒
                 </Text>
               </View>
@@ -91,7 +92,7 @@ export default function UserTypeScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.userTypeOption}
+            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('pedestrian')}
             activeOpacity={0.7}
           >
@@ -103,8 +104,8 @@ export default function UserTypeScreen({ navigation }: Props) {
                 </View>
               </View>
               <View style={styles.userTypeTextContainer}>
-                <Text style={styles.userTypeTitle}>行人 / 腳踏車</Text>
-                <Text style={styles.userTypeDescription}>
+                <Text style={[styles.userTypeTitle, { color: colors.foreground }]}>行人 / 腳踏車</Text>
+                <Text style={[styles.userTypeDescription, { color: colors.muted.foreground }]}>
                   不需車牌｜只能發送提醒
                 </Text>
               </View>
@@ -112,8 +113,8 @@ export default function UserTypeScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: colors.muted.DEFAULT }]}>
+          <Text style={[styles.infoText, { color: colors.muted.foreground }]}>
             行人 / 腳踏車沒有車牌，因此不會收到別人的提醒
           </Text>
         </View>
@@ -134,9 +135,7 @@ const styles = StyleSheet.create({
   userTypeOption: {
     padding: spacing[5],
     borderWidth: 2,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius['2xl'],
-    backgroundColor: colors.card.DEFAULT,
   },
   userTypeContent: {
     flexDirection: 'row',
@@ -170,23 +169,19 @@ const styles = StyleSheet.create({
   userTypeTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     marginBottom: spacing[1],
   },
   userTypeDescription: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
   },
 
   // Info Card
   infoCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
   },
   infoText: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
     lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
   },

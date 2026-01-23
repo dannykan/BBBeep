@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
 import { getSituationsByVehicleType, getMessageByVehicleType } from '../../data/vehicleTemplates';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'Situation'>;
 
@@ -22,6 +23,7 @@ export default function SituationScreen({ navigation }: Props) {
     setSelectedSituation,
     setGeneratedMessage,
   } = useSend();
+  const { colors } = useTheme();
 
   const situations = vehicleType
     ? getSituationsByVehicleType(vehicleType, selectedCategory || '車況提醒')
@@ -54,11 +56,11 @@ export default function SituationScreen({ navigation }: Props) {
         {situations.map((situation) => (
           <TouchableOpacity
             key={situation.id}
-            style={styles.situationItem}
+            style={[styles.situationItem, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
             onPress={() => handleSelect(situation.id)}
             activeOpacity={0.7}
           >
-            <Text style={styles.situationLabel}>{situation.label}</Text>
+            <Text style={[styles.situationLabel, { color: colors.foreground }]}>{situation.label}</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
           </TouchableOpacity>
         ))}
@@ -75,15 +77,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3.5],
   },
   situationLabel: {
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
   },
 });

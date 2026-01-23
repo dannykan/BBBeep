@@ -8,9 +8,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -20,6 +20,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'PointsExplanation
 
 export default function PointsExplanationScreen({ navigation }: Props) {
   const { userType, getTotalSteps } = useOnboarding();
+  const { colors, isDark } = useTheme();
 
   // Calculate display step (pedestrians skip license plate)
   const currentStep = userType === 'pedestrian' ? 3 : 4;
@@ -34,48 +35,48 @@ export default function PointsExplanationScreen({ navigation }: Props) {
         <StepHeader title={`每一次提醒\n都需要一點點點數`} />
 
         {/* 試用期說明卡片 */}
-        <View style={styles.trialCard}>
+        <View style={[styles.trialCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)', borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)' }]}>
           <Text style={styles.trialTitle}>7 天免費試用</Text>
           <View style={styles.trialPointsRow}>
             <Text style={styles.trialPointsNumber}>50</Text>
             <Text style={styles.trialPointsLabel}>點</Text>
           </View>
-          <Text style={styles.trialDescription}>
+          <Text style={[styles.trialDescription, { color: colors.muted.foreground }]}>
             立即獲得 50 點，盡情體驗所有功能
           </Text>
         </View>
 
-        <View style={styles.pointsInfoList}>
+        <View style={[styles.pointsInfoList, { backgroundColor: colors.muted.DEFAULT }]}>
           <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>📩</Text>
-            <Text style={styles.pointsInfoText}>發送提醒會消耗點數</Text>
+            <Text style={[styles.pointsInfoText, { color: colors.foreground }]}>發送提醒會消耗點數</Text>
           </View>
           <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>👍</Text>
-            <Text style={styles.pointsInfoText}>收到讚美，可以獲得少量點數</Text>
+            <Text style={[styles.pointsInfoText, { color: colors.foreground }]}>收到讚美，可以獲得少量點數</Text>
           </View>
           <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>🎁</Text>
-            <Text style={styles.pointsInfoText}>邀請好友，你我各得點數獎勵</Text>
+            <Text style={[styles.pointsInfoText, { color: colors.foreground }]}>邀請好友，你我各得點數獎勵</Text>
           </View>
           <View style={styles.pointsInfoItem}>
             <Text style={styles.pointsInfoIcon}>🔒</Text>
-            <Text style={styles.pointsInfoText}>車牌與個人資訊都不會公開</Text>
+            <Text style={[styles.pointsInfoText, { color: colors.foreground }]}>車牌與個人資訊都不會公開</Text>
           </View>
         </View>
 
-        <View style={styles.noteCard}>
-          <Text style={styles.noteCardText}>
+        <View style={[styles.noteCard, { backgroundColor: colors.muted.DEFAULT }]}>
+          <Text style={[styles.noteCardText, { color: colors.muted.foreground }]}>
             試用期結束後可透過儲值或邀請好友獲得更多點數
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={handleNext}
           activeOpacity={0.7}
         >
-          <Text style={styles.primaryButtonText}>下一步</Text>
+          <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>下一步</Text>
         </TouchableOpacity>
       </OnboardingCard>
     </OnboardingLayout>
@@ -85,9 +86,7 @@ export default function PointsExplanationScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   // Trial Card
   trialCard: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
     borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
     borderRadius: borderRadius.xl,
     padding: spacing[5],
     marginBottom: spacing[4],
@@ -117,13 +116,11 @@ const styles = StyleSheet.create({
   },
   trialDescription: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
     textAlign: 'center',
   },
 
   // Points Info
   pointsInfoList: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     gap: spacing[2],
@@ -140,23 +137,19 @@ const styles = StyleSheet.create({
   pointsInfoText: {
     flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
   },
   noteCard: {
-    backgroundColor: colors.muted.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[3],
     marginBottom: spacing[4],
   },
   noteCardText: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
   },
 
   // Buttons
   primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
@@ -164,7 +157,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },

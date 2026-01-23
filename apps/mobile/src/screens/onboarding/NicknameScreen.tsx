@@ -14,9 +14,9 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -26,6 +26,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Nickname'>;
 
 export default function NicknameScreen({ navigation }: Props) {
   const { nickname, setNickname, userType, getTotalSteps } = useOnboarding();
+  const { colors } = useTheme();
 
   // Calculate display step (pedestrians skip license plate)
   const currentStep = userType === 'pedestrian' ? 2 : 3;
@@ -48,25 +49,25 @@ export default function NicknameScreen({ navigation }: Props) {
         />
 
         <View style={styles.inputSection}>
-          <Text style={styles.label}>暱稱</Text>
+          <Text style={[styles.label, { color: colors.foreground }]}>暱稱</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
             placeholder="例如：熱心駕駛、路過提醒一下"
             placeholderTextColor={colors.muted.foreground}
             value={nickname}
             onChangeText={setNickname}
             maxLength={12}
           />
-          <Text style={styles.inputHint}>最多 12 個字</Text>
+          <Text style={[styles.inputHint, { color: colors.muted.foreground }]}>最多 12 個字</Text>
         </View>
 
         <View style={styles.buttonGroup}>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { backgroundColor: colors.primary.DEFAULT }]}
             onPress={handleNext}
             activeOpacity={0.7}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text style={[styles.primaryButtonText, { color: colors.primary.foreground }]}>
               {nickname.trim() ? '設定暱稱並繼續' : '跳過'}
             </Text>
           </TouchableOpacity>
@@ -76,7 +77,7 @@ export default function NicknameScreen({ navigation }: Props) {
               onPress={handleSkip}
               activeOpacity={0.7}
             >
-              <Text style={styles.textButtonText}>跳過</Text>
+              <Text style={[styles.textButtonText, { color: colors.muted.foreground }]}>跳過</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -92,21 +93,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
-    color: colors.foreground,
-    backgroundColor: colors.card.DEFAULT,
   },
   inputHint: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
   },
 
   // Buttons
@@ -115,7 +111,6 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
   },
   primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     alignItems: 'center',
@@ -123,7 +118,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   primaryButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
@@ -132,7 +126,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textButtonText: {
-    color: colors.muted.foreground,
     fontSize: typography.fontSize.sm,
   },
 });
