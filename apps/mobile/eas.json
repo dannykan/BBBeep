@@ -12,7 +12,12 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://bbbeep-backend-production.up.railway.app",
+        "EXPO_PUBLIC_LINE_CHANNEL_ID": "2008933864",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyBteVysd7aJvM7vJHFdpH_bePP7jmlY-_c"
+      }
     }
   },
   "submit": {

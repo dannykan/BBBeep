@@ -6,6 +6,9 @@
 // Environment variables
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 const LINE_CHANNEL_ID = process.env.EXPO_PUBLIC_LINE_CHANNEL_ID || '';
+// Firebase config files (use EAS secret file path if available, otherwise local)
+const GOOGLE_SERVICES_PLIST = process.env.GOOGLE_SERVICES_PLIST || './GoogleService-Info.plist';
+const GOOGLE_SERVICES_JSON = process.env.GOOGLE_SERVICES_JSON || './google-services.json';
 
 module.exports = {
   expo: {
@@ -51,10 +54,12 @@ module.exports = {
           locationWhenInUsePermission: '此應用程式需要存取您的位置以定位事發地點',
         },
       ],
+      // react-native-maps - iOS uses Apple Maps due to New Architecture incompatibility
+      // Google Maps works on Android only
       [
         'react-native-maps',
         {
-          googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+          androidGoogleMapsApiKey: GOOGLE_MAPS_API_KEY,
         },
       ],
       'expo-font',
@@ -70,7 +75,7 @@ module.exports = {
       supportsTablet: false,
       bundleIdentifier: 'com.ubeep.mobile',
       usesAppleSignIn: true,
-      googleServicesFile: './GoogleService-Info.plist',
+      googleServicesFile: GOOGLE_SERVICES_PLIST,
       infoPlist: {
         NSPhotoLibraryUsageDescription: '需要存取您的相簿以上傳行照照片',
         NSCameraUsageDescription: '需要使用相機拍攝行照照片',
@@ -84,7 +89,7 @@ module.exports = {
     },
     android: {
       package: 'com.ubeep.mobile',
-      googleServicesFile: './google-services.json',
+      googleServicesFile: GOOGLE_SERVICES_JSON,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#1E3A5F',

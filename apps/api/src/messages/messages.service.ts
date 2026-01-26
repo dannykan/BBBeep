@@ -154,7 +154,9 @@ export class MessagesService {
       throw new NotFoundException('發送者不存在');
     }
 
-    if (sender.points < pointCost) {
+    // 計算總點數（trialPoints + freePoints + points）
+    const totalPoints = (sender.trialPoints ?? 0) + (sender.freePoints ?? 0) + (sender.points ?? 0);
+    if (totalPoints < pointCost) {
       throw new BadRequestException('點數不足');
     }
 
@@ -375,7 +377,9 @@ export class MessagesService {
         throw new NotFoundException('用戶不存在');
       }
 
-      if (user.points < pointCost) {
+      // 計算總點數（trialPoints + freePoints + points）
+      const totalPoints = (user.trialPoints ?? 0) + (user.freePoints ?? 0) + (user.points ?? 0);
+      if (totalPoints < pointCost) {
         throw new BadRequestException('點數不足');
       }
 
