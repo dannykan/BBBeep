@@ -113,6 +113,8 @@ model User {
   inviteHistoryAsInviter   InviteHistory[]           @relation("InviterHistory")
   inviteHistoryAsInvitee   InviteHistory?            @relation("InviteeHistory")
   deviceTokens             DeviceToken[]
+  voiceDrafts              VoiceDraft[]
+  activities               UserActivity[]
 
   @@index([phone])
   @@index([licensePlate])
@@ -323,4 +325,101 @@ model NotificationLog {
 
   @@index([type])
   @@index([createdAt])
+}
+
+// ============ 語音草稿功能 ============
+
+enum DraftStatus {
+  PENDING     // 等待處理
+  PROCESSING  // AI 處理中
+  READY       // 處理完成，可發送
+  SENT        // 已發送
+  EXPIRED     // 已過期
+  DELETED     // 已刪除
+}
+
+model VoiceDraft {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 語音檔案
+  voiceUrl        String      // R2 URL
+  voiceDuration   Int         // 秒數
+  transcript      String?     // 語音轉文字結果
+
+  // AI 解析結果
+  parsedPlates    String[]    // 候選車牌 ["ABC-1234", "ABC-1235"]
+  parsedVehicle   Json?       // { type: "car", color: "白色", brand: "Toyota", model: "Camry" }
+  parsedEvent     Json?       // { type: "dangerous_driving", category: "SAFETY_REMINDER", description: "危險切換車道" }
+  suggestedMessage String?    // AI 建議的訊息
+
+  // 位置（錄音時自動記錄）
+  latitude        Float?
+  longitude       Float?
+  address         String?
+
+  // 狀態
+  status          DraftStatus @default(PENDING)
+  expiresAt       DateTime    // 24小時後過期
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+}
+
+// ============ 用戶行為追蹤 ============
+
+enum ActivityType {
+  RECORDING_COMPLETE   // 錄音完成
+  TEXT_EDIT            // 文字編輯（點擊下一步）
+  AI_OPTIMIZE          // AI 優化
+  MESSAGE_SENT         // 訊息發送成功
+  RECORDING_CANCEL     // 取消錄音
+}
+
+model UserActivity {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type            ActivityType // 活動類型
+
+  // 內容資訊
+  messageText     String?      @db.Text  // 訊息文字內容
+  voiceUrl        String?      // 語音檔案 URL
+  voiceDuration   Int?         // 語音長度（秒）
+  transcript      String?      @db.Text  // 語音轉文字結果
+
+  // AI 審核結果
+  aiModerationResult Json?     // { isAppropriate, reason, category }
+
+  // 目標資訊
+  targetPlate     String?      // 目標車牌
+  vehicleType     String?      // car | scooter
+  category        String?      // 車況提醒 | 行車安全 | 讚美感謝
+
+  // 發送模式
+  sendMode        String?      // template | text | voice | ai
+
+  // 位置資訊
+  latitude        Float?
+  longitude       Float?
+  location        String?
+
+  // 額外資料
+  metadata        Json?        // 其他彈性資料
+
+  // 是否最終發送
+  isSent          Boolean      @default(false)
+  messageId       String?      // 關聯的訊息 ID（如果有發送）
+
+  createdAt       DateTime     @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([isSent])
 }
