@@ -20,7 +20,7 @@ const SupportPage = React.memo(() => {
           <h2 className="text-lg text-foreground font-medium">聯絡我們</h2>
 
           <a
-            href="mailto:support@ubeep.app"
+            href="mailto:dannytjkan@gmail.com"
             className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
           >
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -28,7 +28,7 @@ const SupportPage = React.memo(() => {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Email 支援</p>
-              <p className="text-sm text-muted-foreground">support@ubeep.app</p>
+              <p className="text-sm text-muted-foreground">dannytjkan@gmail.com</p>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </a>
