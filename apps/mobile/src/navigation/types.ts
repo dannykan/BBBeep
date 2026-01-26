@@ -16,6 +16,8 @@ export type RootStackParamList = {
   Appearance: undefined;
   Legal: { type: 'terms' | 'privacy' };
   QuickRecord: undefined;
+  Drafts: undefined;
+  DraftDetail: { draftId: string };
 };
 
 export type OnboardingStackParamList = {
@@ -39,6 +41,7 @@ export type MainTabParamList = {
   Home: undefined;
   Send: undefined;
   Inbox: undefined;
+  Wallet: undefined;
   Settings: undefined;
 };
 

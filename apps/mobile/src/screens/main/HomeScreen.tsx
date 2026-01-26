@@ -28,6 +28,7 @@ import { getTotalPoints, displayLicensePlate, inviteApi, usersApi } from '@bbbee
 import type { InviteCodeResponse, TrialStatusResponse } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
+import { useDraft } from '../../context/DraftContext';
 import {
   typography,
   spacing,
@@ -41,6 +42,7 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const { unreadCount, refreshUnreadCount } = useUnread();
   const { unreadReplyCount, refreshUnreadReplyCount, hasUnreadReplies } = useUnreadReply();
+  const { pendingCount, fetchPendingCount } = useDraft();
   const [refreshing, setRefreshing] = useState(false);
   const [inviteData, setInviteData] = useState<InviteCodeResponse | null>(null);
   const [isLoadingInvite, setIsLoadingInvite] = useState(true);
@@ -57,7 +59,8 @@ export default function HomeScreen() {
       loadTrialStatus();
       refreshUnreadCount();
       refreshUnreadReplyCount();
-    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount, refreshUnreadReplyCount])
+      fetchPendingCount();
+    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount, refreshUnreadReplyCount, fetchPendingCount])
   );
 
   const loadInviteData = useCallback(async () => {
@@ -84,9 +87,9 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), refreshUnreadReplyCount(), loadTrialStatus()]);
+    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), refreshUnreadReplyCount(), loadTrialStatus(), fetchPendingCount()]);
     setRefreshing(false);
-  }, [refreshUser, loadInviteData, refreshUnreadCount, refreshUnreadReplyCount, loadTrialStatus]);
+  }, [refreshUser, loadInviteData, refreshUnreadCount, refreshUnreadReplyCount, loadTrialStatus, fetchPendingCount]);
 
   const handleShareInviteCode = async () => {
     if (!inviteData?.inviteCode) return;
@@ -281,6 +284,28 @@ export default function HomeScreen() {
           <Text style={styles.sendSectionSubtitle}>一次性提醒，不開啟聊天</Text>
 
           <View style={styles.sendButtonsRow}>
+            {/* 手動輸入 */}
+            <TouchableOpacity
+              style={[
+                styles.sendOptionCard,
+                { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
+              ]}
+              onPress={() => navigation.navigate('Send')}
+              disabled={isLowPoints && totalPoints < 1}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sendOptionIconContainer, { backgroundColor: `${colors.primary.DEFAULT}15` }]}>
+                <Ionicons name="create-outline" size={28} color={colors.primary.DEFAULT} />
+              </View>
+              <Text style={[styles.sendOptionTitle, { color: colors.foreground }]}>
+                手動輸入
+              </Text>
+              <Text style={[styles.sendOptionDesc, { color: colors.muted.foreground }]}>
+                輸入車牌號碼{'\n'}選擇提醒類型
+              </Text>
+            </TouchableOpacity>
+
             {/* 快速錄音 */}
             <TouchableOpacity
               style={[
@@ -301,28 +326,6 @@ export default function HomeScreen() {
               </Text>
               <Text style={[styles.sendOptionDesc, { color: colors.primary.foreground, opacity: 0.85 }]}>
                 說出車牌和事件{'\n'}AI 自動辨識
-              </Text>
-            </TouchableOpacity>
-
-            {/* 手動輸入 */}
-            <TouchableOpacity
-              style={[
-                styles.sendOptionCard,
-                { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
-                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
-              ]}
-              onPress={() => navigation.navigate('Send')}
-              disabled={isLowPoints && totalPoints < 1}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.sendOptionIconContainer, { backgroundColor: `${colors.primary.DEFAULT}15` }]}>
-                <Ionicons name="create-outline" size={28} color={colors.primary.DEFAULT} />
-              </View>
-              <Text style={[styles.sendOptionTitle, { color: colors.foreground }]}>
-                手動輸入
-              </Text>
-              <Text style={[styles.sendOptionDesc, { color: colors.muted.foreground }]}>
-                輸入車牌號碼{'\n'}選擇提醒類型
               </Text>
             </TouchableOpacity>
           </View>
@@ -392,14 +395,23 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.quickActionButton}
-            onPress={() => navigation.navigate('Wallet')}
+            onPress={() => navigation.navigate('Drafts')}
           >
-            <Ionicons
-              name="wallet-outline"
-              size={20}
-              color={colors.muted.foreground}
-            />
-            <Text style={styles.quickActionText}>點數</Text>
+            <View style={styles.quickActionIconContainer}>
+              <Ionicons
+                name="mic-outline"
+                size={20}
+                color={colors.muted.foreground}
+              />
+              {pendingCount > 0 && (
+                <View style={styles.draftBadge}>
+                  <Text style={styles.draftBadgeText}>
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.quickActionText}>語音草稿</Text>
           </TouchableOpacity>
         </View>
 
@@ -732,6 +744,23 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       paddingHorizontal: spacing[1],
     },
     replyBadgeText: {
+      fontSize: 10,
+      fontWeight: typography.fontWeight.bold as any,
+      color: '#FFFFFF',
+    },
+    draftBadge: {
+      position: 'absolute',
+      top: -6,
+      right: -8,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: colors.warning.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing[1],
+    },
+    draftBadgeText: {
       fontSize: 10,
       fontWeight: typography.fontWeight.bold as any,
       color: '#FFFFFF',

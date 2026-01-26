@@ -9,7 +9,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { SendStackParamList } from './types';
-import { SendProvider } from '../context/SendContext';
+// SendProvider is now at App level for shared state with QuickRecordScreen
 
 // V2 Screens (優化版 4 步驟)
 import PlateInputScreenV2 from '../screens/send/PlateInputScreenV2';
@@ -64,9 +64,5 @@ function SendStack() {
 }
 
 export default function SendNavigator() {
-  return (
-    <SendProvider>
-      <SendStack />
-    </SendProvider>
-  );
+  return <SendStack />;
 }

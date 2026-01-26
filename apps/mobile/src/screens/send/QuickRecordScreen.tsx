@@ -1,10 +1,11 @@
 /**
  * QuickRecordScreen - 快速錄音頁面
  *
- * 流程：錄音 → AI 轉文字 → 確認編輯 → 發送
+ * 流程：錄音 → 選擇（儲存草稿 / 繼續編輯）
+ * 如果選擇「繼續編輯」，會帶著語音備忘進入手動發送流程
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,11 +14,8 @@ import {
   Animated,
   Alert,
   Vibration,
-  ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,34 +23,18 @@ import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
-import { uploadApi, messagesApi, activitiesApi } from '@bbbeeep/shared';
+import { useSend } from '../../context/SendContext';
+import { uploadApi, draftsApi } from '@bbbeeep/shared';
 import { typography, spacing, borderRadius } from '../../theme';
 
-type Step = 'recording' | 'analyzing' | 'confirm' | 'success';
-type VehicleType = 'car' | 'scooter';
-type MessageType = 'VEHICLE_REMINDER' | 'SAFETY_REMINDER' | 'PRAISE';
-type TimeOption = 'now' | '5min' | '10min' | '15min';
+type Step = 'recording' | 'processing' | 'choose' | 'success';
 
 const MAX_RECORDING_DURATION = 30;
-
-const MESSAGE_TYPE_OPTIONS: { value: MessageType; label: string; icon: string }[] = [
-  { value: 'VEHICLE_REMINDER', label: '車況提醒', icon: 'car-outline' },
-  { value: 'SAFETY_REMINDER', label: '行車安全', icon: 'warning-outline' },
-  { value: 'PRAISE', label: '讚美感謝', icon: 'heart-outline' },
-];
-
-const TIME_OPTIONS: { value: TimeOption; label: string }[] = [
-  { value: 'now', label: '現在' },
-  { value: '5min', label: '5分鐘前' },
-  { value: '10min', label: '10分鐘前' },
-  { value: '15min', label: '15分鐘前' },
-];
 
 export default function QuickRecordScreen() {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
-  const { refreshUser } = useAuth();
+  const { setVoiceMemo, resetSend } = useSend();
 
   // 步驟狀態
   const [step, setStep] = useState<Step>('recording');
@@ -73,23 +55,19 @@ export default function QuickRecordScreen() {
   const volumeAnim = useRef(new Animated.Value(1)).current;
   const [currentVolume, setCurrentVolume] = useState(0);
 
-  // 轉錄結果
-  const [transcript, setTranscript] = useState('');
-
-  // 用戶編輯欄位
-  const [licensePlate, setLicensePlate] = useState('');
-  const [vehicleType, setVehicleType] = useState<VehicleType>('car');
-  const [messageType, setMessageType] = useState<MessageType>('SAFETY_REMINDER');
-  const [message, setMessage] = useState('');
-  const [location, setLocation] = useState('');
+  // 位置資料
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  const [timeOption, setTimeOption] = useState<TimeOption>('now');
+  const [address, setAddress] = useState('');
+
+  // 轉錄結果（用於顯示，但不再依賴它來判斷內容）
+  const [transcript, setTranscript] = useState('');
 
   // Loading 狀態
-  const [isSending, setIsSending] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [savedAsDraft, setSavedAsDraft] = useState(false);
 
-  // 語音播放
+  // 播放狀態
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -97,11 +75,15 @@ export default function QuickRecordScreen() {
   useEffect(() => {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
-      // 使用 setTimeout 確保所有函數都已定義
       const timer = setTimeout(() => {
-        console.log('[Recording] Auto-start triggered');
-        startRecordingRef.current?.();
-      }, 100);
+        if (AppState.currentState === 'active') {
+          console.log('[Recording] Auto-start triggered');
+          startRecordingRef.current?.();
+        } else {
+          console.log('[Recording] App not active, skipping auto-start');
+          navigation.goBack();
+        }
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, []);
@@ -157,8 +139,8 @@ export default function QuickRecordScreen() {
       });
 
       if (uri && duration >= 1) {
-        setStep('analyzing');
-        await analyzeVoice(uri);
+        setStep('processing');
+        await processRecording(uri);
       } else {
         Alert.alert('錄音太短', '請至少錄製 1 秒');
         navigation.goBack();
@@ -178,6 +160,11 @@ export default function QuickRecordScreen() {
     try {
       console.log('[Recording] Starting...');
 
+      if (AppState.currentState !== 'active') {
+        console.log('[Recording] App not active, waiting...');
+        return;
+      }
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -185,7 +172,6 @@ export default function QuickRecordScreen() {
 
       Vibration.vibrate(50);
 
-      // 設定錄音選項
       const recordingOptions = {
         ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
         isMeteringEnabled: true,
@@ -217,31 +203,31 @@ export default function QuickRecordScreen() {
       // 同時取得位置
       getLocation();
 
-      // 使用 local duration 變數來追蹤時間
       let duration = 0;
       durationInterval.current = setInterval(() => {
         duration += 1;
         setRecordingDuration(duration);
-        console.log('[Recording] Duration tick:', duration);
 
         if (duration >= MAX_RECORDING_DURATION) {
-          // 達到最大時間，自動停止
           if (durationInterval.current) {
             clearInterval(durationInterval.current);
             durationInterval.current = null;
           }
-          // 使用 ref 來呼叫最新的 stopRecording
           stopRecordingRef.current?.();
         }
       }, 1000);
     } catch (err: any) {
       console.error('[Recording] Error:', err);
+      if (err.message?.includes('background') || err.message?.includes('audio session could not be activated')) {
+        console.log('[Recording] Background error, going back silently');
+        navigation.goBack();
+        return;
+      }
       Alert.alert('錯誤', err.message || '無法開始錄音');
       navigation.goBack();
     }
   };
 
-  // 儲存 startRecording ref
   startRecordingRef.current = startRecording;
 
   // 取得位置
@@ -267,8 +253,8 @@ export default function QuickRecordScreen() {
           longitude: loc.coords.longitude,
         });
         if (addr) {
-          const address = [addr.city, addr.district, addr.street].filter(Boolean).join('');
-          setLocation(address);
+          const addressStr = [addr.city, addr.district, addr.street].filter(Boolean).join('');
+          setAddress(addressStr);
         }
       }
     } catch (err) {
@@ -276,7 +262,7 @@ export default function QuickRecordScreen() {
     }
   };
 
-  // 停止錄音（包裝 handleStopRecording）
+  // 停止錄音
   const stopRecording = () => {
     handleStopRecording();
   };
@@ -305,34 +291,70 @@ export default function QuickRecordScreen() {
     navigation.goBack();
   };
 
-  // AI 分析語音
-  const analyzeVoice = async (uri: string) => {
+  // 處理錄音完成（嘗試轉錄，但不依賴結果）
+  const processRecording = async (uri: string) => {
     try {
+      // 嘗試轉錄，僅供參考用
       const transcribeResult = await uploadApi.transcribeVoice(uri);
       const transcriptText = transcribeResult?.text || '';
       setTranscript(transcriptText);
+    } catch (err) {
+      console.warn('[Transcribe] Error:', err);
+      // 轉錄失敗不影響流程
+    }
 
-      if (transcriptText) {
-        setMessage(transcriptText);
-      }
+    setStep('choose');
+  };
 
-      // 背景記錄錄音完成活動（不阻塞 UI）
-      activitiesApi.recordRecording({
-        voiceUrl: uri,
-        voiceDuration: voiceDuration,
-        transcript: transcriptText,
+  // 儲存草稿
+  const handleSaveDraft = async () => {
+    if (!voiceUri) return;
+
+    setIsSavingDraft(true);
+    try {
+      const uploadResult = await uploadApi.uploadVoice(voiceUri);
+      await draftsApi.create({
+        voiceUrl: uploadResult.url,
+        voiceDuration,
+        transcript: transcript || '',
         latitude: latitude || undefined,
         longitude: longitude || undefined,
-        location: location || undefined,
-      }).catch((err) => {
-        console.log('[Activity] Failed to log RECORDING_COMPLETE:', err);
+        address: address || undefined,
       });
 
-      setStep('confirm');
+      setSavedAsDraft(true);
+      setStep('success');
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (err: any) {
-      console.error('Analysis error:', err);
-      setStep('confirm');
+      console.error('[Save Draft] Error:', err);
+      Alert.alert('儲存失敗', err.response?.data?.message || err.message || '請稍後再試');
+    } finally {
+      setIsSavingDraft(false);
     }
+  };
+
+  // 繼續編輯（進入手動發送流程）
+  const handleContinueEdit = () => {
+    if (!voiceUri) return;
+
+    // 重置現有發送資料
+    resetSend();
+
+    // 設定語音備忘
+    setVoiceMemo({
+      uri: voiceUri,
+      duration: voiceDuration,
+      transcript: transcript || undefined,
+      latitude: latitude || undefined,
+      longitude: longitude || undefined,
+      address: address || undefined,
+      recordedAt: new Date(),
+    });
+
+    // 導航到發送流程
+    navigation.replace('Send');
   };
 
   // 播放/暫停語音
@@ -361,67 +383,6 @@ export default function QuickRecordScreen() {
       }
     } catch (err) {
       console.error('Playback error:', err);
-    }
-  };
-
-  // 發送
-  const handleSend = async () => {
-    if (!licensePlate.trim()) {
-      Alert.alert('請輸入車牌', '需要車牌號碼才能發送提醒');
-      return;
-    }
-
-    if (!message.trim()) {
-      Alert.alert('請輸入訊息', '需要訊息內容才能發送提醒');
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      const occurredAt = new Date();
-      if (timeOption === '5min') occurredAt.setMinutes(occurredAt.getMinutes() - 5);
-      if (timeOption === '10min') occurredAt.setMinutes(occurredAt.getMinutes() - 10);
-      if (timeOption === '15min') occurredAt.setMinutes(occurredAt.getMinutes() - 15);
-
-      const normalizedPlate = licensePlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-      const createdMessage = await messagesApi.create({
-        licensePlate: normalizedPlate,
-        vehicleType,
-        type: messageType,
-        template: message,
-        location: location || undefined,
-        occurredAt: occurredAt.toISOString(),
-      });
-
-      // 背景記錄發送成功活動（不阻塞 UI）
-      activitiesApi.recordSent({
-        messageText: message,
-        voiceUrl: voiceUri || undefined,
-        voiceDuration: voiceDuration || undefined,
-        transcript: transcript || undefined,
-        targetPlate: normalizedPlate,
-        vehicleType: vehicleType,
-        category: messageType === 'VEHICLE_REMINDER' ? '車況提醒' : messageType === 'SAFETY_REMINDER' ? '行車安全' : '讚美感謝',
-        sendMode: 'voice',
-        messageId: createdMessage.id,
-        latitude: latitude || undefined,
-        longitude: longitude || undefined,
-        location: location || undefined,
-      }).catch((err) => {
-        console.log('[Activity] Failed to log MESSAGE_SENT:', err);
-      });
-
-      setStep('success');
-      await refreshUser();
-
-      setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
-    } catch (err: any) {
-      Alert.alert('發送失敗', err.response?.data?.message || err.message || '請稍後再試');
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -501,10 +462,10 @@ export default function QuickRecordScreen() {
       {/* 提示文字 */}
       <View style={styles.recordingTip}>
         <Text style={styles.recordingTipText}>
-          💡 說出車牌、車型顏色、發生什麼事
+          記錄發生的事情和相關細節
         </Text>
         <Text style={styles.recordingExample}>
-          例：「白色 Camry ABC-1234 亂切車道」
+          例如車牌、車型、顏色、事件描述等
         </Text>
       </View>
 
@@ -525,278 +486,113 @@ export default function QuickRecordScreen() {
     </View>
   );
 
-  // AI 分析中
-  const renderAnalyzing = () => (
-    <View style={styles.analyzingContainer}>
-      <View style={styles.analyzingIcon}>
+  // 處理中
+  const renderProcessing = () => (
+    <View style={styles.processingContainer}>
+      <View style={styles.processingIcon}>
         <ActivityIndicator size="large" color="#fff" />
       </View>
-      <Text style={styles.analyzingTitle}>AI 分析中...</Text>
-      <Text style={styles.analyzingSubtitle}>正在將語音轉為文字</Text>
+      <Text style={styles.processingTitle}>處理中...</Text>
+      <Text style={styles.processingSubtitle}>正在準備您的錄音</Text>
     </View>
   );
 
-  // 確認頁面
-  const renderConfirm = () => (
-    <SafeAreaView style={[styles.confirmContainer, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* 標題列 */}
-      <View style={[styles.confirmHeader, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={28} color={colors.foreground} />
-        </TouchableOpacity>
-        <Text style={[styles.confirmTitle, { color: colors.foreground }]}>
-          確認提醒內容
-        </Text>
-        <View style={{ width: 28 }} />
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          style={styles.confirmScroll}
-          contentContainerStyle={styles.confirmContent}
-          showsVerticalScrollIndicator={false}
+  // 選擇畫面
+  const renderChoose = () => (
+    <View style={[styles.chooseContainer, { backgroundColor: colors.background }]}>
+      <SafeAreaView edges={['top']} style={styles.chooseHeader}>
+        <TouchableOpacity
+          style={[styles.headerCloseButton, { backgroundColor: colors.muted.DEFAULT }]}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          {/* 語音播放 */}
-          {voiceUri && (
-            <View style={[styles.voicePlayer, { backgroundColor: colors.card.DEFAULT }]}>
-              <TouchableOpacity
-                style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
-                onPress={togglePlayback}
-              >
-                <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color="#fff" />
-              </TouchableOpacity>
-              <View style={styles.voiceInfo}>
-                <Text style={[styles.voiceLabel, { color: colors.muted.foreground }]}>
-                  原始錄音
-                </Text>
-                <Text style={[styles.voiceDurationText, { color: colors.foreground }]}>
-                  {formatDuration(voiceDuration)}
+          <Ionicons name="close" size={24} color={colors.foreground} />
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      <View style={styles.chooseContent}>
+        {/* 錄音卡片 */}
+        <View style={[styles.voiceCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.playButtonLarge, { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={togglePlayback}
+          >
+            <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+          </TouchableOpacity>
+
+          <View style={styles.voiceCardInfo}>
+            <View style={styles.voiceCardHeader}>
+              <View style={styles.voiceLabelRow}>
+                <Ionicons name="mic" size={16} color={colors.primary.DEFAULT} />
+                <Text style={[styles.voiceCardLabel, { color: colors.primary.DEFAULT }]}>
+                  語音備忘
                 </Text>
               </View>
-              {transcript && (
-                <Text
-                  style={[styles.transcriptPreview, { color: colors.muted.foreground }]}
-                  numberOfLines={1}
-                >
-                  「{transcript}」
-                </Text>
-              )}
+              <Text style={[styles.voiceCardDuration, { color: colors.muted.foreground }]}>
+                {formatDuration(voiceDuration)}
+              </Text>
             </View>
-          )}
 
-          {/* 車牌號碼 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-              車牌號碼 <Text style={{ color: colors.destructive.DEFAULT }}>*</Text>
-            </Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: colors.input.background,
-                  borderColor: colors.input.border,
-                  color: colors.foreground,
-                },
-              ]}
-              placeholder="輸入車牌號碼"
-              placeholderTextColor={colors.input.placeholder}
-              value={licensePlate}
-              onChangeText={setLicensePlate}
-              autoCapitalize="characters"
-            />
-          </View>
-
-          {/* 車輛類型 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>車輛類型</Text>
-            <View style={styles.typeRow}>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  {
-                    backgroundColor: vehicleType === 'car' ? colors.primary.DEFAULT : colors.card.DEFAULT,
-                    borderColor: vehicleType === 'car' ? colors.primary.DEFAULT : colors.border,
-                  },
-                ]}
-                onPress={() => setVehicleType('car')}
+            {transcript ? (
+              <Text
+                style={[styles.voiceCardTranscript, { color: colors.muted.foreground }]}
+                numberOfLines={2}
               >
-                <Ionicons
-                  name="car"
-                  size={20}
-                  color={vehicleType === 'car' ? '#fff' : colors.foreground}
-                />
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    { color: vehicleType === 'car' ? '#fff' : colors.foreground },
-                  ]}
-                >
-                  汽車
+                「{transcript}」
+              </Text>
+            ) : (
+              <Text style={[styles.voiceCardTranscript, { color: colors.muted.foreground }]}>
+                點擊播放收聽錄音內容
+              </Text>
+            )}
+
+            {(address || latitude) && (
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={12} color={colors.muted.foreground} />
+                <Text style={[styles.locationText, { color: colors.muted.foreground }]}>
+                  {address || `${latitude?.toFixed(4)}, ${longitude?.toFixed(4)}`}
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  {
-                    backgroundColor: vehicleType === 'scooter' ? colors.primary.DEFAULT : colors.card.DEFAULT,
-                    borderColor: vehicleType === 'scooter' ? colors.primary.DEFAULT : colors.border,
-                  },
-                ]}
-                onPress={() => setVehicleType('scooter')}
-              >
-                <Ionicons
-                  name="bicycle"
-                  size={20}
-                  color={vehicleType === 'scooter' ? '#fff' : colors.foreground}
-                />
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    { color: vehicleType === 'scooter' ? '#fff' : colors.foreground },
-                  ]}
-                >
-                  機車
-                </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            )}
           </View>
+        </View>
 
-          {/* 提醒類別 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>提醒類別</Text>
-            <View style={styles.categoryRow}>
-              {MESSAGE_TYPE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.categoryButton,
-                    {
-                      backgroundColor: messageType === opt.value ? colors.primary.soft : colors.card.DEFAULT,
-                      borderColor: messageType === opt.value ? colors.primary.DEFAULT : colors.border,
-                    },
-                  ]}
-                  onPress={() => setMessageType(opt.value)}
-                >
-                  <Ionicons
-                    name={opt.icon as any}
-                    size={16}
-                    color={messageType === opt.value ? colors.primary.DEFAULT : colors.muted.foreground}
-                  />
-                  <Text
-                    style={[
-                      styles.categoryButtonText,
-                      {
-                        color: messageType === opt.value ? colors.primary.DEFAULT : colors.muted.foreground,
-                      },
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        {/* 說明文字 */}
+        <Text style={[styles.chooseDescription, { color: colors.muted.foreground }]}>
+          您可以稍後再來編輯發送，或現在繼續填寫發送資料
+        </Text>
 
-          {/* 訊息內容 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-              訊息內容 <Text style={{ color: colors.destructive.DEFAULT }}>*</Text>
-            </Text>
-            <TextInput
-              style={[
-                styles.messageInput,
-                {
-                  backgroundColor: colors.input.background,
-                  borderColor: colors.input.border,
-                  color: colors.foreground,
-                },
-              ]}
-              placeholder="輸入要傳達的訊息..."
-              placeholderTextColor={colors.input.placeholder}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
-
-          {/* 事發地點 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>事發地點</Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: colors.input.background,
-                  borderColor: colors.input.border,
-                  color: colors.foreground,
-                },
-              ]}
-              placeholder="輸入地點或由 GPS 自動定位"
-              placeholderTextColor={colors.input.placeholder}
-              value={location}
-              onChangeText={setLocation}
-            />
-          </View>
-
-          {/* 事發時間 */}
-          <View style={styles.fieldSection}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>事發時間</Text>
-            <View style={styles.timeRow}>
-              {TIME_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.timeButton,
-                    {
-                      backgroundColor: timeOption === opt.value ? colors.primary.DEFAULT : colors.card.DEFAULT,
-                      borderColor: timeOption === opt.value ? colors.primary.DEFAULT : colors.border,
-                    },
-                  ]}
-                  onPress={() => setTimeOption(opt.value)}
-                >
-                  <Text
-                    style={[
-                      styles.timeButtonText,
-                      { color: timeOption === opt.value ? '#fff' : colors.foreground },
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* 底部按鈕 */}
-        <View style={[styles.confirmFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        {/* 按鈕區 */}
+        <View style={styles.buttonGroup}>
           <TouchableOpacity
             style={[
-              styles.sendButton,
-              { backgroundColor: colors.primary.DEFAULT },
-              isSending && { opacity: 0.6 },
+              styles.draftButton,
+              { backgroundColor: colors.card.DEFAULT, borderColor: colors.border },
+              isSavingDraft && { opacity: 0.6 },
             ]}
-            onPress={handleSend}
-            disabled={isSending}
+            onPress={handleSaveDraft}
+            disabled={isSavingDraft}
           >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#fff" />
+            {isSavingDraft ? (
+              <ActivityIndicator size="small" color={colors.foreground} />
             ) : (
               <>
-                <Ionicons name="send" size={20} color="#fff" />
-                <Text style={styles.sendButtonText}>確認發送</Text>
+                <Ionicons name="bookmark-outline" size={20} color={colors.foreground} />
+                <Text style={[styles.draftButtonText, { color: colors.foreground }]}>儲存草稿</Text>
               </>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={handleContinueEdit}
+          >
+            <Ionicons name="create-outline" size={20} color="#fff" />
+            <Text style={styles.editButtonText}>繼續編輯</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 
   // 成功
@@ -805,16 +601,20 @@ export default function QuickRecordScreen() {
       <View style={styles.successIcon}>
         <Ionicons name="checkmark" size={64} color="#fff" />
       </View>
-      <Text style={styles.successTitle}>發送成功</Text>
-      <Text style={styles.successSubtitle}>提醒已成功送出</Text>
+      <Text style={styles.successTitle}>
+        {savedAsDraft ? '已儲存草稿' : '完成'}
+      </Text>
+      <Text style={styles.successSubtitle}>
+        {savedAsDraft ? '稍後可在草稿中處理' : ''}
+      </Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
       {step === 'recording' && renderRecording()}
-      {step === 'analyzing' && renderAnalyzing()}
-      {step === 'confirm' && renderConfirm()}
+      {step === 'processing' && renderProcessing()}
+      {step === 'choose' && renderChoose()}
       {step === 'success' && renderSuccess()}
     </View>
   );
@@ -945,14 +745,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.4)',
     marginTop: 16,
   },
-  // ========== 分析中畫面 ==========
-  analyzingContainer: {
+  // ========== 處理中畫面 ==========
+  processingContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  analyzingIcon: {
+  processingIcon: {
     width: 100,
     height: 100,
     borderRadius: 50,
@@ -961,148 +761,111 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  analyzingTitle: {
+  processingTitle: {
     fontSize: 24,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 12,
   },
-  analyzingSubtitle: {
+  processingSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.6)',
   },
-  // ========== 確認頁面 ==========
-  confirmContainer: {
+  // ========== 選擇畫面 ==========
+  chooseContainer: {
     flex: 1,
   },
-  confirmHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  chooseHeader: {
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    borderBottomWidth: 1,
+    paddingTop: spacing[2],
+    paddingBottom: spacing[2],
   },
-  confirmTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold as any,
-  },
-  confirmScroll: {
-    flex: 1,
-  },
-  confirmContent: {
-    padding: spacing[4],
-    paddingBottom: spacing[8],
-  },
-  voicePlayer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3],
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing[4],
-    gap: spacing[3],
-  },
-  playButton: {
+  headerCloseButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  voiceInfo: {
-    flex: 0,
-  },
-  voiceLabel: {
-    fontSize: typography.fontSize.xs,
-  },
-  voiceDurationText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-  },
-  transcriptPreview: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-  },
-  fieldSection: {
-    marginBottom: spacing[4],
-  },
-  fieldLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-    marginBottom: spacing[2],
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    fontSize: typography.fontSize.base,
-    height: 48,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: spacing[3],
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    gap: spacing[2],
   },
-  typeButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
+  chooseContent: {
+    flex: 1,
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[4],
   },
-  categoryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
-  categoryButton: {
+  voiceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
+    gap: spacing[4],
+  },
+  playButtonLarge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceCardInfo: {
+    flex: 1,
+    gap: spacing[1.5],
+  },
+  voiceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  voiceLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing[1],
   },
-  categoryButtonText: {
+  voiceCardLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
   },
-  messageInput: {
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing[3],
-    fontSize: typography.fontSize.base,
-    minHeight: 100,
-    lineHeight: 22,
+  voiceCardDuration: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: 'monospace',
   },
-  timeRow: {
+  voiceCardTranscript: {
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.fontSize.sm * 1.5,
+  },
+  locationRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    marginTop: spacing[1],
+  },
+  locationText: {
+    fontSize: typography.fontSize.xs,
+  },
+  chooseDescription: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+    marginTop: spacing[6],
+    marginBottom: spacing[4],
+    lineHeight: typography.fontSize.sm * 1.6,
+  },
+  buttonGroup: {
+    gap: spacing[3],
+  },
+  draftButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[4],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
     gap: spacing[2],
   },
-  timeButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing[2.5],
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-  },
-  timeButtonText: {
-    fontSize: typography.fontSize.sm,
+  draftButtonText: {
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
-  confirmFooter: {
-    padding: spacing[4],
-    borderTopWidth: 1,
-  },
-  sendButton: {
+  editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1110,7 +873,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     gap: spacing[2],
   },
-  sendButtonText: {
+  editButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold as any,
     color: '#fff',

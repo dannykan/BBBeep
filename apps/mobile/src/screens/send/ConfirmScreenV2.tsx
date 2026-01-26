@@ -12,12 +12,10 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  TextInput,
   Platform,
   Linking,
   Modal,
 } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -70,6 +68,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
     voiceRecording,
     sendMode,
     setVoiceUrl,
+    voiceMemo,
   } = useSend();
   const { colors, isDark } = useTheme();
 
@@ -78,10 +77,40 @@ export default function ConfirmScreenV2({ navigation }: Props) {
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [customDate, setCustomDate] = useState(new Date());
-  const [customTime, setCustomTime] = useState(new Date());
   const soundRef = useRef<Audio.Sound | null>(null);
+  const dateScrollRef = useRef<ScrollView>(null);
+  const hourScrollRef = useRef<ScrollView>(null);
+  const minuteScrollRef = useRef<ScrollView>(null);
+
+  // 滾動到指定位置的函數
+  const scrollPickersToTime = useCallback((date: Date, animated: boolean = true) => {
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
+    const dayIndex = Math.min(Math.max(diffDays, 0), 6);
+    const hour = date.getHours();
+    const minuteIndex = Math.floor(date.getMinutes() / 5);
+
+    dateScrollRef.current?.scrollTo({ y: dayIndex * 44, animated });
+    hourScrollRef.current?.scrollTo({ y: hour * 44, animated });
+    minuteScrollRef.current?.scrollTo({ y: minuteIndex * 44, animated });
+  }, []);
+
+  // 當 picker 開啟時，滾動到選中的位置
+  useEffect(() => {
+    if (showDatePicker) {
+      // 延遲執行滾動，等待 Modal 完全打開
+      setTimeout(() => {
+        scrollPickersToTime(occurredAt, false);
+      }, 150);
+    }
+  }, [showDatePicker, scrollPickersToTime]);
+
+  // 當 occurredAt 改變時，滾動到新位置
+  useEffect(() => {
+    if (showDatePicker) {
+      scrollPickersToTime(occurredAt, true);
+    }
+  }, [occurredAt, showDatePicker, scrollPickersToTime]);
 
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -93,6 +122,31 @@ export default function ConfirmScreenV2({ navigation }: Props) {
     };
   }, []);
 
+  // Auto-fill location and time from voiceMemo
+  useEffect(() => {
+    if (voiceMemo) {
+      // Auto-fill location if available and not already set
+      if (voiceMemo.address && !location) {
+        setLocation(
+          voiceMemo.address,
+          voiceMemo.latitude || undefined,
+          voiceMemo.longitude || undefined
+        );
+      } else if (voiceMemo.latitude && voiceMemo.longitude && !location) {
+        // If we have coordinates but no address, use coordinates as fallback
+        reverseGeocode(voiceMemo.latitude, voiceMemo.longitude).then((address) => {
+          setLocation(address, voiceMemo.latitude, voiceMemo.longitude);
+        });
+      }
+
+      // Auto-fill time from recording time
+      if (voiceMemo.recordedAt) {
+        setOccurredAt(new Date(voiceMemo.recordedAt));
+        setSelectedTimeOption('custom');
+      }
+    }
+  }, [voiceMemo]);
+
   const pointCost = getPointCost();
   const finalMessage = getFinalMessage();
   const userPoints = getTotalPoints(user);
@@ -101,8 +155,6 @@ export default function ConfirmScreenV2({ navigation }: Props) {
 
   const handleTimeOptionSelect = (option: 'now' | '5min' | '10min' | '15min' | 'custom') => {
     if (option === 'custom') {
-      setCustomDate(occurredAt);
-      setCustomTime(occurredAt);
       setShowDatePicker(true);
       return;
     }
@@ -125,44 +177,6 @@ export default function ConfirmScreenV2({ navigation }: Props) {
     }
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (selectedDate) {
-      const now = new Date();
-      const validDate = selectedDate > now ? now : selectedDate;
-      setCustomDate(validDate);
-    }
-  };
-
-  const handleTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
-    if (selectedTime) {
-      setCustomTime(selectedTime);
-    }
-  };
-
-  const handleConfirmDate = () => {
-    setShowDatePicker(false);
-    setShowTimePicker(true);
-  };
-
-  const handleConfirmTime = () => {
-    // Combine date and time
-    const combined = new Date(customDate);
-    combined.setHours(customTime.getHours());
-    combined.setMinutes(customTime.getMinutes());
-    combined.setSeconds(0);
-    combined.setMilliseconds(0);
-
-    const now = new Date();
-    const validTime = combined > now ? now : combined;
-    setOccurredAt(validTime);
-    setSelectedTimeOption('custom');
-    setShowTimePicker(false);
-  };
-
-  const handleBackToDate = () => {
-    setShowTimePicker(false);
-    setShowDatePicker(true);
-  };
 
   const formatCustomTime = (date: Date) => {
     const year = date.getFullYear();
@@ -689,97 +703,194 @@ export default function ConfirmScreenV2({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Date Picker Modal */}
+        {/* Custom Date/Time Picker Modal */}
         <Modal
           visible={showDatePicker}
-          animationType="fade"
           transparent
+          animationType="slide"
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowDatePicker(false)}
-          >
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.pickerModal, { backgroundColor: colors.card.DEFAULT }]}>
-                <View style={[styles.pickerHeader, { borderBottomColor: colors.borderSolid }]}>
-                  <TouchableOpacity
-                    style={styles.pickerHeaderButton}
-                    onPress={() => setShowDatePicker(false)}
-                  >
-                    <Text style={[styles.pickerCancelText, { color: colors.muted.foreground }]}>取消</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.pickerTitle, { color: colors.foreground }]}>選擇日期</Text>
-                  <TouchableOpacity
-                    style={styles.pickerHeaderButton}
-                    onPress={handleConfirmDate}
-                  >
-                    <Text style={[styles.pickerConfirmText, { color: colors.primary.DEFAULT }]}>下一步</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.pickerContent}>
-                  <DateTimePicker
-                    value={customDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={handleDateChange}
-                    maximumDate={new Date()}
-                    minimumDate={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}
-                    locale="zh-TW"
-                    style={styles.dateTimePicker}
-                  />
-                </View>
-                <SafeAreaView edges={['bottom']} />
+          <View style={styles.datePickerModalOverlay}>
+            <TouchableOpacity
+              style={styles.datePickerModalDismiss}
+              activeOpacity={1}
+              onPress={() => setShowDatePicker(false)}
+            />
+            <View style={[styles.datePickerModalContent, { backgroundColor: colors.card.DEFAULT }]}>
+              <View style={[styles.datePickerHeader, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={[styles.datePickerCancel, { color: colors.muted.foreground }]}>取消</Text>
+                </TouchableOpacity>
+                <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>選擇時間</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedTimeOption('custom');
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={[styles.datePickerDone, { color: colors.primary.DEFAULT }]}>完成</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
 
-        {/* Time Picker Modal */}
-        <Modal
-          visible={showTimePicker}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setShowTimePicker(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowTimePicker(false)}
-          >
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.pickerModal, { backgroundColor: colors.card.DEFAULT }]}>
-                <View style={[styles.pickerHeader, { borderBottomColor: colors.borderSolid }]}>
-                  <TouchableOpacity
-                    style={styles.pickerHeaderButton}
-                    onPress={handleBackToDate}
+              {/* Picker with center highlight */}
+              <View style={styles.pickerWrapper}>
+                {/* Center highlight bar */}
+                <View style={[styles.pickerHighlight, { backgroundColor: colors.primary.soft }]} />
+
+                <View style={styles.pickerContainer}>
+                  {/* Date Picker (Year/Month/Day) */}
+                  <ScrollView
+                    ref={dateScrollRef}
+                    style={styles.pickerColumnWide}
+                    contentContainerStyle={styles.pickerColumnContent}
+                    showsVerticalScrollIndicator={false}
+                    snapToInterval={44}
+                    decelerationRate="fast"
                   >
-                    <Ionicons name="chevron-back" size={20} color={colors.muted.foreground} />
-                  </TouchableOpacity>
-                  <Text style={[styles.pickerTitle, { color: colors.foreground }]}>選擇時間</Text>
-                  <TouchableOpacity
-                    style={styles.pickerHeaderButton}
-                    onPress={handleConfirmTime}
+                    <View style={styles.pickerSpacer} />
+                    {Array.from({ length: 7 }, (_, i) => {
+                      const now = new Date();
+                      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
+                      const selectedDay = Math.min(Math.max(diffDays, 0), 6);
+                      const isSelected = selectedDay === i;
+
+                      // 格式化日期顯示
+                      const month = date.getMonth() + 1;
+                      const day = date.getDate();
+                      const label = i === 0 ? `${month}/${day} 今天` : `${month}/${day}`;
+
+                      return (
+                        <TouchableOpacity
+                          key={i}
+                          style={styles.pickerItem}
+                          onPress={() => {
+                            const newDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                            newDate.setHours(occurredAt.getHours(), occurredAt.getMinutes(), 0, 0);
+                            // 如果選擇今天且時間超過現在，調整到現在
+                            if (newDate > now) {
+                              newDate.setHours(now.getHours(), Math.floor(now.getMinutes() / 5) * 5, 0, 0);
+                            }
+                            setOccurredAt(newDate);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.pickerItemText,
+                              { color: isSelected ? colors.primary.DEFAULT : colors.muted.foreground },
+                              isSelected && styles.pickerItemTextSelected,
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <View style={styles.pickerSpacer} />
+                  </ScrollView>
+
+                  {/* Hour Picker */}
+                  <ScrollView
+                    ref={hourScrollRef}
+                    style={styles.pickerColumn}
+                    contentContainerStyle={styles.pickerColumnContent}
+                    showsVerticalScrollIndicator={false}
+                    snapToInterval={44}
+                    decelerationRate="fast"
                   >
-                    <Text style={[styles.pickerConfirmText, { color: colors.primary.DEFAULT }]}>確定</Text>
-                  </TouchableOpacity>
+                    <View style={styles.pickerSpacer} />
+                    {(() => {
+                      const now = new Date();
+                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
+                      const isToday = diffDays === 0;
+                      const currentHour = now.getHours();
+
+                      return Array.from({ length: 24 }, (_, i) => {
+                        const isSelected = occurredAt.getHours() === i;
+                        const isDisabled = isToday && i > currentHour;
+                        return (
+                          <TouchableOpacity
+                            key={i}
+                            style={[styles.pickerItem, isDisabled && styles.pickerItemDisabled]}
+                            onPress={() => {
+                              if (isDisabled) return;
+                              const newDate = new Date(occurredAt);
+                              newDate.setHours(i);
+                              // 如果是今天且選擇的小時等於現在，調整分鐘不超過現在
+                              if (isToday && i === currentHour && newDate.getMinutes() > now.getMinutes()) {
+                                newDate.setMinutes(Math.floor(now.getMinutes() / 5) * 5);
+                              }
+                              setOccurredAt(newDate);
+                            }}
+                            disabled={isDisabled}
+                          >
+                            <Text
+                              style={[
+                                styles.pickerItemText,
+                                { color: isDisabled ? colors.border : (isSelected ? colors.primary.DEFAULT : colors.muted.foreground) },
+                                isSelected && !isDisabled && styles.pickerItemTextSelected,
+                              ]}
+                            >
+                              {i.toString().padStart(2, '0')} 時
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      });
+                    })()}
+                    <View style={styles.pickerSpacer} />
+                  </ScrollView>
+
+                  {/* Minute Picker */}
+                  <ScrollView
+                    ref={minuteScrollRef}
+                    style={styles.pickerColumn}
+                    contentContainerStyle={styles.pickerColumnContent}
+                    showsVerticalScrollIndicator={false}
+                    snapToInterval={44}
+                    decelerationRate="fast"
+                  >
+                    <View style={styles.pickerSpacer} />
+                    {(() => {
+                      const now = new Date();
+                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
+                      const isToday = diffDays === 0;
+                      const isSameHour = isToday && occurredAt.getHours() === now.getHours();
+                      const currentMinute = now.getMinutes();
+
+                      return Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => {
+                        const isSelected = Math.floor(occurredAt.getMinutes() / 5) * 5 === minute;
+                        const isDisabled = isSameHour && minute > currentMinute;
+                        return (
+                          <TouchableOpacity
+                            key={minute}
+                            style={[styles.pickerItem, isDisabled && styles.pickerItemDisabled]}
+                            onPress={() => {
+                              if (isDisabled) return;
+                              const newDate = new Date(occurredAt);
+                              newDate.setMinutes(minute);
+                              setOccurredAt(newDate);
+                            }}
+                            disabled={isDisabled}
+                          >
+                            <Text
+                              style={[
+                                styles.pickerItemText,
+                                { color: isDisabled ? colors.border : (isSelected ? colors.primary.DEFAULT : colors.muted.foreground) },
+                                isSelected && !isDisabled && styles.pickerItemTextSelected,
+                            ]}
+                          >
+                            {minute.toString().padStart(2, '0')} 分
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                      });
+                    })()}
+                    <View style={styles.pickerSpacer} />
+                  </ScrollView>
                 </View>
-                <View style={styles.pickerContent}>
-                  <DateTimePicker
-                    value={customTime}
-                    mode="time"
-                    display="spinner"
-                    onChange={handleTimeChange}
-                    locale="zh-TW"
-                    minuteInterval={1}
-                    style={styles.dateTimePicker}
-                  />
-                </View>
-                <SafeAreaView edges={['bottom']} />
               </View>
-            </TouchableOpacity>
-          </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
 
         {/* Point cost breakdown - ONLY SHOWN HERE */}
@@ -1167,43 +1278,83 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-  modalOverlay: {
+  // Date picker modal styles (iOS)
+  datePickerModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  pickerModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
+  datePickerModalDismiss: {
+    flex: 1,
   },
-  pickerHeader: {
+  datePickerModalContent: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    paddingBottom: spacing[8],
+  },
+  datePickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
     borderBottomWidth: 1,
   },
-  pickerHeaderButton: {
-    paddingVertical: spacing[1],
+  datePickerCancel: {
+    fontSize: typography.fontSize.base,
+  },
+  datePickerTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  datePickerDone: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  pickerWrapper: {
+    height: 220,
+    position: 'relative',
+  },
+  pickerHighlight: {
+    position: 'absolute',
+    top: 88, // (220 - 44) / 2 = 88
+    left: spacing[3],
+    right: spacing[3],
+    height: 44,
+    borderRadius: borderRadius.lg,
+    zIndex: 0,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flex: 1,
     paddingHorizontal: spacing[2],
   },
-  pickerTitle: {
+  pickerColumn: {
+    flex: 1,
+  },
+  pickerColumnWide: {
+    flex: 1.5,
+  },
+  pickerColumnContent: {
+    alignItems: 'center',
+  },
+  pickerSpacer: {
+    height: 88, // Same as top offset of highlight
+  },
+  pickerItem: {
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing[2],
+  },
+  pickerItemText: {
     fontSize: typography.fontSize.base,
+    textAlign: 'center',
+  },
+  pickerItemTextSelected: {
     fontWeight: typography.fontWeight.semibold as any,
   },
-  pickerCancelText: {
-    fontSize: typography.fontSize.base,
-  },
-  pickerConfirmText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold as any,
-  },
-  pickerContent: {
-    paddingVertical: spacing[2],
-  },
-  dateTimePicker: {
-    width: '100%',
-    height: 200,
+  pickerItemDisabled: {
+    opacity: 0.4,
   },
 });

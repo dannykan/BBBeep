@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { useSend } from '../../context/SendContext';
+import { VoiceMemoPlayer } from '../../components/VoiceMemoPlayer';
 import {
   typography,
   spacing,
@@ -30,6 +32,7 @@ interface SendLayoutProps {
   title?: string;
   showBackButton?: boolean;
   showProgress?: boolean;
+  showVoiceMemo?: boolean;
   onBack?: () => void;
 }
 
@@ -40,10 +43,12 @@ export function SendLayout({
   title,
   showBackButton = true,
   showProgress = true,
+  showVoiceMemo = true,
   onBack,
 }: SendLayoutProps) {
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const { voiceMemo } = useSend();
 
   const handleBack = () => {
     if (onBack) {
@@ -202,6 +207,8 @@ export function SendLayout({
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets={true}
         >
+          {/* Voice memo player at top when available */}
+          {showVoiceMemo && voiceMemo && <VoiceMemoPlayer />}
           {children}
         </ScrollView>
       </KeyboardAvoidingView>

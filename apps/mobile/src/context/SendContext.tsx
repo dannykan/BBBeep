@@ -16,6 +16,17 @@ interface VoiceRecording {
   transcript: string;
 }
 
+// 語音備忘（快速錄音帶入的資料）
+export interface VoiceMemo {
+  uri: string;
+  duration: number;
+  transcript?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  recordedAt: Date;
+}
+
 interface SendState {
   // Vehicle and plate
   vehicleType: VehicleType | null;
@@ -58,6 +69,9 @@ interface SendState {
   voiceRecording: VoiceRecording | null;
   voiceUrl: string | null;
   sendMode: SendMode;
+
+  // Voice Memo (from quick recording)
+  voiceMemo: VoiceMemo | null;
 }
 
 interface SendContextType extends SendState {
@@ -82,6 +96,7 @@ interface SendContextType extends SendState {
   setVoiceRecording: (recording: VoiceRecording | null) => void;
   setVoiceUrl: (url: string | null) => void;
   setSendMode: (mode: SendMode) => void;
+  setVoiceMemo: (memo: VoiceMemo | null) => void;
 
   // Helpers
   resetSend: () => void;
@@ -131,6 +146,8 @@ const initialState: SendState = {
   voiceRecording: null,
   voiceUrl: null,
   sendMode: 'text',
+  // Voice Memo
+  voiceMemo: null,
 };
 
 export function SendProvider({ children }: { children: React.ReactNode }) {
@@ -216,6 +233,10 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
 
   const setSendMode = useCallback((mode: SendMode) => {
     setState((prev) => ({ ...prev, sendMode: mode }));
+  }, []);
+
+  const setVoiceMemo = useCallback((memo: VoiceMemo | null) => {
+    setState((prev) => ({ ...prev, voiceMemo: memo }));
   }, []);
 
   const clearVoice = useCallback(() => {
@@ -575,6 +596,7 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     setVoiceRecording,
     setVoiceUrl,
     setSendMode,
+    setVoiceMemo,
     resetSend,
     clearVoice,
     checkAiLimit,

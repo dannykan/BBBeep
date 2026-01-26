@@ -15,15 +15,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../theme/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useDraft } from '../../context/DraftContext';
+import { useSend } from '../../context/SendContext';
 import { DraftCard } from './components/DraftCard';
 import type { VoiceDraft } from '@bbbeeep/shared';
 
 export function DraftsScreen() {
   const { colors } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { drafts, isLoading, error, fetchDrafts, deleteDraft } = useDraft();
+  const { setVoiceMemo, resetSend } = useSend();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -59,21 +61,32 @@ export function DraftsScreen() {
 
   const handleSend = useCallback(
     (draft: VoiceDraft) => {
-      // 導航到草稿詳情/發送頁面
-      navigation.navigate('DraftDetail' as never, { draftId: draft.id } as never);
+      // 重置發送狀態並設定語音備忘
+      resetSend();
+      setVoiceMemo({
+        uri: draft.voiceUrl,
+        duration: draft.voiceDuration,
+        transcript: draft.transcript || undefined,
+        latitude: draft.latitude || undefined,
+        longitude: draft.longitude || undefined,
+        address: draft.address || undefined,
+        recordedAt: new Date(draft.createdAt),
+      });
+      // 導航到發送流程
+      navigation.navigate('Main', { screen: 'Send' });
     },
-    [navigation],
+    [navigation, resetSend, setVoiceMemo],
   );
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIcon, { backgroundColor: colors.primaryLight }]}>
-        <Ionicons name="mic-outline" size={48} color={colors.primary} />
+      <View style={[styles.emptyIcon, { backgroundColor: colors.primary.soft }]}>
+        <Ionicons name="mic-outline" size={48} color={colors.primary.DEFAULT} />
       </View>
-      <Text style={[styles.emptyTitle, { color: colors.text }]}>
+      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
         沒有語音草稿
       </Text>
-      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+      <Text style={[styles.emptySubtitle, { color: colors.muted.foreground }]}>
         開車時按下快速錄音按鈕{'\n'}記錄車牌和事件，稍後再發送
       </Text>
     </View>
@@ -95,9 +108,9 @@ export function DraftsScreen() {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           語音草稿
         </Text>
         <View style={styles.headerRight} />
@@ -105,9 +118,9 @@ export function DraftsScreen() {
 
       {/* 提示 */}
       {drafts.length > 0 && (
-        <View style={[styles.tipBanner, { backgroundColor: colors.warningLight }]}>
-          <Ionicons name="time-outline" size={18} color={colors.warning} />
-          <Text style={[styles.tipText, { color: colors.warning }]}>
+        <View style={[styles.tipBanner, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+          <Ionicons name="time-outline" size={18} color="#F59E0B" />
+          <Text style={[styles.tipText, { color: '#F59E0B' }]}>
             草稿會在 24 小時後自動刪除
           </Text>
         </View>
@@ -127,7 +140,7 @@ export function DraftsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={colors.primary}
+            tintColor={colors.primary.DEFAULT}
           />
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}

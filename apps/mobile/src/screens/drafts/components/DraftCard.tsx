@@ -1,5 +1,6 @@
 /**
  * DraftCard - 草稿卡片組件
+ * 簡化版：只顯示語音播放器，不顯示 AI 分析結果
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -12,8 +13,8 @@ import {
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../theme/ThemeContext';
-import type { VoiceDraft, ParsedPlate } from '@bbbeeep/shared';
+import { useTheme } from '../../../context/ThemeContext';
+import type { VoiceDraft } from '@bbbeeep/shared';
 
 interface DraftCardProps {
   draft: VoiceDraft;
@@ -105,142 +106,32 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
     return { text: `${hoursLeft} 小時後過期`, urgent: false };
   };
 
-  const getCategoryIcon = () => {
-    const category = draft.parsedEvent?.category;
-    switch (category) {
-      case 'VEHICLE_REMINDER':
-        return 'car-outline';
-      case 'SAFETY_REMINDER':
-        return 'warning-outline';
-      case 'PRAISE':
-        return 'heart-outline';
-      default:
-        return 'chatbubble-outline';
-    }
-  };
-
-  const getCategoryText = () => {
-    const category = draft.parsedEvent?.category;
-    switch (category) {
-      case 'VEHICLE_REMINDER':
-        return '車況提醒';
-      case 'SAFETY_REMINDER':
-        return '行車安全';
-      case 'PRAISE':
-        return '讚美感謝';
-      default:
-        return '其他';
-    }
-  };
-
   const expiryInfo = getExpiryInfo();
-  const isProcessing = draft.status === 'PROCESSING';
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.statusDot, { backgroundColor: isProcessing ? colors.warning : '#10B981' }]} />
-          <Text style={[styles.timeText, { color: colors.textSecondary }]}>
+          <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
+          <Text style={[styles.timeText, { color: colors.muted.foreground }]}>
             {formatRelativeTime(draft.createdAt)}
           </Text>
         </View>
         <Text
           style={[
             styles.expiryText,
-            { color: expiryInfo.urgent ? colors.error : colors.textTertiary },
+            { color: expiryInfo.urgent ? colors.destructive.DEFAULT : colors.muted.foreground },
           ]}
         >
           {expiryInfo.text}
         </Text>
       </View>
 
-      {/* 處理中狀態 */}
-      {isProcessing && (
-        <View style={[styles.processingBanner, { backgroundColor: colors.warningLight }]}>
-          <Ionicons name="hourglass-outline" size={16} color={colors.warning} />
-          <Text style={[styles.processingText, { color: colors.warning }]}>
-            AI 正在分析中...
-          </Text>
-        </View>
-      )}
-
-      {/* 車牌候選 */}
-      {draft.parsedPlates.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            車牌候選
-          </Text>
-          <View style={styles.platesRow}>
-            {draft.parsedPlates.map((plate, index) => (
-              <View
-                key={plate.plate}
-                style={[
-                  styles.plateChip,
-                  {
-                    backgroundColor: index === 0 ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.plateText,
-                    { color: index === 0 ? '#fff' : colors.text },
-                  ]}
-                >
-                  {plate.plate}
-                </Text>
-                {index === 0 && (
-                  <Text style={styles.confidenceText}>
-                    {Math.round(plate.confidence * 100)}%
-                  </Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* 車輛資訊 */}
-      {draft.parsedVehicle && draft.parsedVehicle.type !== 'unknown' && (
-        <View style={styles.vehicleInfo}>
-          <Ionicons
-            name={draft.parsedVehicle.type === 'car' ? 'car' : 'bicycle'}
-            size={16}
-            color={colors.textSecondary}
-          />
-          <Text style={[styles.vehicleText, { color: colors.textSecondary }]}>
-            {[
-              draft.parsedVehicle.color,
-              draft.parsedVehicle.brand,
-              draft.parsedVehicle.model,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          </Text>
-        </View>
-      )}
-
-      {/* 事件類型 */}
-      {draft.parsedEvent && (
-        <View style={styles.eventInfo}>
-          <View style={[styles.eventBadge, { backgroundColor: colors.primaryLight }]}>
-            <Ionicons name={getCategoryIcon() as any} size={14} color={colors.primary} />
-            <Text style={[styles.eventBadgeText, { color: colors.primary }]}>
-              {getCategoryText()}
-            </Text>
-          </View>
-          <Text style={[styles.eventDescription, { color: colors.text }]}>
-            {draft.parsedEvent.description}
-          </Text>
-        </View>
-      )}
-
       {/* 語音播放器 */}
       <View style={styles.playerSection}>
         <TouchableOpacity
-          style={[styles.playButton, { backgroundColor: colors.primary }]}
+          style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={handlePlayPause}
         >
           <Ionicons
@@ -256,7 +147,7 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
               style={[
                 styles.progressFill,
                 {
-                  backgroundColor: colors.primary,
+                  backgroundColor: colors.primary.DEFAULT,
                   width: progressAnim.interpolate({
                     inputRange: [0, 1],
                     outputRange: ['0%', '100%'],
@@ -266,27 +157,31 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
             />
           </View>
           <View style={styles.timeRow}>
-            <Text style={[styles.timeSmall, { color: colors.textTertiary }]}>
+            <Text style={[styles.timeSmall, { color: colors.muted.foreground }]}>
               {formatTime(playbackPosition)}
             </Text>
-            <Text style={[styles.timeSmall, { color: colors.textTertiary }]}>
+            <Text style={[styles.timeSmall, { color: colors.muted.foreground }]}>
               {formatTime(draft.voiceDuration)}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* AI 建議訊息 */}
-      {draft.suggestedMessage && (
-        <View style={[styles.suggestionBox, { backgroundColor: colors.primaryLight }]}>
-          <View style={styles.suggestionHeader}>
-            <Ionicons name="sparkles" size={14} color={colors.primary} />
-            <Text style={[styles.suggestionLabel, { color: colors.primary }]}>
-              AI 建議訊息
-            </Text>
-          </View>
-          <Text style={[styles.suggestionText, { color: colors.text }]}>
-            {draft.suggestedMessage}
+      {/* 轉錄文字（如有） */}
+      {draft.transcript && (
+        <View style={[styles.transcriptBox, { backgroundColor: colors.muted.DEFAULT }]}>
+          <Text style={[styles.transcriptText, { color: colors.foreground }]} numberOfLines={3}>
+            「{draft.transcript}」
+          </Text>
+        </View>
+      )}
+
+      {/* 地點（如有） */}
+      {draft.address && (
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={14} color={colors.muted.foreground} />
+          <Text style={[styles.locationText, { color: colors.muted.foreground }]} numberOfLines={1}>
+            {draft.address}
           </Text>
         </View>
       )}
@@ -297,24 +192,18 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
           style={[styles.deleteButton, { borderColor: colors.border }]}
           onPress={onDelete}
         >
-          <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
-          <Text style={[styles.deleteButtonText, { color: colors.textSecondary }]}>
+          <Ionicons name="trash-outline" size={18} color={colors.muted.foreground} />
+          <Text style={[styles.deleteButtonText, { color: colors.muted.foreground }]}>
             刪除
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            {
-              backgroundColor: isProcessing ? colors.border : colors.primary,
-            },
-          ]}
+          style={[styles.sendButton, { backgroundColor: colors.primary.DEFAULT }]}
           onPress={onSend}
-          disabled={isProcessing}
         >
-          <Ionicons name="send" size={18} color="#fff" />
-          <Text style={styles.sendButtonText}>發送提醒</Text>
+          <Ionicons name="create-outline" size={18} color="#fff" />
+          <Text style={styles.sendButtonText}>繼續編輯</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -353,77 +242,6 @@ const styles = StyleSheet.create({
   expiryText: {
     fontSize: 12,
   },
-  processingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-    gap: 6,
-  },
-  processingText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  platesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  plateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  plateText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'monospace',
-  },
-  confidenceText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  vehicleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  vehicleText: {
-    fontSize: 13,
-  },
-  eventInfo: {
-    marginBottom: 12,
-  },
-  eventBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-    marginBottom: 6,
-  },
-  eventBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  eventDescription: {
-    fontSize: 14,
-  },
   playerSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -432,9 +250,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -458,24 +276,24 @@ const styles = StyleSheet.create({
   timeSmall: {
     fontSize: 11,
   },
-  suggestionBox: {
+  transcriptBox: {
     padding: 12,
     borderRadius: 10,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  suggestionHeader: {
+  transcriptText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 6,
+    marginBottom: 12,
   },
-  suggestionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  suggestionText: {
-    fontSize: 14,
-    lineHeight: 20,
+  locationText: {
+    fontSize: 13,
+    flex: 1,
   },
   buttonRow: {
     flexDirection: 'row',

@@ -90,6 +90,7 @@ export default function SuccessScreen() {
       title="送出成功"
       showBackButton={false}
       showProgress={false}
+      showVoiceMemo={false}
     >
       <View style={styles.content}>
         {/* Heart icon with animation */}

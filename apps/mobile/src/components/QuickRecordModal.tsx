@@ -19,13 +19,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 // BlurView 在某些環境有相容性問題，使用半透明背景替代
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
 import { useTheme } from '../context/ThemeContext';
-import { uploadApi, messagesApi } from '@bbbeeep/shared';
+import { uploadApi, messagesApi, draftsApi, aiApi } from '@bbbeeep/shared';
+import type { AiModerationResponse } from '@bbbeeep/shared';
 
 // 定義解析結果的類型
 interface ParsedPlate {
@@ -35,13 +37,17 @@ interface ParsedPlate {
 
 interface ParsedVehicle {
   type: 'car' | 'scooter' | 'unknown';
-  confidence: number;
+  color?: string;
+  brand?: string;
+  model?: string;
 }
 
 interface ParsedEvent {
   category: string;
-  subcategory?: string;
-  confidence: number;
+  type?: string;
+  description?: string;
+  location?: string;
+  sentiment?: 'positive' | 'negative' | 'neutral';
 }
 
 interface QuickRecordModalProps {
@@ -52,23 +58,22 @@ interface QuickRecordModalProps {
 
 type Step = 'recording' | 'analyzing' | 'confirm' | 'success';
 type VehicleType = 'car' | 'scooter';
-type Category = 'VEHICLE_REMINDER' | 'SAFETY_REMINDER' | 'PRAISE' | 'OTHER';
+type Category = '車況提醒' | '行車安全提醒' | '讚美感謝';
 type TimeOption = 'now' | '5min' | '10min' | '15min';
 
 interface ParsedData {
   plates: ParsedPlate[];
-  vehicle: ParsedVehicle;
-  event: ParsedEvent;
-  suggestedMessage: string;
+  vehicle?: ParsedVehicle;
+  event?: ParsedEvent;
+  suggestedMessage?: string;
 }
 
 const MAX_RECORDING_DURATION = 30;
 
 const CATEGORY_OPTIONS: { value: Category; label: string; icon: string }[] = [
-  { value: 'VEHICLE_REMINDER', label: '車況提醒', icon: 'car-outline' },
-  { value: 'SAFETY_REMINDER', label: '行車安全', icon: 'warning-outline' },
-  { value: 'PRAISE', label: '讚美感謝', icon: 'heart-outline' },
-  { value: 'OTHER', label: '其他', icon: 'chatbubble-outline' },
+  { value: '車況提醒', label: '車況提醒', icon: 'car-outline' },
+  { value: '行車安全提醒', label: '行車安全', icon: 'warning-outline' },
+  { value: '讚美感謝', label: '讚美感謝', icon: 'heart-outline' },
 ];
 
 const TIME_OPTIONS: { value: TimeOption; label: string }[] = [
@@ -110,7 +115,7 @@ export function QuickRecordModal({
   const [customPlate, setCustomPlate] = useState('');
   const [showCustomPlate, setShowCustomPlate] = useState(false);
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
-  const [category, setCategory] = useState<Category>('SAFETY_REMINDER');
+  const [category, setCategory] = useState<Category>('行車安全提醒');
   const [message, setMessage] = useState('');
   const [additionalNote, setAdditionalNote] = useState('');
   const [showAdditionalNote, setShowAdditionalNote] = useState(false);
@@ -122,6 +127,12 @@ export function QuickRecordModal({
   // Loading 狀態
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isAutoSaved, setIsAutoSaved] = useState(false);
+
+  // AI 審核狀態
+  const [aiModeration, setAiModeration] = useState<AiModerationResponse | null>(null);
+  const [isAiModerating, setIsAiModerating] = useState(false);
+  const moderationDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // 語音播放
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -143,7 +154,7 @@ export function QuickRecordModal({
     setCustomPlate('');
     setShowCustomPlate(false);
     setVehicleType('car');
-    setCategory('SAFETY_REMINDER');
+    setCategory('行車安全提醒');
     setMessage('');
     setAdditionalNote('');
     setShowAdditionalNote(false);
@@ -153,6 +164,12 @@ export function QuickRecordModal({
     setTimeOption('now');
     setIsSaving(false);
     setIsSending(false);
+    setIsAutoSaved(false);
+    setAiModeration(null);
+    setIsAiModerating(false);
+    if (moderationDebounceRef.current) {
+      clearTimeout(moderationDebounceRef.current);
+    }
     if (sound) {
       sound.unloadAsync();
       setSound(null);
@@ -176,8 +193,46 @@ export function QuickRecordModal({
       if (sound) {
         sound.unloadAsync();
       }
+      if (moderationDebounceRef.current) {
+        clearTimeout(moderationDebounceRef.current);
+      }
     };
   }, [sound]);
+
+  // AI 審核（訊息變更時觸發）
+  useEffect(() => {
+    if (moderationDebounceRef.current) {
+      clearTimeout(moderationDebounceRef.current);
+    }
+
+    const trimmedMessage = message.trim();
+    if (trimmedMessage.length < 5) {
+      setAiModeration(null);
+      setIsAiModerating(false);
+      return;
+    }
+
+    moderationDebounceRef.current = setTimeout(async () => {
+      setIsAiModerating(true);
+      try {
+        const result = await aiApi.moderate(trimmedMessage);
+        console.log('[AI Moderation] Result:', result);
+        setAiModeration(result);
+      } catch (error) {
+        console.error('[AI Moderation] Error:', error);
+        // 錯誤時預設允許發送
+        setAiModeration({ isAppropriate: true, reason: null, category: 'ok', suggestion: null });
+      } finally {
+        setIsAiModerating(false);
+      }
+    }, 800);
+
+    return () => {
+      if (moderationDebounceRef.current) {
+        clearTimeout(moderationDebounceRef.current);
+      }
+    };
+  }, [message]);
 
   // 脈動動畫
   useEffect(() => {
@@ -211,6 +266,11 @@ export function QuickRecordModal({
   // 開始錄音（權限已在打開 Modal 前確認）
   const startRecording = async () => {
     try {
+      // Check if app is in foreground before starting recording
+      if (AppState.currentState !== 'active') {
+        console.log('[Recording] App not in foreground, skipping...');
+        return;
+      }
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
@@ -262,6 +322,11 @@ export function QuickRecordModal({
         });
       }, 1000);
     } catch (err: any) {
+      // Silently ignore background errors
+      if (err.message?.includes('background') || AppState.currentState !== 'active') {
+        console.log('[Recording] Background error, ignoring:', err.message);
+        return;
+      }
       Alert.alert('錯誤', err.message || '無法開始錄音');
       onClose();
     }
@@ -366,6 +431,72 @@ export function QuickRecordModal({
     onClose();
   };
 
+  // 檢查是否為無法辨識的轉錄結果
+  const isUnrecognizableTranscript = (text: string): boolean => {
+    const unrecognizablePatterns = [
+      '請使用繁體中文轉錄',
+      '無法辨識',
+      '聽不清楚',
+      '請重新錄音',
+    ];
+    return unrecognizablePatterns.some(pattern => text.includes(pattern));
+  };
+
+  // 儲存草稿
+  const saveDraft = async (uri: string, transcriptText: string) => {
+    try {
+      // 上傳語音
+      const uploadResult = await uploadApi.uploadVoice(uri);
+
+      // 建立草稿
+      await draftsApi.create({
+        voiceUrl: uploadResult.url,
+        voiceDuration,
+        transcript: transcriptText || '',
+        latitude: latitude || undefined,
+        longitude: longitude || undefined,
+        address: location || undefined,
+      });
+
+      setIsAutoSaved(true);
+      setStep('success');
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      console.error('[Save Draft] Error:', err);
+      Alert.alert('儲存失敗', err.response?.data?.message || err.message || '請稍後再試');
+      setStep('confirm');
+    }
+  };
+
+  // 顯示無法辨識對話框
+  const showUnrecognizableDialog = (uri: string, transcriptText: string) => {
+    Alert.alert(
+      '語音無法辨識',
+      'AI 無法辨識您的語音內容，請選擇：',
+      [
+        {
+          text: '存為草稿',
+          onPress: () => saveDraft(uri, transcriptText),
+        },
+        {
+          text: '手動編輯',
+          onPress: () => {
+            setMessage('');
+            setStep('confirm');
+          },
+        },
+        {
+          text: '取消',
+          style: 'cancel',
+          onPress: () => onClose(),
+        },
+      ],
+    );
+  };
+
   // AI 分析語音
   const analyzeVoice = async (uri: string) => {
     try {
@@ -374,12 +505,62 @@ export function QuickRecordModal({
       const transcriptText = transcribeResult?.text || '';
       setTranscript(transcriptText);
 
-      // 將轉錄文字設為預設訊息
-      if (transcriptText) {
-        setMessage(transcriptText);
+      // 如果 AI 無法辨識語音，顯示選項對話框
+      if (!transcriptText || isUnrecognizableTranscript(transcriptText)) {
+        console.log('[AI] Unrecognizable transcript, showing options');
+        showUnrecognizableDialog(uri, transcriptText);
+        return;
       }
 
-      // 進入確認階段，讓用戶手動填寫車牌等資訊
+      // 使用 AI 解析轉錄文字，識別車牌等資訊
+      if (transcriptText) {
+        try {
+          const parseResult = await draftsApi.testParse(transcriptText);
+          console.log('[AI Parse] Result:', parseResult);
+
+          // 設定 AI 解析結果
+          if (parseResult) {
+            // 設定車牌候選
+            if (parseResult.plates && parseResult.plates.length > 0) {
+              setParsedData({
+                plates: parseResult.plates,
+                vehicle: parseResult.vehicle || { type: 'unknown' },
+                event: parseResult.event,
+                suggestedMessage: parseResult.suggestedMessage || '',
+              });
+              // 自動選擇第一個車牌（信心度最高）
+              setSelectedPlate(parseResult.plates[0].plate);
+            }
+
+            // 設定車輛類型
+            if (parseResult.vehicle?.type === 'car' || parseResult.vehicle?.type === 'scooter') {
+              setVehicleType(parseResult.vehicle.type);
+            }
+
+            // 設定提醒類別
+            const categoryMap: Record<string, Category> = {
+              'VEHICLE_REMINDER': '車況提醒',
+              'SAFETY_REMINDER': '行車安全提醒',
+              'PRAISE': '讚美感謝',
+            };
+            if (parseResult.event?.category && categoryMap[parseResult.event.category]) {
+              setCategory(categoryMap[parseResult.event.category]);
+            }
+
+            // 設定建議訊息（優先使用 AI 建議，否則使用原始轉錄）
+            setMessage(parseResult.suggestedMessage || transcriptText);
+          } else {
+            // AI 解析失敗，使用原始轉錄
+            setMessage(transcriptText);
+          }
+        } catch (parseErr) {
+          console.warn('[AI Parse] Failed, using transcript:', parseErr);
+          // AI 解析失敗，使用原始轉錄
+          setMessage(transcriptText);
+        }
+      }
+
+      // 進入確認階段
       setStep('confirm');
     } catch (err: any) {
       console.error('Analysis error:', err);
@@ -417,7 +598,7 @@ export function QuickRecordModal({
     }
   };
 
-  // 儲存草稿
+  // 儲存草稿（確認頁面使用）
   const handleSaveDraft = async () => {
     if (!voiceUri) return;
 
@@ -478,7 +659,6 @@ export function QuickRecordModal({
       // 發送訊息
       await messagesApi.create({
         licensePlate: finalPlate,
-        vehicleType,
         type: category,
         template: finalMessage,
         customText: additionalNote || undefined,
@@ -613,14 +793,14 @@ export function QuickRecordModal({
 
   // 確認頁面
   const renderConfirm = () => (
-    <View style={[styles.confirmContainer, { backgroundColor: colors.surface }]}>
+    <View style={[styles.confirmContainer, { backgroundColor: colors.card.DEFAULT }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         {/* 固定標題列 */}
-        <View style={[styles.confirmHeaderFixed, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Text style={[styles.confirmTitle, { color: colors.text }]}>
+        <View style={[styles.confirmHeaderFixed, { backgroundColor: colors.card.DEFAULT, borderBottomColor: colors.border }]}>
+          <Text style={[styles.confirmTitle, { color: colors.foreground }]}>
             確認提醒內容
           </Text>
           <TouchableOpacity
@@ -628,7 +808,7 @@ export function QuickRecordModal({
             style={styles.confirmCloseButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="close" size={28} color={colors.textSecondary} />
+            <Ionicons name="close" size={28} color={colors.muted.foreground} />
           </TouchableOpacity>
         </View>
 
@@ -641,22 +821,22 @@ export function QuickRecordModal({
         {/* 語音播放 */}
         <View style={[styles.voicePlayer, { backgroundColor: colors.background }]}>
           <TouchableOpacity
-            style={[styles.playButton, { backgroundColor: colors.primary }]}
+            style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
             onPress={togglePlayback}
           >
             <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color="#fff" />
           </TouchableOpacity>
           <View style={styles.voiceInfo}>
-            <Text style={[styles.voiceLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.voiceLabel, { color: colors.muted.foreground }]}>
               原始錄音
             </Text>
-            <Text style={[styles.voiceDuration, { color: colors.text }]}>
+            <Text style={[styles.voiceDuration, { color: colors.foreground }]}>
               {formatDuration(voiceDuration)}
             </Text>
           </View>
           {transcript && (
             <Text
-              style={[styles.transcriptPreview, { color: colors.textTertiary }]}
+              style={[styles.transcriptPreview, { color: colors.text.muted }]}
               numberOfLines={1}
             >
               「{transcript}」
@@ -666,8 +846,8 @@ export function QuickRecordModal({
 
         {/* 車牌選擇 */}
         <View style={styles.fieldSection}>
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>
-            車牌號碼 <Text style={{ color: colors.error }}>*</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+            車牌號碼 <Text style={{ color: colors.destructive.DEFAULT }}>*</Text>
           </Text>
 
           {parsedData && parsedData.plates.length > 0 && !showCustomPlate && (
@@ -680,11 +860,11 @@ export function QuickRecordModal({
                     {
                       backgroundColor:
                         selectedPlate === plate.plate
-                          ? colors.primary
+                          ? colors.primary.DEFAULT
                           : colors.background,
                       borderColor:
                         selectedPlate === plate.plate
-                          ? colors.primary
+                          ? colors.primary.DEFAULT
                           : colors.border,
                     },
                   ]}
@@ -695,7 +875,7 @@ export function QuickRecordModal({
                       styles.plateChipText,
                       {
                         color:
-                          selectedPlate === plate.plate ? '#fff' : colors.text,
+                          selectedPlate === plate.plate ? '#fff' : colors.foreground,
                       },
                     ]}
                   >
@@ -705,7 +885,7 @@ export function QuickRecordModal({
                     <Ionicons
                       name="checkmark-circle"
                       size={14}
-                      color={selectedPlate === plate.plate ? '#fff' : colors.success}
+                      color={selectedPlate === plate.plate ? '#fff' : colors.success.DEFAULT}
                     />
                   )}
                 </TouchableOpacity>
@@ -717,15 +897,15 @@ export function QuickRecordModal({
                 ]}
                 onPress={() => setShowCustomPlate(true)}
               >
-                <Ionicons name="create-outline" size={16} color={colors.textSecondary} />
-                <Text style={[styles.plateChipText, { color: colors.textSecondary }]}>
+                <Ionicons name="create-outline" size={16} color={colors.muted.foreground} />
+                <Text style={[styles.plateChipText, { color: colors.muted.foreground }]}>
                   其他
                 </Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {(showCustomPlate || !parsedData?.plates.length) && (
+          {(showCustomPlate || !parsedData?.plates?.length) && (
             <View style={styles.customPlateRow}>
               <TextInput
                 style={[
@@ -733,16 +913,16 @@ export function QuickRecordModal({
                   {
                     backgroundColor: colors.background,
                     borderColor: colors.border,
-                    color: colors.text,
+                    color: colors.foreground,
                   },
                 ]}
                 placeholder="輸入車牌號碼"
-                placeholderTextColor={colors.textTertiary}
+                placeholderTextColor={colors.text.muted}
                 value={customPlate}
                 onChangeText={setCustomPlate}
                 autoCapitalize="characters"
               />
-              {showCustomPlate && parsedData?.plates.length > 0 && (
+              {showCustomPlate && (parsedData?.plates?.length ?? 0) > 0 && (
                 <TouchableOpacity
                   style={styles.backToChips}
                   onPress={() => {
@@ -750,7 +930,7 @@ export function QuickRecordModal({
                     setCustomPlate('');
                   }}
                 >
-                  <Text style={{ color: colors.primary }}>選擇候選</Text>
+                  <Text style={{ color: colors.primary.DEFAULT }}>選擇候選</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -759,16 +939,16 @@ export function QuickRecordModal({
 
         {/* 車輛類型 */}
         <View style={styles.fieldSection}>
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>車輛類型</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>車輛類型</Text>
           <View style={styles.typeRow}>
             <TouchableOpacity
               style={[
                 styles.typeButton,
                 {
                   backgroundColor:
-                    vehicleType === 'car' ? colors.primary : colors.background,
+                    vehicleType === 'car' ? colors.primary.DEFAULT : colors.background,
                   borderColor:
-                    vehicleType === 'car' ? colors.primary : colors.border,
+                    vehicleType === 'car' ? colors.primary.DEFAULT : colors.border,
                 },
               ]}
               onPress={() => setVehicleType('car')}
@@ -776,12 +956,12 @@ export function QuickRecordModal({
               <Ionicons
                 name="car"
                 size={20}
-                color={vehicleType === 'car' ? '#fff' : colors.text}
+                color={vehicleType === 'car' ? '#fff' : colors.foreground}
               />
               <Text
                 style={[
                   styles.typeButtonText,
-                  { color: vehicleType === 'car' ? '#fff' : colors.text },
+                  { color: vehicleType === 'car' ? '#fff' : colors.foreground },
                 ]}
               >
                 汽車
@@ -793,9 +973,9 @@ export function QuickRecordModal({
                 styles.typeButton,
                 {
                   backgroundColor:
-                    vehicleType === 'scooter' ? colors.primary : colors.background,
+                    vehicleType === 'scooter' ? colors.primary.DEFAULT : colors.background,
                   borderColor:
-                    vehicleType === 'scooter' ? colors.primary : colors.border,
+                    vehicleType === 'scooter' ? colors.primary.DEFAULT : colors.border,
                 },
               ]}
               onPress={() => setVehicleType('scooter')}
@@ -803,12 +983,12 @@ export function QuickRecordModal({
               <Ionicons
                 name="bicycle"
                 size={20}
-                color={vehicleType === 'scooter' ? '#fff' : colors.text}
+                color={vehicleType === 'scooter' ? '#fff' : colors.foreground}
               />
               <Text
                 style={[
                   styles.typeButtonText,
-                  { color: vehicleType === 'scooter' ? '#fff' : colors.text },
+                  { color: vehicleType === 'scooter' ? '#fff' : colors.foreground },
                 ]}
               >
                 機車
@@ -819,7 +999,7 @@ export function QuickRecordModal({
 
         {/* 提醒類別 */}
         <View style={styles.fieldSection}>
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>提醒類別</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>提醒類別</Text>
           <View style={styles.categoryRow}>
             {CATEGORY_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -828,9 +1008,9 @@ export function QuickRecordModal({
                   styles.categoryButton,
                   {
                     backgroundColor:
-                      category === opt.value ? colors.primaryLight : colors.background,
+                      category === opt.value ? colors.primary.soft : colors.background,
                     borderColor:
-                      category === opt.value ? colors.primary : colors.border,
+                      category === opt.value ? colors.primary.DEFAULT : colors.border,
                   },
                 ]}
                 onPress={() => setCategory(opt.value)}
@@ -838,14 +1018,14 @@ export function QuickRecordModal({
                 <Ionicons
                   name={opt.icon as any}
                   size={16}
-                  color={category === opt.value ? colors.primary : colors.textSecondary}
+                  color={category === opt.value ? colors.primary.DEFAULT : colors.muted.foreground}
                 />
                 <Text
                   style={[
                     styles.categoryButtonText,
                     {
                       color:
-                        category === opt.value ? colors.primary : colors.textSecondary,
+                        category === opt.value ? colors.primary.DEFAULT : colors.muted.foreground,
                     },
                   ]}
                 >
@@ -859,12 +1039,12 @@ export function QuickRecordModal({
         {/* 訊息內容 */}
         <View style={styles.fieldSection}>
           <View style={styles.fieldLabelRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>
-              訊息內容 <Text style={{ color: colors.error }}>*</Text>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              訊息內容 <Text style={{ color: colors.destructive.DEFAULT }}>*</Text>
             </Text>
             <View style={styles.aiTag}>
-              <Ionicons name="sparkles" size={12} color={colors.primary} />
-              <Text style={[styles.aiTagText, { color: colors.primary }]}>
+              <Ionicons name="sparkles" size={12} color={colors.primary.DEFAULT} />
+              <Text style={[styles.aiTagText, { color: colors.primary.DEFAULT }]}>
                 AI 優化
               </Text>
             </View>
@@ -875,11 +1055,11 @@ export function QuickRecordModal({
               {
                 backgroundColor: colors.background,
                 borderColor: colors.border,
-                color: colors.text,
+                color: colors.foreground,
               },
             ]}
             placeholder="輸入要傳達的訊息..."
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={colors.text.muted}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -895,15 +1075,15 @@ export function QuickRecordModal({
               style={styles.addNoteButton}
               onPress={() => setShowAdditionalNote(true)}
             >
-              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-              <Text style={[styles.addNoteText, { color: colors.primary }]}>
+              <Ionicons name="add-circle-outline" size={20} color={colors.primary.DEFAULT} />
+              <Text style={[styles.addNoteText, { color: colors.primary.DEFAULT }]}>
                 新增補充說明
               </Text>
             </TouchableOpacity>
           ) : (
             <>
               <View style={styles.fieldLabelRow}>
-                <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
                   補充說明
                 </Text>
                 <TouchableOpacity
@@ -912,7 +1092,7 @@ export function QuickRecordModal({
                     setAdditionalNote('');
                   }}
                 >
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                  <Text style={{ color: colors.muted.foreground, fontSize: 13 }}>
                     移除
                   </Text>
                 </TouchableOpacity>
@@ -923,11 +1103,11 @@ export function QuickRecordModal({
                   {
                     backgroundColor: colors.background,
                     borderColor: colors.border,
-                    color: colors.text,
+                    color: colors.foreground,
                   },
                 ]}
                 placeholder="想額外補充的內容..."
-                placeholderTextColor={colors.textTertiary}
+                placeholderTextColor={colors.text.muted}
                 value={additionalNote}
                 onChangeText={setAdditionalNote}
                 multiline
@@ -940,25 +1120,25 @@ export function QuickRecordModal({
 
         {/* 地點與時間 */}
         <View style={styles.fieldSection}>
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>事發地點</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>事發地點</Text>
           <TextInput
             style={[
               styles.locationInput,
               {
                 backgroundColor: colors.background,
                 borderColor: colors.border,
-                color: colors.text,
+                color: colors.foreground,
               },
             ]}
             placeholder="輸入地點或由 GPS 自動定位"
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={colors.text.muted}
             value={location}
             onChangeText={setLocation}
           />
         </View>
 
         <View style={styles.fieldSection}>
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>事發時間</Text>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>事發時間</Text>
           <View style={styles.timeRow}>
             {TIME_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -967,9 +1147,9 @@ export function QuickRecordModal({
                   styles.timeButton,
                   {
                     backgroundColor:
-                      timeOption === opt.value ? colors.primary : colors.background,
+                      timeOption === opt.value ? colors.primary.DEFAULT : colors.background,
                     borderColor:
-                      timeOption === opt.value ? colors.primary : colors.border,
+                      timeOption === opt.value ? colors.primary.DEFAULT : colors.border,
                   },
                 ]}
                 onPress={() => setTimeOption(opt.value)}
@@ -977,7 +1157,7 @@ export function QuickRecordModal({
                 <Text
                   style={[
                     styles.timeButtonText,
-                    { color: timeOption === opt.value ? '#fff' : colors.text },
+                    { color: timeOption === opt.value ? '#fff' : colors.foreground },
                   ]}
                 >
                   {opt.label}
@@ -995,11 +1175,11 @@ export function QuickRecordModal({
             disabled={isSaving || isSending}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
+              <ActivityIndicator size="small" color={colors.muted.foreground} />
             ) : (
               <>
-                <Ionicons name="bookmark-outline" size={18} color={colors.textSecondary} />
-                <Text style={[styles.draftButtonText, { color: colors.textSecondary }]}>
+                <Ionicons name="bookmark-outline" size={18} color={colors.muted.foreground} />
+                <Text style={[styles.draftButtonText, { color: colors.muted.foreground }]}>
                   存草稿
                 </Text>
               </>
@@ -1010,7 +1190,7 @@ export function QuickRecordModal({
             style={[
               styles.sendButton,
               {
-                backgroundColor: colors.primary,
+                backgroundColor: colors.primary.DEFAULT,
                 opacity: isSaving || isSending ? 0.6 : 1,
               },
             ]}
@@ -1033,19 +1213,26 @@ export function QuickRecordModal({
   );
 
   // 成功
-  const renderSuccess = () => (
-    <View style={styles.successCard}>
-      <View style={styles.successIconLarge}>
-        <Ionicons name="checkmark" size={64} color="#fff" />
+  const renderSuccess = () => {
+    const isDraft = isSaving || isAutoSaved;
+    return (
+      <View style={styles.successCard}>
+        <View style={styles.successIconLarge}>
+          <Ionicons name="checkmark" size={64} color="#fff" />
+        </View>
+        <Text style={styles.successTitleLarge}>
+          {isDraft ? '已儲存草稿' : '發送成功'}
+        </Text>
+        <Text style={styles.successSubtitleLarge}>
+          {isAutoSaved
+            ? '語音無法辨識，已自動存為草稿'
+            : isDraft
+            ? '稍後可在草稿中處理'
+            : '提醒已成功送出'}
+        </Text>
       </View>
-      <Text style={styles.successTitleLarge}>
-        {isSaving ? '已儲存草稿' : '發送成功'}
-      </Text>
-      <Text style={styles.successSubtitleLarge}>
-        {isSaving ? '稍後可在草稿中處理' : '提醒已成功送出'}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade">

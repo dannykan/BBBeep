@@ -15,6 +15,7 @@ import { useTheme, ThemeColors } from '../context/ThemeContext';
 import HomeScreen from '../screens/main/HomeScreen';
 import SendNavigator from './SendNavigator';
 import InboxNavigator from './InboxNavigator';
+import WalletScreen from '../screens/settings/WalletScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -58,6 +59,9 @@ export default function MainNavigator() {
             case 'Inbox':
               // Handled by custom component
               return <InboxTabIcon focused={focused} color={color} size={size} />;
+            case 'Wallet':
+              iconName = focused ? 'wallet' : 'wallet-outline';
+              break;
             case 'Settings':
               iconName = focused ? 'settings' : 'settings-outline';
               break;
@@ -90,6 +94,11 @@ export default function MainNavigator() {
         name="Inbox"
         component={InboxNavigator}
         options={{ tabBarLabel: '提醒訊息' }}
+      />
+      <Tab.Screen
+        name="Wallet"
+        component={WalletScreen}
+        options={{ tabBarLabel: '點數' }}
       />
       <Tab.Screen
         name="Settings"

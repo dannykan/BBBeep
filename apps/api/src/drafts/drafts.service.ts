@@ -27,7 +27,7 @@ export class DraftsService {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + this.DRAFT_EXPIRY_HOURS);
 
-    // 建立草稿（PROCESSING 狀態）
+    // 建立草稿（直接 READY 狀態，不需要 AI 處理）
     const draft = await this.prisma.voiceDraft.create({
       data: {
         userId,
@@ -37,15 +37,10 @@ export class DraftsService {
         latitude: dto.latitude,
         longitude: dto.longitude,
         address: dto.address,
-        status: DraftStatus.PROCESSING,
+        status: DraftStatus.READY,
         expiresAt,
         parsedPlates: [],
       },
-    });
-
-    // 非同步執行 AI 解析（不阻塞回應）
-    this.processVoiceDraft(draft.id, dto.transcript).catch((err) => {
-      this.logger.error(`Failed to process draft ${draft.id}: ${err.message}`);
     });
 
     return this.formatDraftResponse(draft);
