@@ -223,7 +223,6 @@ export default function SentScreen() {
                 {selectedMsg.receiver.licensePlate
                   ? displayLicensePlate(selectedMsg.receiver.licensePlate)
                   : '未知車牌'}
-                {selectedMsg.receiver.nickname && ` (${selectedMsg.receiver.nickname})`}
               </Text>
             </View>
           </View>
