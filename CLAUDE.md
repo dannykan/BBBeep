@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BBBeep (路上提醒平台) is a one-way anonymous message reminder system for drivers. Users send caring reminders to other drivers via license plates. This is NOT a chat platform - it's a private, one-time reminder delivery service.
+BBBeep / UBeep (路上提醒平台) is a one-way anonymous message reminder system for drivers. Users send caring reminders to other drivers via license plates. This is NOT a chat platform - it's a private, one-time reminder delivery service.
 
 ## Development Commands
 
@@ -52,6 +52,15 @@ pnpm --filter @bbbeeep/web lint          # ESLint
 pnpm --filter @bbbeeep/web pages:build   # Cloudflare Pages build
 ```
 
+### Mobile Commands (run from /apps/mobile)
+```bash
+pnpm start              # Start Expo dev server
+pnpm ios                # Run on iOS simulator
+pnpm android            # Run on Android emulator
+npx expo prebuild       # Generate native projects
+npx eas build           # Build with EAS
+```
+
 ## Architecture
 
 ### Monorepo Structure (pnpm workspace)
@@ -60,9 +69,9 @@ BBBeep/
 ├── apps/
 │   ├── web/          # Next.js 14 (App Router) + TypeScript + Tailwind CSS + Radix UI
 │   ├── api/          # NestJS + TypeScript + PostgreSQL (Prisma) + Redis
-│   └── mobile/       # (Future) React Native Expo app
+│   └── mobile/       # React Native Expo (SDK 54) + TypeScript
 ├── packages/
-│   └── shared/       # (Future) Shared types, validators, API client
+│   └── shared/       # Shared utilities, API clients, validators, content-filter
 ├── pnpm-workspace.yaml
 └── package.json
 ```
@@ -77,15 +86,41 @@ Each feature follows NestJS conventions:
 
 Key modules: `auth/`, `users/`, `messages/`, `points/`, `ai/`, `admin/`
 
-### Frontend State Management
+### Shared Package (`@bbbeeep/shared`)
+Cross-platform utilities used by web, mobile, and API:
+- `api/` - API client wrappers (messagesApi, uploadApi, activitiesApi, etc.)
+- `content-filter/` - Local profanity/threat detection (台灣中文)
+- `utils/` - License plate formatting (`displayLicensePlate`)
+- `validators/` - Zod schemas
+- `types/` - Shared TypeScript types
+
+### Mobile App Architecture
+**State Management via React Context:**
+- `AuthContext` - Authentication state, JWT tokens
+- `SendContext` - Send flow state, AI moderation, point costs
+- `ThemeContext` - Dark/light mode
+- `NotificationContext` - Push notification handling
+- `DraftContext` - Message draft persistence
+- `UnreadContext` - Unread message counts
+- `OnboardingContext` - New user onboarding flow
+
+**Navigation Structure:**
+- `RootNavigator` → Auth vs Main flow
+- `MainNavigator` → Bottom tabs (Home, Send, Inbox, Wallet, Settings)
+- `SendNavigator` → Send flow screens (PlateInput → Category → MessageEdit → Confirm → Success)
+- `OnboardingNavigator` → New user setup
+
+**Important:** `SendProvider` is at `App.tsx` level (not in SendNavigator) so both QuickRecordScreen and SendNavigator can share the same context.
+
+### Frontend (Web) State Management
 - Global state via React Context (`src/context/AppContext.tsx`)
 - API calls through `src/lib/api.ts` (Axios wrapper)
 - Form handling with React Hook Form + Zod validation
 
 ### Authentication Flow
 1. Phone number registration → OTP verification (Redis-cached)
-2. Password setup after phone verification
-3. JWT token issued, used for subsequent requests
+2. Social login options: Apple Sign In, LINE Login
+3. JWT token issued, stored in SecureStore (mobile) / localStorage (web)
 4. Guards: `JwtAuthGuard`, `AdminGuard`
 
 ### Key Patterns
@@ -121,6 +156,13 @@ PORT=3001
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
+### Mobile (.env in apps/mobile/)
+```
+EXPO_PUBLIC_API_URL=http://localhost:3001
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+EXPO_PUBLIC_LINE_CHANNEL_ID=your-line-channel-id
+```
+
 ## API Documentation
 
 Swagger UI available at `http://localhost:3001/api` when backend is running.
@@ -132,8 +174,150 @@ Modern Calm Blue theme:
 - CTA: `#3C5E8C`
 - Selected state: `#EAF0F8`
 
+Mobile supports dark mode via `ThemeContext`.
+
 ## Deployment
 
 - Web: Cloudflare Pages (`pnpm --filter @bbbeeep/web pages:build`)
 - API: Railway (uses `apps/api/scripts/start.sh`)
+- Mobile: EAS Build (Expo Application Services)
 - CI/CD: GitHub Actions (`.github/workflows/`)
+
+## Working Conventions
+
+### Session Continuity (IMPORTANT)
+**Before auto-compact or ending a session**, update `apps/mobile/CHANGELOG.md` with:
+1. 解決的問題和解決方案
+2. 修改的主要檔案
+3. 重要的技術發現或限制
+4. 未完成的待處理事項
+
+**At the start of each session**, read `apps/mobile/CHANGELOG.md` to understand recent changes.
+
+### Documentation Updates
+After completing significant changes (new features, flow changes, business rule changes, architecture updates), **always ask the user**: "要不要更新 CLAUDE.md 記錄這次的改動？"
+
+This ensures important decisions and patterns are documented for future sessions.
+
+## Business Rules (MUST FOLLOW)
+
+### Point Cost Rules
+When displaying or calculating point costs, follow these rules strictly:
+
+| Send Mode | Category | Point Cost |
+|-----------|----------|------------|
+| Template (未編輯) | 讚美感謝 | **免費 (0 點)** |
+| Template (未編輯) | 其他類別 | 1 點 |
+| Text (AI 審核通過) | Any | 2 點 |
+| Text (堅持原內容) | Any | 4 點 |
+| AI 優化 | Any | 2 點 |
+| Voice | Any | 6 點 |
+
+**Key Implementation:**
+- `SendContext.tsx` → `getPointCost()` handles the logic
+- `MessageEditScreen.tsx` → UI buttons must dynamically display correct points based on `selectedCategory`
+
+### AI Moderation Categories
+AI moderation returns one of these categories:
+
+| Category | Behavior |
+|----------|----------|
+| `ok` | Content passes - show normal submit options |
+| `emotional` | Show "AI 優化（推薦）" button + "堅持原內容" button with warning |
+| `inappropriate` | Content unrelated to traffic - ask to re-edit, no submit buttons |
+| `dangerous` | Threats/harassment - ask to re-edit, no submit buttons |
+
+### Content Warning UI
+- Keep warning messages concise
+- Do NOT include legal terms like "公然侮辱、誹謗" - just mention "可能有法律風險"
+- For `inappropriate`/`dangerous`: show "請修改為與行車相關的內容"
+- For `emotional`: show "建議使用 AI 優化，或修改後再發送"
+
+## Mobile Send Flow (4 Steps)
+
+The send flow uses a step indicator showing progress: `1 → 2 → 3 → 最後確認`
+
+1. **PlateInputScreenV2** - Enter target license plate
+2. **CategoryScreenV2** - Select category (車況提醒, 行車安全, 讚美感謝)
+3. **MessageEditScreen** - Edit message (template, text, voice, AI optimize)
+4. **ConfirmScreenV2** - Final review before sending
+
+### Key Files:
+- `SendContext.tsx` - All send flow state and logic
+- `components.tsx` - Shared layout (`SendLayout`, `CompactStepHeader`)
+- Step screens in `apps/mobile/src/screens/send/`
+
+### IMPORTANT: Use V2 Screens
+The app uses **V2 versions** of screens. When modifying send flow:
+- Use `PlateInputScreenV2.tsx`, NOT `PlateInputScreen.tsx`
+- Use `CategoryScreenV2.tsx`, NOT `CategoryScreen.tsx`
+- Use `ConfirmScreenV2.tsx`, NOT `ConfirmScreen.tsx`
+- V1 screens are legacy code kept for reference only
+- Navigation is configured in `SendNavigator.tsx` (line 48: `component={ConfirmScreenV2}`)
+
+## MapLocationPicker Component
+
+Location: `apps/mobile/src/components/MapLocationPicker.tsx`
+
+Full-featured location picker for selecting incident location in send flow.
+
+### Features:
+- **Map Display** - Apple Maps on iOS, Google Maps on Android
+- **Address Autocomplete** - Real-time suggestions as user types (400ms debounce, min 2 chars)
+- **Current Location** - GPS button with permission handling
+- **Map Interaction** - Tap to place marker, drag marker to adjust
+- **Reverse Geocoding** - Converts coordinates to readable address
+- **Taiwan Optimized** - Filters results to Taiwan, removes postal codes, simplifies addresses
+
+### Google APIs vs Google Maps SDK (IMPORTANT)
+
+| API | iOS | Android | Notes |
+|-----|-----|---------|-------|
+| Geocoding API | ✅ Works | ✅ Works | HTTP API for address search |
+| Reverse Geocoding | ✅ Works | ✅ Works | HTTP API for coords → address |
+| Google Maps SDK | ❌ Crashes | ✅ Works | Native SDK incompatible with RN New Architecture |
+
+**iOS uses Apple Maps** for map display because Google Maps SDK crashes with React Native New Architecture (`newArchEnabled: true`). The crash occurs in `RCTThirdPartyComponentsProvider.mm`. This is a known react-native-maps issue.
+
+**All Google HTTP APIs work fine** - only the native Maps SDK is affected.
+
+### DateTimePicker (New Architecture Incompatible)
+
+`@react-native-community/datetimepicker` does NOT work with React Native New Architecture. All display modes (`spinner`, `inline`, `compact`) show "Unimplemented component: RNDateTimePicker".
+
+**Solution:** Use a custom time picker built with ScrollView components. See `ConfirmScreenV2.tsx` for implementation:
+- Three columns: Date (月/日), Hour (時), Minute (分)
+- ScrollView with `snapToInterval={44}` for wheel-like behavior
+- Center highlight bar to show selected row
+- Future time restrictions (disable hours/minutes after current time when "today" is selected)
+
+### Required Setup:
+1. Set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` in `.env`
+2. Run `npx expo prebuild` to generate native config
+3. Use development build (not Expo Go)
+
+### AddressAutocomplete Component
+Location: `apps/mobile/src/components/AddressAutocomplete.tsx`
+
+Standalone address input with Google Geocoding API autocomplete. Used in `ConfirmScreenV2` for location editing. Same implementation as web version (`apps/web/src/components/ui/address-autocomplete.tsx`).
+
+## Voice Memo / Draft Flow
+
+Voice drafts are saved locally for later editing. **No AI processing** is involved in the draft stage.
+
+### Flow:
+1. User records voice memo via QuickRecordScreen
+2. Recording is uploaded and saved as draft with `status: READY`
+3. User can later open draft from DraftsScreen
+4. Clicking "繼續編輯" sets voiceMemo in SendContext and navigates to Send flow
+
+### Key Files:
+- `QuickRecordScreen.tsx` - Voice recording UI
+- `DraftsScreen.tsx` - List of saved drafts
+- `DraftCard.tsx` - Individual draft display (voice player, transcript, location)
+- `VoiceMemoPlayer.tsx` - Reusable voice playback component
+
+### Important Notes:
+- DraftCard does NOT show AI analysis (no parsed plates, vehicle info, suggested messages)
+- Drafts expire after 24 hours (handled by backend cron job)
+- VoiceMemoPlayer appears at top of SendLayout when voiceMemo exists (except on SuccessScreen)
