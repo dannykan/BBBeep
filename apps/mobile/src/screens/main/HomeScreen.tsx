@@ -14,11 +14,14 @@ import {
   Share,
   Alert,
   ActivityIndicator,
+  Platform,
+  Linking,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import VehicleIcon from '../../components/VehicleIcon';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { getTotalPoints, displayLicensePlate, inviteApi, usersApi } from '@bbbeeep/shared';
@@ -44,10 +47,15 @@ export default function HomeScreen() {
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
-  useEffect(() => {
-    loadInviteData();
-    loadTrialStatus();
-  }, []);
+  // 當畫面獲得焦點時刷新用戶資料（包含點數）
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+      loadInviteData();
+      loadTrialStatus();
+      refreshUnreadCount();
+    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount])
+  );
 
   const loadInviteData = useCallback(async () => {
     try {
@@ -95,6 +103,55 @@ export default function HomeScreen() {
 
   const totalPoints = getTotalPoints(user);
   const isLowPoints = totalPoints < 5;
+
+  // 顯示麥克風權限被拒絕的提示
+  const showMicPermissionDeniedAlert = useCallback(() => {
+    Alert.alert(
+      '需要麥克風權限',
+      '您之前拒絕了麥克風權限。\n\n請前往「設定」→「UBeep」→ 開啟「麥克風」權限，才能使用錄音功能。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '前往設定',
+          onPress: async () => {
+            if (Platform.OS === 'ios') {
+              await Linking.openURL('app-settings:');
+            } else {
+              await Linking.openSettings();
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
+  // 點擊快速錄音按鈕 - 先檢查權限再導航到錄音頁面
+  const handleQuickRecordPress = useCallback(async () => {
+    try {
+      const { status: existingStatus, canAskAgain } = await Audio.getPermissionsAsync();
+
+      if (existingStatus === 'granted') {
+        // 已有權限，直接導航
+        navigation.navigate('QuickRecord');
+        return;
+      }
+
+      if (canAskAgain) {
+        // 還可以詢問，嘗試請求權限
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status === 'granted') {
+          navigation.navigate('QuickRecord');
+        }
+        // 如果用戶拒絕，什麼都不做
+      } else {
+        // 之前已經拒絕過，無法再詢問，引導去設定
+        showMicPermissionDeniedAlert();
+      }
+    } catch (error) {
+      console.error('Permission check failed:', error);
+      Alert.alert('錯誤', '無法檢查麥克風權限');
+    }
+  }, [navigation, showMicPermissionDeniedAlert]);
 
 
   return (
@@ -156,112 +213,117 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Points Card */}
-        <View style={styles.card}>
-          <View style={styles.pointsRow}>
-            <View>
-              <Text style={styles.pointsLabel}>剩餘點數</Text>
-              <Text style={styles.pointsValue}>{totalPoints}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.walletButton}
-              onPress={() => navigation.navigate('Wallet')}
-            >
-              <Ionicons
-                name="wallet-outline"
-                size={16}
-                color={colors.foreground}
-              />
-              <Text style={styles.walletButtonText}>儲值</Text>
-            </TouchableOpacity>
-          </View>
+        {/* 狀態列：點數 + 試用期 */}
+        <View style={styles.statusRow}>
+          {/* 點數顯示 */}
+          <TouchableOpacity
+            style={[
+              styles.pointsChip,
+              isLowPoints && styles.pointsChipWarning,
+            ]}
+            onPress={() => navigation.navigate('Wallet')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isLowPoints ? 'alert-circle' : 'diamond'}
+              size={16}
+              color={isLowPoints ? colors.destructive.DEFAULT : colors.primary.DEFAULT}
+            />
+            <Text style={[
+              styles.pointsChipText,
+              isLowPoints && styles.pointsChipTextWarning,
+            ]}>
+              {totalPoints} 點
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={colors.muted.foreground}
+            />
+          </TouchableOpacity>
 
-          {isLowPoints && (
-            <View style={styles.lowPointsWarning}>
+          {/* 試用期顯示 */}
+          {trialStatus?.isInTrial && (
+            <View style={styles.trialChip}>
               <Ionicons
-                name="alert-circle-outline"
-                size={16}
-                color={colors.destructive.DEFAULT}
+                name="time"
+                size={14}
+                color="#10B981"
               />
-              <Text style={styles.lowPointsText}>
-                點數即將用完，建議儲值以繼續使用
+              <Text style={styles.trialChipText}>
+                試用期 {trialStatus.daysRemaining} 天
               </Text>
             </View>
           )}
         </View>
 
-        {/* Trial Period Card */}
-        {trialStatus?.isInTrial && (
-          <View style={styles.trialCard}>
-            <View style={styles.trialHeader}>
-              <View style={styles.trialIconContainer}>
-                <Ionicons
-                  name="time-outline"
-                  size={20}
-                  color={colors.secondary?.DEFAULT || '#10B981'}
-                />
-              </View>
-              <View style={styles.trialHeaderText}>
-                <Text style={styles.trialTitle}>試用期體驗中</Text>
-                <Text style={styles.trialSubtitle}>
-                  享有 {trialStatus.trialConfig.initialPoints} 點免費體驗
-                </Text>
-              </View>
+        {/* 點數不足警告 */}
+        {isLowPoints && (
+          <TouchableOpacity
+            style={styles.lowPointsBanner}
+            onPress={() => navigation.navigate('Wallet')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.lowPointsBannerContent}>
+              <Ionicons name="alert-circle" size={18} color={colors.destructive.DEFAULT} />
+              <Text style={styles.lowPointsBannerText}>點數即將用完，點此儲值</Text>
             </View>
-            <View style={styles.trialCountdown}>
-              <View style={styles.trialCountdownBox}>
-                <Text style={styles.trialCountdownNumber}>
-                  {trialStatus.daysRemaining}
-                </Text>
-                <Text style={styles.trialCountdownLabel}>天</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.destructive.DEFAULT} />
+          </TouchableOpacity>
+        )}
+
+        {/* 發送提醒區塊 */}
+        <View style={styles.sendSection}>
+          <Text style={styles.sendSectionTitle}>發送提醒</Text>
+          <Text style={styles.sendSectionSubtitle}>一次性提醒，不開啟聊天</Text>
+
+          <View style={styles.sendButtonsRow}>
+            {/* 快速錄音 */}
+            <TouchableOpacity
+              style={[
+                styles.sendOptionCard,
+                styles.sendOptionPrimary,
+                { backgroundColor: colors.primary.DEFAULT },
+                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
+              ]}
+              onPress={handleQuickRecordPress}
+              disabled={isLowPoints && totalPoints < 1}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sendOptionIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Ionicons name="mic" size={28} color={colors.primary.foreground} />
               </View>
-              <Text style={styles.trialCountdownText}>剩餘體驗時間</Text>
-            </View>
-            <View style={styles.trialInfo}>
-              <Ionicons
-                name="information-circle-outline"
-                size={14}
-                color={colors.muted.foreground}
-              />
-              <Text style={styles.trialInfoText}>
-                試用結束後將贈送 {trialStatus.trialConfig.oneTimeBonusAfterTrial} 點
+              <Text style={[styles.sendOptionTitle, { color: colors.primary.foreground }]}>
+                快速錄音
               </Text>
-            </View>
-          </View>
-        )}
+              <Text style={[styles.sendOptionDesc, { color: colors.primary.foreground, opacity: 0.85 }]}>
+                說出車牌和事件{'\n'}AI 自動辨識
+              </Text>
+            </TouchableOpacity>
 
-        {/* Trial Ended Notice */}
-        {trialStatus && !trialStatus.isInTrial && trialStatus.trialStartDate && (
-          <View style={styles.trialEndedCard}>
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={18}
-              color={colors.muted.foreground}
-            />
-            <Text style={styles.trialEndedText}>
-              試用期已結束，感謝您的體驗！
-            </Text>
+            {/* 手動輸入 */}
+            <TouchableOpacity
+              style={[
+                styles.sendOptionCard,
+                { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
+              ]}
+              onPress={() => navigation.navigate('Send')}
+              disabled={isLowPoints && totalPoints < 1}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.sendOptionIconContainer, { backgroundColor: `${colors.primary.DEFAULT}15` }]}>
+                <Ionicons name="create-outline" size={28} color={colors.primary.DEFAULT} />
+              </View>
+              <Text style={[styles.sendOptionTitle, { color: colors.foreground }]}>
+                手動輸入
+              </Text>
+              <Text style={[styles.sendOptionDesc, { color: colors.muted.foreground }]}>
+                輸入車牌號碼{'\n'}選擇提醒類型
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {/* Send Reminder Button */}
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
-          ]}
-          onPress={() => navigation.navigate('Send')}
-          disabled={isLowPoints && totalPoints < 1}
-          activeOpacity={0.8}
-        >
-          <View style={styles.sendButtonContent}>
-            <Ionicons name="send" size={24} color={colors.primary.foreground} />
-            <View style={styles.sendButtonTextContainer}>
-              <Text style={styles.sendButtonTitle}>發送提醒</Text>
-              <Text style={styles.sendButtonSubtitle}>一次性、不開啟聊天</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+        </View>
 
         {/* Pedestrian Mode Notice */}
         {user?.userType === 'pedestrian' && (
@@ -280,14 +342,6 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-
-        {/* Info Notice */}
-        <View style={styles.infoNotice}>
-          <Text style={styles.infoNoticeText}>
-            提醒送出後不會開啟聊天{'\n'}
-            所有提醒皆為一次性
-          </Text>
-        </View>
 
         {/* Quick Actions Grid */}
         <View style={styles.quickActionsGrid}>
@@ -472,176 +526,119 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       gap: spacing[6],
     },
 
-    // Points Card
-    card: {
-      backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      padding: spacing[5],
-    },
-    pointsRow: {
+    // Status Row (Points + Trial)
+    statusRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      gap: spacing[2],
+      flexWrap: 'wrap',
     },
-    pointsLabel: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      marginBottom: spacing[1.5],
-    },
-    pointsValue: {
-      fontSize: typography.fontSize['5xl'],
-      fontWeight: typography.fontWeight.bold as any,
-      color: colors.foreground,
-    },
-    walletButton: {
+    pointsChip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing[1.5],
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.borderSolid,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2],
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      backgroundColor: colors.card.DEFAULT,
     },
-    walletButtonText: {
+    pointsChipWarning: {
+      borderColor: `${colors.destructive.DEFAULT}40`,
+      backgroundColor: `${colors.destructive.DEFAULT}08`,
+    },
+    pointsChipText: {
       fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.semibold as any,
       color: colors.foreground,
     },
-    lowPointsWarning: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing[2],
-      marginTop: spacing[4],
-      paddingTop: spacing[4],
-      borderTopWidth: 1,
-      borderTopColor: colors.borderSolid,
+    pointsChipTextWarning: {
+      color: colors.destructive.DEFAULT,
     },
-    lowPointsText: {
-      flex: 1,
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-    },
-
-    // Trial Card
-    trialCard: {
-      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)',
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: 'rgba(16, 185, 129, 0.15)',
-      padding: spacing[4],
-    },
-    trialHeader: {
+    trialChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[3],
-      marginBottom: spacing[3],
-    },
-    trialIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: `${'#10B981'}15`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    trialHeaderText: {
-      flex: 1,
-    },
-    trialTitle: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
-    },
-    trialSubtitle: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-    },
-    trialCountdown: {
-      alignItems: 'center',
-      marginBottom: spacing[3],
-    },
-    trialCountdownBox: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
       gap: spacing[1],
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing[2.5],
+      paddingVertical: spacing[1.5],
     },
-    trialCountdownNumber: {
-      fontSize: typography.fontSize['4xl'],
-      fontWeight: typography.fontWeight.bold as any,
-      color: '#10B981',
-    },
-    trialCountdownLabel: {
-      fontSize: typography.fontSize.lg,
+    trialChipText: {
+      fontSize: typography.fontSize.xs,
       fontWeight: typography.fontWeight.medium as any,
       color: '#10B981',
     },
-    trialCountdownText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      marginTop: spacing[1],
-    },
-    trialInfo: {
+    lowPointsBanner: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing[1.5],
-      paddingTop: spacing[3],
-      borderTopWidth: 1,
-      borderTopColor: `${'#10B981'}15`,
-    },
-    trialInfoText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-    },
-    trialEndedCard: {
-      backgroundColor: isDark ? colors.muted.DEFAULT : `${colors.muted.DEFAULT}30`,
+      justifyContent: 'space-between',
+      backgroundColor: `${colors.destructive.DEFAULT}10`,
       borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2.5],
+    },
+    lowPointsBannerContent: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing[2],
     },
-    trialEndedText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+    lowPointsBannerText: {
+      fontSize: typography.fontSize.sm,
+      color: colors.destructive.DEFAULT,
+      fontWeight: typography.fontWeight.medium as any,
     },
 
-    // Send Button
-    sendButton: {
-      backgroundColor: colors.primary.DEFAULT,
+    // Send Section
+    sendSection: {
+      gap: spacing[3],
+    },
+    sendSectionTitle: {
+      fontSize: typography.fontSize.lg,
+      fontWeight: typography.fontWeight.semibold as any,
+      color: colors.foreground,
+    },
+    sendSectionSubtitle: {
+      fontSize: typography.fontSize.sm,
+      color: colors.muted.foreground,
+      marginTop: -spacing[2],
+    },
+    sendButtonsRow: {
+      flexDirection: 'row',
+      gap: spacing[3],
+    },
+    sendOptionCard: {
+      flex: 1,
       borderRadius: borderRadius.xl,
-      padding: spacing[5],
+      padding: spacing[4],
+      borderWidth: 1,
+      alignItems: 'center',
+      gap: spacing[2],
       ...shadows.sm,
+    },
+    sendOptionPrimary: {
+      borderWidth: 0,
+    },
+    sendOptionIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing[1],
+    },
+    sendOptionTitle: {
+      fontSize: typography.fontSize.base,
+      fontWeight: typography.fontWeight.semibold as any,
+    },
+    sendOptionDesc: {
+      fontSize: typography.fontSize.xs,
+      textAlign: 'center',
+      lineHeight: typography.fontSize.xs * 1.5,
     },
     sendButtonDisabled: {
       opacity: 0.5,
-    },
-    sendButtonContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing[3],
-    },
-    sendButtonTextContainer: {
-      alignItems: 'flex-start',
-    },
-    sendButtonTitle: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.primary.foreground,
-    },
-    sendButtonSubtitle: {
-      fontSize: typography.fontSize.xs,
-      color: colors.primary.foreground,
-      opacity: 0.8,
-      marginTop: spacing[0.5],
     },
 
     // Pedestrian Card
@@ -665,21 +662,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       color: colors.foreground,
     },
     pedestrianSubtitle: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-    },
-
-    // Info Notice
-    infoNotice: {
-      backgroundColor: isDark ? `${colors.muted.DEFAULT}` : `${colors.muted.DEFAULT}30`,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-    },
-    infoNoticeText: {
       fontSize: typography.fontSize.xs,
       color: colors.muted.foreground,
       lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
@@ -848,4 +830,5 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       fontWeight: typography.fontWeight.medium as any,
       color: colors.primary.DEFAULT,
     },
+
   });

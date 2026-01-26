@@ -15,6 +15,7 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   Appearance: undefined;
   Legal: { type: 'terms' | 'privacy' };
+  QuickRecord: undefined;
 };
 
 export type OnboardingStackParamList = {
@@ -46,15 +47,18 @@ export type HomeStackParamList = {
 };
 
 export type SendStackParamList = {
-  VehicleType: undefined;
+  // V2 流程（優化版 4 步驟）
   PlateInput: undefined;
   Category: undefined;
+  MessageEdit: { category?: string };
+  Confirm: undefined;
+  Success: undefined;
+  // V1 流程（保留舊版相容性）
+  VehicleType: undefined;
   Situation: undefined;
   Review: undefined;
   Custom: undefined;
   AiSuggest: undefined;
-  Confirm: undefined;
-  Success: undefined;
 };
 
 export type InboxStackParamList = {

@@ -77,16 +77,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (phone: string, code: string) => {
     const response = await authApi.login(phone, code);
     await mobileStorageAdapter.setToken(response.access_token);
-    await mobileStorageAdapter.setUser(response.user);
-    setUser(response.user);
+    // 登入後立即獲取完整用戶資料（包含點數）
+    const fullUserData = await usersApi.getMe();
+    await mobileStorageAdapter.setUser(fullUserData);
+    setUser(fullUserData);
   };
 
   // 密碼登入
   const passwordLogin = async (phone: string, password: string) => {
     const response = await authApi.passwordLogin(phone, password);
     await mobileStorageAdapter.setToken(response.access_token);
-    await mobileStorageAdapter.setUser(response.user);
-    setUser(response.user);
+    // 登入後立即獲取完整用戶資料（包含點數）
+    const fullUserData = await usersApi.getMe();
+    await mobileStorageAdapter.setUser(fullUserData);
+    setUser(fullUserData);
   };
 
   // Apple Sign-In
@@ -120,8 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       await mobileStorageAdapter.setToken(response.access_token);
-      await mobileStorageAdapter.setUser(response.user);
-      setUser(response.user);
+      // 登入後立即獲取完整用戶資料（包含點數）
+      const fullUserData = await usersApi.getMe();
+      await mobileStorageAdapter.setUser(fullUserData);
+      setUser(fullUserData);
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         // 用戶取消登入，不需要顯示錯誤
@@ -148,8 +154,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.lineTokenLogin(loginResult.accessToken.accessToken);
 
       await mobileStorageAdapter.setToken(response.access_token);
-      await mobileStorageAdapter.setUser(response.user);
-      setUser(response.user);
+      // 登入後立即獲取完整用戶資料（包含點數）
+      const fullUserData = await usersApi.getMe();
+      await mobileStorageAdapter.setUser(fullUserData);
+      setUser(fullUserData);
     } catch (error: any) {
       console.error('[LINE_LOGIN] Error:', error);
       // LINE SDK 取消登入的錯誤碼

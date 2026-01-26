@@ -21,6 +21,7 @@ import LicensePlateChangeScreen from '../screens/settings/LicensePlateChangeScre
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
 import AppearanceScreen from '../screens/settings/AppearanceScreen';
 import LegalScreen from '../screens/settings/LegalScreen';
+import QuickRecordScreen from '../screens/send/QuickRecordScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -57,6 +58,14 @@ export default function RootNavigator() {
           <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
           <Stack.Screen name="Appearance" component={AppearanceScreen} />
           <Stack.Screen name="Legal" component={LegalScreen} />
+          <Stack.Screen
+            name="QuickRecord"
+            component={QuickRecordScreen}
+            options={{
+              animation: 'fade',
+              gestureEnabled: false,
+            }}
+          />
         </>
       )}
     </Stack.Navigator>

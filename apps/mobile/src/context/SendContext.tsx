@@ -8,7 +8,7 @@ import { aiApi, filterContent, type ContentFilterResult, type AiModerationRespon
 import type { VehicleType, MessageType } from '@bbbeeep/shared';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
-type SendMode = 'text' | 'voice' | 'ai';
+type SendMode = 'text' | 'voice' | 'ai' | 'template';
 
 interface VoiceRecording {
   uri: string;
@@ -36,6 +36,8 @@ interface SendState {
 
   // Location and time
   location: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   occurredAt: Date;
   selectedTimeOption: 'now' | '5min' | '10min' | '15min';
 
@@ -49,6 +51,8 @@ interface SendState {
   // AI Moderation
   aiModeration: AiModerationResponse | null;
   isAiModerating: boolean;
+  voiceModeration: AiModerationResponse | null; // 語音轉文字的審核結果
+  textModeration: AiModerationResponse | null;  // 用戶編輯文字的審核結果
 
   // Voice
   voiceRecording: VoiceRecording | null;
@@ -69,7 +73,7 @@ interface SendContextType extends SendState {
   setUseAiVersion: (use: boolean) => void;
   setUsedAi: (used: boolean) => void;
   setAiLimit: (limit: { canUse: boolean; remaining: number }) => void;
-  setLocation: (location: string) => void;
+  setLocation: (location: string, latitude?: number, longitude?: number) => void;
   setOccurredAt: (date: Date) => void;
   setSelectedTimeOption: (option: 'now' | '5min' | '10min' | '15min') => void;
   setIsLoading: (loading: boolean) => void;
@@ -88,8 +92,12 @@ interface SendContextType extends SendState {
   getFinalMessage: () => string;
   checkContentFilter: (text: string) => void;
   checkAiModeration: (text: string) => Promise<void>;
+  checkVoiceModeration: (transcript: string) => Promise<void>;
+  checkTextModeration: (text: string) => Promise<void>;
+  getCombinedModerationWarning: () => { hasIssue: boolean; voiceIssue: boolean; textIssue: boolean; message: string | null };
   validateContent: (text: string) => { isValid: boolean; message: string | null };
   isVoiceMode: () => boolean;
+  optimizeWithAi: (text: string) => Promise<string | null>;
 }
 
 const SendContext = createContext<SendContextType | null>(null);
@@ -107,6 +115,8 @@ const initialState: SendState = {
   usedAi: false,
   aiLimit: { canUse: true, remaining: 5 },
   location: '',
+  locationLatitude: null,
+  locationLongitude: null,
   occurredAt: new Date(),
   selectedTimeOption: 'now',
   isLoading: false,
@@ -115,6 +125,8 @@ const initialState: SendState = {
   // AI Moderation
   aiModeration: null,
   isAiModerating: false,
+  voiceModeration: null,
+  textModeration: null,
   // Voice
   voiceRecording: null,
   voiceUrl: null,
@@ -173,8 +185,13 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, aiLimit: limit }));
   }, []);
 
-  const setLocation = useCallback((location: string) => {
-    setState((prev) => ({ ...prev, location: location }));
+  const setLocation = useCallback((location: string, latitude?: number, longitude?: number) => {
+    setState((prev) => ({
+      ...prev,
+      location: location,
+      locationLatitude: latitude ?? null,
+      locationLongitude: longitude ?? null,
+    }));
   }, []);
 
   const setOccurredAt = useCallback((date: Date) => {
@@ -242,24 +259,27 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
   }, [state.selectedCategory]);
 
   const getPointCost = useCallback((): number => {
+    // Template mode: 1 point (unchanged template)
+    if (state.sendMode === 'template') {
+      // 讚美感謝模板：免費
+      if (state.selectedCategory === '讚美感謝') {
+        return 0;
+      }
+      return 1;
+    }
+
     // Voice mode: 6 points for voice
     if (state.sendMode === 'voice') {
       return 6;
     }
 
-    // If we have a voice recording but sending as text (from transcript)
-    if (state.voiceRecording && state.sendMode === 'text') {
-      // Text from voice transcript: same as custom text without AI
-      return 4;
+    // AI 優化版本扣 2 點
+    if (state.useAiVersion && state.aiSuggestion) {
+      return 2;
     }
 
     // If we have a voice recording and using AI optimization
     if (state.voiceRecording && state.sendMode === 'ai') {
-      return 2;
-    }
-
-    // AI 優化版本扣 2 點
-    if (state.useAiVersion && state.aiSuggestion) {
       return 2;
     }
 
@@ -268,14 +288,19 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       return 0;
     }
 
-    // 有自訂文字但沒用 AI：4 點
-    if (state.customText.trim()) {
+    // 文字模式：如果 AI 審核通過，只扣 2 點；否則扣 4 點
+    if (state.sendMode === 'text' || state.customText.trim()) {
+      // AI 審核通過的文字內容只扣 2 點
+      if (state.aiModeration?.isAppropriate) {
+        return 2;
+      }
+      // 未審核或審核未通過的文字內容扣 4 點
       return 4;
     }
 
     // 純系統模板（非讚美）：1 點
     return 1;
-  }, [state.useAiVersion, state.aiSuggestion, state.selectedCategory, state.customText, state.sendMode, state.voiceRecording]);
+  }, [state.useAiVersion, state.aiSuggestion, state.selectedCategory, state.customText, state.sendMode, state.voiceRecording, state.aiModeration]);
 
   const getFinalMessage = useCallback((): string => {
     if (state.useAiVersion && state.aiSuggestion) {
@@ -332,6 +357,25 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // 先用本地過濾器快速檢查（離線、即時）
+    const localFilterResult = filterContent(text);
+    if (!localFilterResult.isValid) {
+      console.log('[Local Filter] Caught violation:', localFilterResult.violations[0]);
+      const violation = localFilterResult.violations[0];
+      setState((prev) => ({
+        ...prev,
+        aiModeration: {
+          isAppropriate: false,
+          reason: violation?.message || '內容包含不當用語',
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        },
+        isAiModerating: false,
+        contentWarning: violation?.message || '內容包含不當用語',
+      }));
+      return;
+    }
+
     console.log('[AI Moderation] Starting check for:', text);
     setState((prev) => ({ ...prev, isAiModerating: true }));
 
@@ -357,6 +401,154 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       }));
     }
   }, []);
+
+  // 審核語音轉文字內容
+  const checkVoiceModeration = useCallback(async (transcript: string) => {
+    if (transcript.trim().length < 5) {
+      setState((prev) => ({ ...prev, voiceModeration: null }));
+      return;
+    }
+
+    // 先用本地過濾器快速檢查
+    const localFilterResult = filterContent(transcript);
+    if (!localFilterResult.isValid) {
+      console.log('[Voice Local Filter] Caught violation:', localFilterResult.violations[0]);
+      const violation = localFilterResult.violations[0];
+      setState((prev) => ({
+        ...prev,
+        voiceModeration: {
+          isAppropriate: false,
+          reason: violation?.message || '語音內容包含不當用語',
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        },
+      }));
+      return;
+    }
+
+    try {
+      const result = await aiApi.moderate(transcript);
+      console.log('[Voice Moderation] Result:', result);
+      setState((prev) => ({ ...prev, voiceModeration: result }));
+    } catch (error: any) {
+      console.error('[Voice Moderation] Error:', error?.message || error);
+      setState((prev) => ({
+        ...prev,
+        voiceModeration: { isAppropriate: true, reason: null, category: 'ok', suggestion: null },
+      }));
+    }
+  }, []);
+
+  // 審核用戶編輯的文字內容
+  const checkTextModeration = useCallback(async (text: string) => {
+    if (text.trim().length < 5) {
+      setState((prev) => ({
+        ...prev,
+        textModeration: null,
+        isAiModerating: false,
+      }));
+      return;
+    }
+
+    // 先用本地過濾器快速檢查
+    const localFilterResult = filterContent(text);
+    if (!localFilterResult.isValid) {
+      console.log('[Text Local Filter] Caught violation:', localFilterResult.violations[0]);
+      const violation = localFilterResult.violations[0];
+      const moderationResult = {
+        isAppropriate: false,
+        reason: violation?.message || '文字內容包含不當用語',
+        category: 'emotional' as const,
+        suggestion: '建議使用 AI 優化功能改善訊息內容',
+      };
+      setState((prev) => ({
+        ...prev,
+        textModeration: moderationResult,
+        aiModeration: moderationResult,
+        isAiModerating: false,
+      }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, isAiModerating: true }));
+
+    try {
+      const result = await aiApi.moderate(text);
+      console.log('[Text Moderation] Result:', result);
+      setState((prev) => ({
+        ...prev,
+        textModeration: result,
+        aiModeration: result, // 同步更新 aiModeration 以保持兼容
+        isAiModerating: false,
+      }));
+    } catch (error: any) {
+      console.error('[Text Moderation] Error:', error?.message || error);
+      setState((prev) => ({
+        ...prev,
+        textModeration: { isAppropriate: true, reason: null, category: 'ok', suggestion: null },
+        aiModeration: { isAppropriate: true, reason: null, category: 'ok', suggestion: null },
+        isAiModerating: false,
+      }));
+    }
+  }, []);
+
+  // 取得合併的審核警告訊息
+  const getCombinedModerationWarning = useCallback((): {
+    hasIssue: boolean;
+    voiceIssue: boolean;
+    textIssue: boolean;
+    message: string | null;
+  } => {
+    const voiceIssue = state.voiceModeration && !state.voiceModeration.isAppropriate;
+    const textIssue = state.textModeration && !state.textModeration.isAppropriate;
+
+    if (!voiceIssue && !textIssue) {
+      return { hasIssue: false, voiceIssue: false, textIssue: false, message: null };
+    }
+
+    const messages: string[] = [];
+    if (voiceIssue) {
+      messages.push(`語音內容：${state.voiceModeration?.reason || '可能涉及不當言論'}`);
+    }
+    if (textIssue) {
+      messages.push(`文字內容：${state.textModeration?.reason || '可能涉及不當言論'}`);
+    }
+
+    return {
+      hasIssue: true,
+      voiceIssue: !!voiceIssue,
+      textIssue: !!textIssue,
+      message: messages.join('\n'),
+    };
+  }, [state.voiceModeration, state.textModeration]);
+
+  // AI 優化訊息
+  const optimizeWithAi = useCallback(async (text: string): Promise<string | null> => {
+    if (text.trim().length < 5) {
+      return null;
+    }
+
+    try {
+      const result = await aiApi.rewrite(
+        text,
+        state.vehicleType || 'car',
+        state.selectedCategory || '車況提醒',
+      );
+
+      if (result.rewritten) {
+        setState((prev) => ({
+          ...prev,
+          aiSuggestion: result.rewritten,
+          usedAi: true,
+        }));
+        return result.rewritten;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('[AI Optimize] Error:', error?.message || error);
+      return null;
+    }
+  }, [state.vehicleType, state.selectedCategory]);
 
   // Check if we're in voice mode
   const isVoiceMode = useCallback((): boolean => {
@@ -391,8 +583,12 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     getFinalMessage,
     checkContentFilter,
     checkAiModeration,
+    checkVoiceModeration,
+    checkTextModeration,
+    getCombinedModerationWarning,
     validateContent,
     isVoiceMode,
+    optimizeWithAi,
   };
 
   return <SendContext.Provider value={value}>{children}</SendContext.Provider>;

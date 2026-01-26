@@ -11,7 +11,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -71,30 +71,54 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     return status;
   }, []);
 
-  // Request notification permissions
+  // Show alert when permission was previously denied
+  const showPermissionDeniedAlert = useCallback(() => {
+    Alert.alert(
+      '需要通知權限',
+      '您之前拒絕了通知權限。\n\n請前往「設定」→「UBeep」→ 開啟「通知」權限，才能收到重要提醒。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '前往設定',
+          onPress: async () => {
+            if (Platform.OS === 'ios') {
+              await Linking.openURL('app-settings:');
+            } else {
+              await Linking.openSettings();
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
+  // Request notification permissions (just-in-time pattern)
   const requestPermissions = useCallback(async (): Promise<boolean> => {
     if (!Device.isDevice) {
       Alert.alert('錯誤', '推播通知只能在真實裝置上使用');
       return false;
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
 
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    if (existingStatus === 'granted') {
+      setPermissionStatus(existingStatus);
+      return true;
     }
 
-    setPermissionStatus(finalStatus);
-
-    if (finalStatus !== 'granted') {
+    // Permission not granted
+    if (canAskAgain) {
+      // Can still ask, show system dialog
+      const { status } = await Notifications.requestPermissionsAsync();
+      setPermissionStatus(status);
+      return status === 'granted';
+    } else {
+      // Previously denied and can't ask again, guide to settings
+      setPermissionStatus(existingStatus);
+      showPermissionDeniedAlert();
       return false;
     }
-
-    return true;
-  }, []);
+  }, [showPermissionDeniedAlert]);
 
   // Register push token with backend
   const registerPushToken = useCallback(async () => {
