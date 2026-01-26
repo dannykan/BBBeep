@@ -25,6 +25,7 @@ export {
   licensePlateApi,
   inviteApi,
   adminInviteApi,
+  activitiesApi,
 } from './services';
 
-export type { UploadFile, AiModerationResponse } from './services';
+export type { UploadFile, AiModerationResponse, ActivityType, CreateActivityData, UserActivity } from './services';

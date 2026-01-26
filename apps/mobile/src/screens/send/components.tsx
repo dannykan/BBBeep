@@ -55,61 +55,152 @@ export function SendLayout({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
-          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
-            <View style={styles.headerLeft}>
-              {showBackButton ? (
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons
-                    name="chevron-back"
-                    size={20}
-                    color={colors.muted.foreground}
-                  />
-                  <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-              {title || `發送提醒 (${currentStep}/${totalSteps})`}
-            </Text>
-            <View style={styles.headerRight} />
+      {/* Compact Header with Progress */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
+        <View style={styles.compactHeader}>
+          {/* Back button */}
+          <View style={styles.headerLeft}>
+            {showBackButton ? (
+              <TouchableOpacity
+                style={[styles.backButton, { backgroundColor: colors.muted.DEFAULT }]}
+                onPress={handleBack}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={18}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.backButtonPlaceholder} />
+            )}
           </View>
-        </SafeAreaView>
-      </View>
 
-      {/* Progress indicator */}
-      {showProgress && (
-        <View style={[styles.progressContainer, { backgroundColor: colors.background }]}>
-          {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-            <View
-              key={s}
-              style={[
-                styles.progressDot,
-                { backgroundColor: colors.borderSolid },
-                s === currentStep && [styles.progressDotActive, { backgroundColor: colors.primary.DEFAULT }],
-                s < currentStep && { backgroundColor: `${colors.primary.DEFAULT}40` },
-              ]}
-            />
-          ))}
+          {/* Center: Step Progress */}
+          {showProgress && (
+            <View style={styles.progressCenter}>
+              {/* Step Numbers with connecting lines */}
+              <View style={styles.stepsRow}>
+                {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s, index) => {
+                  const isLastStep = s === totalSteps;
+                  const isCurrent = s === currentStep;
+                  const isCompleted = s < currentStep;
+
+                  return (
+                    <React.Fragment key={s}>
+                      {/* Connecting line (before step, except first) */}
+                      {index > 0 && (
+                        <View
+                          style={[
+                            styles.stepLine,
+                            {
+                              backgroundColor: s <= currentStep
+                                ? colors.primary.DEFAULT
+                                : colors.borderSolid,
+                            },
+                          ]}
+                        />
+                      )}
+                      {/* Step circle or final pill */}
+                      {isLastStep ? (
+                        // Final step: pill shape with icon + text
+                        <View
+                          style={[
+                            styles.finalStepPill,
+                            {
+                              backgroundColor: isCurrent
+                                ? colors.primary.DEFAULT
+                                : isCompleted
+                                ? `${colors.primary.DEFAULT}30`
+                                : colors.muted.DEFAULT,
+                              borderColor: s <= currentStep
+                                ? colors.primary.DEFAULT
+                                : colors.borderSolid,
+                            },
+                          ]}
+                        >
+                          {isCompleted ? (
+                            <Ionicons
+                              name="checkmark"
+                              size={12}
+                              color={colors.primary.DEFAULT}
+                            />
+                          ) : null}
+                          <Text
+                            style={[
+                              styles.finalStepText,
+                              {
+                                color: isCurrent
+                                  ? colors.primary.foreground
+                                  : isCompleted
+                                  ? colors.primary.DEFAULT
+                                  : colors.muted.foreground,
+                              },
+                            ]}
+                          >
+                            最後確認
+                          </Text>
+                        </View>
+                      ) : (
+                        // Regular step: circle with number
+                        <View
+                          style={[
+                            styles.stepCircle,
+                            {
+                              backgroundColor: isCurrent
+                                ? colors.primary.DEFAULT
+                                : isCompleted
+                                ? `${colors.primary.DEFAULT}30`
+                                : colors.muted.DEFAULT,
+                              borderColor: s <= currentStep
+                                ? colors.primary.DEFAULT
+                                : colors.borderSolid,
+                            },
+                          ]}
+                        >
+                          {isCompleted ? (
+                            <Ionicons name="checkmark" size={10} color={colors.primary.DEFAULT} />
+                          ) : (
+                            <Text
+                              style={[
+                                styles.stepNumber,
+                                {
+                                  color: isCurrent
+                                    ? colors.primary.foreground
+                                    : colors.muted.foreground,
+                                },
+                              ]}
+                            >
+                              {s}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Right: Empty or placeholder for balance */}
+          <View style={styles.headerRight} />
         </View>
-      )}
+      </SafeAreaView>
 
       <KeyboardAvoidingView
         style={styles.flex1}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
         >
           {children}
         </ScrollView>
@@ -134,6 +225,30 @@ export function StepHeader({
   );
 }
 
+/**
+ * Compact Step Header - 更緊湊的標題，標題和副標題在同一行
+ */
+export function CompactStepHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.compactStepHeader}>
+      <Text style={[styles.compactStepTitle, { color: colors.foreground }]}>{title}</Text>
+      {subtitle && (
+        <>
+          <View style={[styles.titleDivider, { backgroundColor: colors.borderSolid }]} />
+          <Text style={[styles.compactStepSubtitle, { color: colors.muted.foreground }]}>{subtitle}</Text>
+        </>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -142,58 +257,76 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Header
-  headerContainer: {},
-  header: {
-    borderBottomWidth: 1,
-    paddingHorizontal: spacing[6],
-    height: 52,
+  // Compact Header
+  compactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2.5],
   },
   headerLeft: {
-    width: 80,
+    width: 36,
     alignItems: 'flex-start',
-    justifyContent: 'center',
-    zIndex: 1,
   },
   headerRight: {
-    width: 80,
+    width: 36,
+    alignItems: 'flex-end',
   },
   backButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-    paddingVertical: spacing[2],
-    paddingRight: spacing[4],
+    justifyContent: 'center',
   },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
+  backButtonPlaceholder: {
+    width: 32,
+    height: 32,
   },
 
-  // Progress
-  progressContainer: {
-    flexDirection: 'row',
+  // Progress Center - Step Indicators
+  progressCenter: {
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[2],
-    paddingVertical: spacing[4],
   },
-  progressDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  stepsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  progressDotActive: {
-    width: 32,
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumber: {
+    fontSize: 11,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  stepLine: {
+    width: 16,
+    height: 2,
+    borderRadius: 1,
+  },
+  finalStepPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 22,
+    paddingHorizontal: spacing[2.5],
+    borderRadius: 11,
+    borderWidth: 1.5,
+    gap: spacing[1],
+  },
+  finalStepText: {
+    fontSize: 10,
+    fontWeight: typography.fontWeight.semibold as any,
+    letterSpacing: -0.2,
   },
 
   // Scroll Content
@@ -201,20 +334,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing[6],
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[1],
+    paddingBottom: spacing[6],
   },
 
-  // Step Header
+  // Step Header (original)
   stepHeader: {
-    marginBottom: spacing[6],
+    marginBottom: spacing[4],
   },
   stepTitle: {
-    fontSize: typography.fontSize.xl,
+    fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold as any,
-    marginBottom: spacing[2],
+    marginBottom: spacing[1],
   },
   stepSubtitle: {
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+  },
+
+  // Compact Step Header (inline)
+  compactStepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[2.5],
+    flexWrap: 'wrap',
+  },
+  compactStepTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  titleDivider: {
+    width: 1,
+    height: 14,
+    marginHorizontal: spacing[2],
+  },
+  compactStepSubtitle: {
+    fontSize: typography.fontSize.sm,
   },
 });

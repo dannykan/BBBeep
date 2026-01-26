@@ -3,16 +3,19 @@
  * 確認並發送
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  TextInput,
+  Platform,
+  Linking,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,6 +27,8 @@ import { SendLayout, StepHeader } from './components';
 import { messagesApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints, uploadApi } from '@bbbeeep/shared';
 import { aiApi } from '@bbbeeep/shared';
 import { typography, spacing, borderRadius } from '../../theme';
+import MapLocationPicker from '../../components/MapLocationPicker';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'Confirm'>;
 
@@ -39,6 +44,8 @@ export default function ConfirmScreen({ navigation }: Props) {
     useAiVersion,
     usedAi,
     location,
+    locationLatitude,
+    locationLongitude,
     setLocation,
     occurredAt,
     selectedTimeOption,
@@ -61,6 +68,13 @@ export default function ConfirmScreen({ navigation }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Map location picker state
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  // Google Maps API key for reverse geocoding
+  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -137,6 +151,93 @@ export default function ConfirmScreen({ navigation }: Props) {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Simplify Taiwan address
+  const simplifyAddress = (address: string): string => {
+    return address
+      .replace(/,\s*台灣$/, '')
+      .replace(/台灣/g, '')
+      .replace(/\d{3,6}/g, '') // Remove postal codes
+      .replace(/^\s*,\s*/, '')
+      .replace(/,\s*,/g, ',')
+      .replace(/,\s*$/, '')
+      .trim();
+  };
+
+  // Reverse geocode coordinates to address
+  const reverseGeocode = useCallback(async (latitude: number, longitude: number): Promise<string> => {
+    if (!googleMapsApiKey) {
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    }
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleMapsApiKey}&language=zh-TW`
+      );
+      const data = await response.json();
+
+      if (data.results && data.results.length > 0) {
+        return simplifyAddress(data.results[0].formatted_address);
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+
+    return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  }, [googleMapsApiKey]);
+
+  // Get current location
+  const handleGetCurrentLocation = useCallback(async () => {
+    setIsGettingLocation(true);
+
+    try {
+      // Check permission
+      const { status: existingStatus, canAskAgain } = await Location.getForegroundPermissionsAsync();
+
+      if (existingStatus !== 'granted') {
+        if (canAskAgain) {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            setIsGettingLocation(false);
+            return;
+          }
+        } else {
+          Alert.alert(
+            '需要位置權限',
+            '請前往「設定」→「UBeep」→ 開啟「位置」權限',
+            [
+              { text: '取消', style: 'cancel' },
+              {
+                text: '前往設定',
+                onPress: async () => {
+                  if (Platform.OS === 'ios') {
+                    await Linking.openURL('app-settings:');
+                  } else {
+                    await Linking.openSettings();
+                  }
+                },
+              },
+            ]
+          );
+          setIsGettingLocation(false);
+          return;
+        }
+      }
+
+      const locationResult = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const { latitude, longitude } = locationResult.coords;
+      const address = await reverseGeocode(latitude, longitude);
+      setLocation(address, latitude, longitude);
+    } catch (error) {
+      console.error('Get location error:', error);
+      Alert.alert('錯誤', '無法取得目前位置');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  }, [reverseGeocode, setLocation]);
 
   const handleConfirm = async () => {
     if (!canAfford) {
@@ -326,19 +427,60 @@ export default function ConfirmScreen({ navigation }: Props) {
       )}
 
       {/* Location input */}
-      <View style={styles.inputSection}>
+      <View style={[styles.inputSection, styles.locationSection]}>
         <View style={styles.inputLabelRow}>
           <Ionicons name="location-outline" size={16} color={colors.muted.foreground} />
           <Text style={[styles.inputLabel, { color: colors.foreground }]}>事發地點</Text>
         </View>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid, color: colors.foreground }]}
+
+        {/* Two buttons: Current Location + Map Select */}
+        <View style={styles.locationButtonsRow}>
+          <TouchableOpacity
+            style={[styles.locationOptionButton, { backgroundColor: colors.muted.DEFAULT }]}
+            onPress={handleGetCurrentLocation}
+            disabled={isGettingLocation}
+            activeOpacity={0.7}
+          >
+            {isGettingLocation ? (
+              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+            ) : (
+              <>
+                <Ionicons name="navigate" size={16} color={colors.foreground} />
+                <Text style={[styles.locationOptionText, { color: colors.foreground }]}>目前位置</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.locationOptionButton, { backgroundColor: colors.muted.DEFAULT }]}
+            onPress={() => setShowMapPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="map-outline" size={16} color={colors.foreground} />
+            <Text style={[styles.locationOptionText, { color: colors.foreground }]}>地圖選擇</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Editable address input with autocomplete */}
+        <AddressAutocomplete
           value={location}
-          onChangeText={setLocation}
-          placeholder="例如：中正路與民生路口"
-          placeholderTextColor={colors.muted.foreground}
+          onChangeText={(text, lat, lng) => setLocation(text, lat, lng)}
+          placeholder="輸入或選擇地點..."
         />
       </View>
+
+      {/* Map Location Picker Modal */}
+      <MapLocationPicker
+        visible={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={(locationData) => {
+          setLocation(locationData.address, locationData.latitude, locationData.longitude);
+        }}
+        initialLocation={locationLatitude && locationLongitude ? {
+          address: location,
+          latitude: locationLatitude,
+          longitude: locationLongitude,
+        } : undefined}
+      />
 
       {/* Time selection */}
       <View style={styles.inputSection}>
@@ -487,6 +629,9 @@ const styles = StyleSheet.create({
   inputSection: {
     marginBottom: spacing[4],
   },
+  locationSection: {
+    zIndex: 1000,
+  },
   inputLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -503,6 +648,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     fontSize: typography.fontSize.base,
+  },
+  locationButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  locationOptionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[2.5],
+    borderRadius: borderRadius.lg,
+  },
+  locationOptionText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    fontSize: typography.fontSize.sm,
+    minHeight: 48,
+    textAlignVertical: 'center',
   },
   timeOptions: {
     flexDirection: 'row',
