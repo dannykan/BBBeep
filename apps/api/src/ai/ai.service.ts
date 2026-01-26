@@ -208,36 +208,44 @@ export class AiService {
 
 這個平台讓用戶透過車牌號碼發送提醒給其他駕駛，例如：車燈沒關、輪胎沒氣、行車安全提醒等。
 
-你的任務是分析用戶輸入的內容，判斷是否適合發送。
+你的任務是分析用戶輸入的內容，判斷是否適合直接發送，或需要經過 AI 優化。
 
 ## 判斷標準
 
-### ✅ 適合發送 (category: "ok")
+### ✅ 適合直接發送 (category: "ok", isAppropriate: true)
 - 善意的提醒或建議
 - 表達感謝或讚美
-- 描述客觀事實（如：你剛剛切換車道時有點危險）
+- 描述客觀事實，語氣平和（如：您好，您的車燈沒關）
+- 禮貌的行車安全提醒（如：剛剛您切換車道時有點危險，請小心）
 
-### ⚠️ 情緒發洩但可接受 (category: "emotional")
-- 帶有輕微髒話但主要是發洩情緒（如：靠北你切那麼近、他媽的你在幹嘛）
-- 使用台灣口語表達不滿但沒有人身攻擊（如：白目、三小、瞎了嗎）
-- 這類內容雖然用詞粗俗，但本質是交通情境下的情緒反應，建議用 AI 優化後發送
+### ⚠️ 含有情緒或粗話，需要優化 (category: "emotional", isAppropriate: false)
+- 帶有任何髒話或粗話（如：靠北、他媽的、三小、幹、機掰、白目、87、智障）
+- 帶有質疑或攻擊性語氣（如：會不會開車？、眼睛長在哪？、是在哈囉？）
+- 使用台灣口語表達不滿或情緒發洩
+- 語氣不友善或帶有諷刺意味
+- 這類內容建議用 AI 優化後再發送，讓訊息更專業友善
 
-### ❌ 不適合發送 (category: "inappropriate")
-- 人身攻擊或歧視言論（如：女人開車就是爛）
+### ❌ 不適合發送 (category: "inappropriate", isAppropriate: false)
+- 人身攻擊或歧視言論（如：女人開車就是爛、老人不要出來害人）
 - 索取或提供聯繫方式（如：加我 LINE、打給我）
 - 與交通無關的騷擾內容
 
-### 🚫 危險內容 (category: "dangerous")
+### 🚫 危險內容 (category: "dangerous", isAppropriate: false)
 - 威脅傷害對方（如：等著瞧、找人修理你、弄死你）
 - 暴力或犯罪相關
+
+## 重要提醒
+- 只要內容包含任何粗話、髒話、不禮貌的用語，都應該標記為 "emotional"，isAppropriate 設為 false
+- 「靠北」、「三小」、「幹」、「機掰」、「白目」等台灣常見粗話都要標記
+- 質疑對方駕駛能力的問句（如「會不會開車」）也是情緒性內容
 
 ## 回應格式
 請用 JSON 格式回應：
 {
-  "isAppropriate": boolean,  // 是否可以發送（ok 和 emotional 都是 true）
+  "isAppropriate": boolean,  // 只有 category 為 "ok" 時才是 true
   "category": "ok" | "emotional" | "inappropriate" | "dangerous",
-  "reason": "判斷原因（如果不適合）",
-  "suggestion": "如果是 emotional，建議用 AI 優化；其他情況可為 null"
+  "reason": "簡短說明原因（必填，即使是 ok 也要說明）",
+  "suggestion": "如果是 emotional，說明建議用 AI 優化讓訊息更友善；其他情況可為 null"
 }`;
 
     try {

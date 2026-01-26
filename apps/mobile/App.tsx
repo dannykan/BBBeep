@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { LogBox } from 'react-native';
 import {
   NavigationContainer,
   DarkTheme,
@@ -13,6 +14,12 @@ import {
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+
+// 忽略 IAP 在模擬器上的錯誤（正式環境會正常運作）
+LogBox.ignoreLogs([
+  '[RN-IAP]',
+  'Connection not initialized',
+]);
 
 import { AuthProvider } from './src/context/AuthContext';
 import { UnreadProvider } from './src/context/UnreadContext';

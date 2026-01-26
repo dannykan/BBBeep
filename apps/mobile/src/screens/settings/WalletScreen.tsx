@@ -92,24 +92,34 @@ export default function WalletScreen() {
   useEffect(() => {
     let purchaseUpdateSubscription: any;
     let purchaseErrorSubscription: any;
+    let isSubscribed = true;
 
     const initIAP = async () => {
       try {
         const connected = await initConnection();
         console.log('[IAP] Connection result:', connected);
+
+        if (!isSubscribed) return;
         setIapConnected(true);
 
         // 獲取產品資訊
         if (IAP_SKUS && IAP_SKUS.length > 0) {
           console.log('[IAP] Fetching products:', IAP_SKUS);
-          const products = await fetchProducts({ skus: IAP_SKUS });
-          if (products && products.length > 0) {
-            console.log('[IAP] Products loaded:', products.length, products.map((p) => p.id));
-            setIapProducts(products as Product[]);
+          try {
+            const products = await fetchProducts({ skus: IAP_SKUS });
+            if (!isSubscribed) return;
+            if (products && products.length > 0) {
+              console.log('[IAP] Products loaded:', products.length, products.map((p) => p.id));
+              setIapProducts(products as Product[]);
+            }
+          } catch (fetchError) {
+            // 產品獲取失敗（可能是模擬器或未配置 IAP）
+            console.log('[IAP] Fetch products skipped (simulator or not configured)');
           }
         }
-      } catch (error) {
-        console.warn('[IAP] Init error:', error);
+      } catch (error: any) {
+        // IAP 初始化失敗（模擬器或未配置）- 靜默處理
+        console.log('[IAP] Init skipped:', error?.message || 'Not available');
       }
     };
 
@@ -149,6 +159,7 @@ export default function WalletScreen() {
     });
 
     return () => {
+      isSubscribed = false;
       purchaseUpdateSubscription?.remove();
       purchaseErrorSubscription?.remove();
     };

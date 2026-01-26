@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -114,6 +116,23 @@ export default function SentScreen() {
 
   const selectedMsg = sentMessages.find((m) => m.id === selectedMessage);
 
+  const openLocationInMaps = (location: string) => {
+    const encodedLocation = encodeURIComponent(location);
+    const url = Platform.select({
+      ios: `maps:0,0?q=${encodedLocation}`,
+      android: `geo:0,0?q=${encodedLocation}`,
+    }) || `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
+
+    Linking.canOpenURL(url).then((supported) => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        // Fallback to Google Maps web
+        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`);
+      }
+    });
+  };
+
   // Detail view
   if (selectedMessage && selectedMsg) {
     return (
@@ -176,10 +195,17 @@ export default function SentScreen() {
             {(selectedMsg.location || selectedMsg.occurredAt) && (
               <View style={styles.metaInfo}>
                 {selectedMsg.location && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="location-outline" size={14} color={colors.muted.foreground} />
-                    <Text style={styles.metaText}>{selectedMsg.location}</Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.metaItem}
+                    onPress={() => openLocationInMaps(selectedMsg.location!)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location" size={14} color={colors.primary.DEFAULT} />
+                    <Text style={[styles.metaText, styles.metaTextLink, { color: colors.primary.DEFAULT }]}>
+                      {selectedMsg.location}
+                    </Text>
+                    <Ionicons name="open-outline" size={12} color={colors.primary.DEFAULT} />
+                  </TouchableOpacity>
                 )}
                 {selectedMsg.occurredAt && (
                   <View style={styles.metaItem}>
@@ -578,6 +604,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
   metaText: {
     fontSize: typography.fontSize.sm,
     color: colors.muted.foreground,
+  },
+  metaTextLink: {
+    flex: 1,
   },
   receiverSection: {
     borderTopWidth: 1,

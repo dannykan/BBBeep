@@ -14,7 +14,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger
 import { AdminService } from './admin.service';
 import { AIPromptService } from '../ai/ai-prompt.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { UserType, VehicleType, InviteStatus, NotificationType } from '@prisma/client';
+import { ActivitiesService } from '../activities/activities.service';
+import { UserType, VehicleType, InviteStatus, NotificationType, ActivityType } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Admin')
@@ -25,6 +26,7 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly aiPromptService: AIPromptService,
     private readonly notificationsService: NotificationsService,
+    private readonly activitiesService: ActivitiesService,
   ) {}
 
   @Post('login')
@@ -453,5 +455,88 @@ export class AdminController {
       throw new UnauthorizedException('無效的管理員 token');
     }
     return this.adminService.getNotificationStats();
+  }
+
+  // ============ 用戶活動追蹤 ============
+
+  @Get('activities')
+  @ApiOperation({ summary: '取得所有用戶活動記錄（分頁、搜尋）' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getAllActivities(
+    @Headers('x-admin-token') token: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('type') type?: ActivityType,
+    @Query('userId') userId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.activitiesService.findAll({
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 50,
+      search,
+      type,
+      userId,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+  }
+
+  @Get('activities/recent')
+  @ApiOperation({ summary: '取得即時最新活動' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getRecentActivities(
+    @Headers('x-admin-token') token: string,
+    @Query('limit') limit?: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.activitiesService.getRecentActivities(
+      limit ? parseInt(limit) : 50,
+    );
+  }
+
+  @Get('activities/stats')
+  @ApiOperation({ summary: '取得活動統計資料' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getActivityStats(
+    @Headers('x-admin-token') token: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.activitiesService.getStats({
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+  }
+
+  @Get('users/:id/activities')
+  @ApiOperation({ summary: '取得特定用戶的活動記錄' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getUserActivities(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.activitiesService.findByUser(id, {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 50,
+    });
   }
 }
