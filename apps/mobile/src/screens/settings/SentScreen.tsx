@@ -18,28 +18,71 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { messagesApi, displayLicensePlate } from '@bbbeeep/shared';
 import type { SentMessage } from '@bbbeeep/shared';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
+import { useUnreadReply } from '../../context/UnreadReplyContext';
 import {
   typography,
   spacing,
   borderRadius,
 } from '../../theme';
 
+type SentScreenRouteParams = {
+  Sent: {
+    selectedMessageId?: string;
+  };
+};
+
 export default function SentScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<SentScreenRouteParams, 'Sent'>>();
   const { colors, isDark } = useTheme();
+  const { refreshUnreadReplyCount } = useUnreadReply();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [initialMessageHandled, setInitialMessageHandled] = useState(false);
+
+  // 從導航參數中獲取要顯示的訊息 ID
+  const selectedMessageId = route.params?.selectedMessageId;
 
   useEffect(() => {
     loadSentMessages();
   }, []);
+
+  // 當從推播通知進入時，自動選擇對應的訊息
+  useEffect(() => {
+    if (selectedMessageId && sentMessages.length > 0 && !initialMessageHandled) {
+      const message = sentMessages.find(m => m.id === selectedMessageId);
+      if (message) {
+        handleSelectMessage(selectedMessageId);
+        setInitialMessageHandled(true);
+      }
+    }
+  }, [selectedMessageId, sentMessages, initialMessageHandled]);
+
+  // 選擇訊息時，如果有未讀回覆則標記為已讀
+  const handleSelectMessage = useCallback(async (messageId: string) => {
+    const message = sentMessages.find(m => m.id === messageId);
+    if (message?.replyText && !message.replyReadAt) {
+      try {
+        await messagesApi.markReplyAsRead(messageId);
+        // 更新本地狀態
+        setSentMessages(prev => prev.map(m =>
+          m.id === messageId ? { ...m, replyReadAt: new Date().toISOString() } : m
+        ));
+        // 刷新未讀回覆計數
+        refreshUnreadReplyCount();
+      } catch (error) {
+        console.error('Failed to mark reply as read:', error);
+      }
+    }
+    setSelectedMessage(messageId);
+  }, [sentMessages, refreshUnreadReplyCount]);
 
   const loadSentMessages = async () => {
     try {
@@ -86,6 +129,16 @@ export default function SentScreen() {
     } catch {
       return '';
     }
+  };
+
+  const formatOccurredAt = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
   };
 
   const getTagStyle = (type: string) => {
@@ -180,9 +233,7 @@ export default function SentScreen() {
 
           {/* Message content */}
           <View style={styles.messageCard}>
-            <View style={styles.templateBox}>
-              <Text style={styles.templateText}>{selectedMsg.template}</Text>
-            </View>
+            <Text style={styles.templateText}>{selectedMsg.template}</Text>
 
             {selectedMsg.customText && (
               <View style={styles.customTextBox}>
@@ -190,37 +241,38 @@ export default function SentScreen() {
                 <Text style={styles.customTextContent}>{selectedMsg.customText}</Text>
               </View>
             )}
+          </View>
 
-            {/* Location and time */}
-            {(selectedMsg.location || selectedMsg.occurredAt) && (
-              <View style={styles.metaInfo}>
-                {selectedMsg.location && (
-                  <TouchableOpacity
-                    style={styles.metaItem}
-                    onPress={() => openLocationInMaps(selectedMsg.location!)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="location" size={14} color={colors.primary.DEFAULT} />
-                    <Text style={[styles.metaText, styles.metaTextLink, { color: colors.primary.DEFAULT }]}>
-                      {selectedMsg.location}
-                    </Text>
-                    <Ionicons name="open-outline" size={12} color={colors.primary.DEFAULT} />
-                  </TouchableOpacity>
-                )}
-                {selectedMsg.occurredAt && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={14} color={colors.muted.foreground} />
-                    <Text style={styles.metaText}>事發時間 {formatOccurredTime(selectedMsg.occurredAt)}</Text>
-                  </View>
-                )}
+          {/* Meta info card - 時間地點資訊 */}
+          <View style={styles.metaCard}>
+            {selectedMsg.occurredAt && (
+              <View style={styles.metaRow}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.muted.foreground} />
+                <View style={styles.metaTextColumn}>
+                  <Text style={styles.metaText}>約 {formatOccurredAt(selectedMsg.occurredAt)} 發生</Text>
+                  <Text style={styles.metaTextHint}>您回報的大約時間</Text>
+                </View>
               </View>
             )}
-
-            {/* Receiver info */}
-            <View style={styles.receiverSection}>
-              <Text style={styles.receiverLabel}>發送給</Text>
-              <Text style={styles.receiverText}>
-                {selectedMsg.receiver.licensePlate
+            {selectedMsg.location && (
+              <TouchableOpacity
+                style={styles.metaRow}
+                onPress={() => openLocationInMaps(selectedMsg.location!)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={16} color={colors.primary.DEFAULT} />
+                <Text style={styles.metaTextLink}>於 {selectedMsg.location} 附近</Text>
+                <Ionicons name="open-outline" size={14} color={colors.primary.DEFAULT} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.metaRow}>
+              <Ionicons name="send-outline" size={16} color={colors.muted.foreground} />
+              <Text style={styles.metaText}>提醒發送於 {formatTime(selectedMsg.createdAt)}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Ionicons name="car-outline" size={16} color={colors.muted.foreground} />
+              <Text style={styles.metaText}>
+                發送給：{selectedMsg.receiver.licensePlate
                   ? displayLicensePlate(selectedMsg.receiver.licensePlate)
                   : '未知車牌'}
               </Text>
@@ -307,11 +359,13 @@ export default function SentScreen() {
           </View>
         ) : (
           <View style={styles.messageList}>
-            {sentMessages.map((message) => (
+            {sentMessages.map((message) => {
+              const hasUnreadReply = message.replyText && !message.replyReadAt;
+              return (
               <TouchableOpacity
                 key={message.id}
                 style={[styles.messageItem, { borderLeftColor: getAccentColor(message.type) }]}
-                onPress={() => setSelectedMessage(message.id)}
+                onPress={() => handleSelectMessage(message.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.messageContent}>
@@ -326,8 +380,10 @@ export default function SentScreen() {
                       <Text style={styles.readStatusText}>已讀</Text>
                     )}
                     {message.replyText && (
-                      <View style={styles.repliedBadge}>
-                        <Text style={styles.repliedBadgeText}>已回覆</Text>
+                      <View style={[styles.repliedBadge, hasUnreadReply && styles.repliedBadgeUnread]}>
+                        <Text style={[styles.repliedBadgeText, hasUnreadReply && styles.repliedBadgeTextUnread]}>
+                          {hasUnreadReply ? '• 新回覆' : '已回覆'}
+                        </Text>
                       </View>
                     )}
                     <Text style={styles.messageTime}>{formatTime(message.createdAt)}</Text>
@@ -359,7 +415,8 @@ export default function SentScreen() {
                   color={colors.muted.foreground}
                 />
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -500,9 +557,16 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     paddingVertical: spacing[0.5],
     borderRadius: borderRadius.sm,
   },
+  repliedBadgeUnread: {
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+  },
   repliedBadgeText: {
     fontSize: typography.fontSize.xs,
     color: isDark ? '#4ADE80' : '#16A34A',
+  },
+  repliedBadgeTextUnread: {
+    color: isDark ? '#F87171' : '#DC2626',
+    fontWeight: typography.fontWeight.medium as any,
   },
   messageTime: {
     fontSize: typography.fontSize.xs,
@@ -560,18 +624,14 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.borderSolid,
-    padding: spacing[5],
+    padding: spacing[4],
     gap: spacing[4],
   },
-  templateBox: {
-    backgroundColor: `${colors.muted.DEFAULT}30`,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-  },
   templateText: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.medium as any,
     color: colors.foreground,
-    lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
+    lineHeight: typography.fontSize.lg * typography.lineHeight.relaxed,
   },
   customTextBox: {
     backgroundColor: colors.primary.soft,
@@ -582,44 +642,46 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     gap: spacing[1],
   },
   customTextLabel: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs,
     color: colors.muted.foreground,
   },
   customTextContent: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.sm,
     color: colors.foreground,
-    lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
   },
-  metaInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+
+  // Meta card - 時間地點資訊
+  metaCard: {
+    backgroundColor: colors.card.DEFAULT,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.borderSolid,
     gap: spacing[3],
   },
-  metaItem: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[1.5],
+    gap: spacing[2],
+  },
+  metaTextColumn: {
+    flex: 1,
+    gap: spacing[0.5],
   },
   metaText: {
     fontSize: typography.fontSize.sm,
     color: colors.muted.foreground,
   },
-  metaTextLink: {
-    flex: 1,
-  },
-  receiverSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSolid,
-    paddingTop: spacing[4],
-  },
-  receiverLabel: {
+  metaTextHint: {
     fontSize: typography.fontSize.xs,
     color: colors.muted.foreground,
+    opacity: 0.7,
   },
-  receiverText: {
+  metaTextLink: {
+    flex: 1,
     fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-    marginTop: spacing[1],
+    color: colors.primary.DEFAULT,
   },
 
   // Reply section

@@ -54,4 +54,14 @@ export const messagesApi = {
     getApiClient()
       .post(`/messages/${id}/report`, { reason })
       .then((res) => res.data),
+
+  markReplyAsRead: (id: string) =>
+    getApiClient()
+      .post(`/messages/${id}/reply-read`)
+      .then((res) => res.data),
+
+  getUnreadReplyCount: () =>
+    getApiClient()
+      .get<{ count: number }>('/messages/sent/unread-reply-count')
+      .then((res) => res.data),
 };

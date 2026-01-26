@@ -127,8 +127,9 @@ model Message {
   type       MessageType
   template   String
   customText String?
-  replyText  String? // 接收者回覆內容（僅供記錄，不會通知發送者）
-  location   String?     // 事發地點（地址或描述）
+  replyText    String?   // 接收者回覆內容
+  replyReadAt  DateTime? // 發送者已讀回覆的時間
+  location     String?   // 事發地點（地址或描述）
   occurredAt DateTime?   // 事發時間
   read       Boolean     @default(false)
   createdAt  DateTime    @default(now())
@@ -307,6 +308,7 @@ model DeviceToken {
 
 enum NotificationType {
   message     // 收到新提醒
+  reply       // 收到回覆
   broadcast   // 管理員推播
   system      // 系統通知
 }

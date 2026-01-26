@@ -16,9 +16,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import VehicleIcon from '../../components/VehicleIcon';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeMode, ThemeColors } from '../../context/ThemeContext';
+import { useUnreadReply } from '../../context/UnreadReplyContext';
 import { getTotalPoints, displayLicensePlate } from '@bbbeeep/shared';
 import {
   typography,
@@ -36,9 +37,17 @@ export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { themeMode, colors } = useTheme();
+  const { hasUnreadReplies, refreshUnreadReplyCount } = useUnreadReply();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const totalPoints = getTotalPoints(user);
+
+  // 當畫面獲得焦點時刷新未讀回覆數
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshUnreadReplyCount();
+    }, [refreshUnreadReplyCount])
+  );
 
   const handleLogout = () => {
     Alert.alert('登出', '確定要登出嗎？', [
@@ -66,12 +75,14 @@ export default function SettingsScreen() {
     value,
     onPress,
     showChevron = true,
+    showBadge = false,
   }: {
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
     value?: string;
     onPress?: () => void;
     showChevron?: boolean;
+    showBadge?: boolean;
   }) => (
     <TouchableOpacity
       style={styles.menuItem}
@@ -82,6 +93,7 @@ export default function SettingsScreen() {
       <View style={styles.menuLeft}>
         <View style={styles.menuIconContainer}>
           <Ionicons name={icon} size={18} color={colors.primary.DEFAULT} />
+          {showBadge && <View style={styles.menuBadge} />}
         </View>
         <Text style={styles.menuLabel}>{label}</Text>
       </View>
@@ -183,6 +195,7 @@ export default function SettingsScreen() {
               icon="time-outline"
               label="已發送提醒"
               onPress={() => navigation.navigate('Sent')}
+              showBadge={hasUnreadReplies}
             />
             <MenuItem
               icon="ban-outline"
@@ -449,6 +462,15 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.primary.soft,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    menuBadge: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.destructive.DEFAULT,
     },
     menuLabel: {
       fontSize: typography.fontSize.sm,

@@ -399,10 +399,30 @@ export class MessagesService {
           select: {
             id: true,
             nickname: true,
+            hasCompletedOnboarding: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            nickname: true,
           },
         },
       },
     });
+
+    // 發送推播通知給發送者（只有完成 onboarding 的用戶才會收到）
+    if (updatedMessage.sender.hasCompletedOnboarding) {
+      this.notificationsService
+        .sendReplyNotification(
+          updatedMessage.senderId,
+          messageId,
+          updatedMessage.receiver.nickname || undefined,
+        )
+        .catch((err) => {
+          console.error('Failed to send reply notification:', err);
+        });
+    }
 
     // 轉換為中文返回
     return {
@@ -474,5 +494,53 @@ export class MessagesService {
       desc += '（AI 協助）';
     }
     return desc;
+  }
+
+  /**
+   * 標記回覆為已讀（發送者使用）
+   */
+  async markReplyAsRead(userId: string, messageId: string) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!message) {
+      throw new NotFoundException('訊息不存在');
+    }
+
+    // 只有發送者可以標記回覆為已讀
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('無權限操作此訊息');
+    }
+
+    // 如果沒有回覆，就不需要標記
+    if (!message.replyText) {
+      return { success: true };
+    }
+
+    // 更新 replyReadAt
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        replyReadAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * 獲取未讀回覆數量
+   */
+  async getUnreadReplyCount(userId: string) {
+    const count = await this.prisma.message.count({
+      where: {
+        senderId: userId,
+        replyText: { not: null },
+        replyReadAt: null,
+      },
+    });
+
+    return { count };
   }
 }

@@ -160,6 +160,38 @@ export class NotificationsService {
   }
 
   /**
+   * 發送回覆通知給發送者
+   */
+  async sendReplyNotification(
+    senderId: string,
+    messageId: string,
+    replierNickname?: string,
+  ) {
+    const title = '你收到一則回覆';
+    const body = replierNickname
+      ? `${replierNickname} 回覆了你的提醒`
+      : '有人回覆了你的提醒';
+
+    const result = await this.sendToUser(senderId, title, body, {
+      type: 'reply',
+      messageId,
+    });
+
+    // 記錄推播日誌
+    await this.logNotification(
+      NotificationType.reply,
+      title,
+      body,
+      [senderId],
+      result.sent,
+      result.failed,
+      { messageId },
+    );
+
+    return result;
+  }
+
+  /**
    * Admin 推播給所有用戶
    */
   async sendBroadcast(

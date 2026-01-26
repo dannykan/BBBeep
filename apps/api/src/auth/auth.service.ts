@@ -12,7 +12,7 @@ import { LineLoginDto } from './dto/line-login.dto';
 import { AppleLoginDto } from './dto/apple-login.dto';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import * as jwksClient from 'jwks-rsa';
+import jwksClient from 'jwks-rsa';
 import axios from 'axios';
 
 @Injectable()

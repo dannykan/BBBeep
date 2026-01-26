@@ -89,6 +89,7 @@ export interface SentMessage {
   template: string;
   customText?: string;
   replyText?: string;
+  replyReadAt?: string; // 發送者已讀回覆的時間
   location?: string;
   occurredAt?: string;
   createdAt: string;

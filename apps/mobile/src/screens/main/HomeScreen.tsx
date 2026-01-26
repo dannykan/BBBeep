@@ -27,6 +27,7 @@ import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { getTotalPoints, displayLicensePlate, inviteApi, usersApi } from '@bbbeeep/shared';
 import type { InviteCodeResponse, TrialStatusResponse } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
+import { useUnreadReply } from '../../context/UnreadReplyContext';
 import {
   typography,
   spacing,
@@ -39,6 +40,7 @@ export default function HomeScreen() {
   const { user, refreshUser } = useAuth();
   const { colors, isDark } = useTheme();
   const { unreadCount, refreshUnreadCount } = useUnread();
+  const { unreadReplyCount, refreshUnreadReplyCount, hasUnreadReplies } = useUnreadReply();
   const [refreshing, setRefreshing] = useState(false);
   const [inviteData, setInviteData] = useState<InviteCodeResponse | null>(null);
   const [isLoadingInvite, setIsLoadingInvite] = useState(true);
@@ -54,7 +56,8 @@ export default function HomeScreen() {
       loadInviteData();
       loadTrialStatus();
       refreshUnreadCount();
-    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount])
+      refreshUnreadReplyCount();
+    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount, refreshUnreadReplyCount])
   );
 
   const loadInviteData = useCallback(async () => {
@@ -81,9 +84,9 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), loadTrialStatus()]);
+    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), refreshUnreadReplyCount(), loadTrialStatus()]);
     setRefreshing(false);
-  }, [refreshUser, loadInviteData, refreshUnreadCount, loadTrialStatus]);
+  }, [refreshUser, loadInviteData, refreshUnreadCount, refreshUnreadReplyCount, loadTrialStatus]);
 
   const handleShareInviteCode = async () => {
     if (!inviteData?.inviteCode) return;
@@ -370,11 +373,16 @@ export default function HomeScreen() {
             style={styles.quickActionButton}
             onPress={() => navigation.navigate('Sent')}
           >
-            <Ionicons
-              name="time-outline"
-              size={20}
-              color={colors.muted.foreground}
-            />
+            <View style={styles.quickActionIconContainer}>
+              <Ionicons
+                name="time-outline"
+                size={20}
+                color={colors.muted.foreground}
+              />
+              {hasUnreadReplies && (
+                <View style={styles.replyBadge} />
+              )}
+            </View>
             <Text style={styles.quickActionText}>發送記錄</Text>
           </TouchableOpacity>
 
@@ -706,6 +714,15 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       fontSize: 10,
       fontWeight: typography.fontWeight.bold as any,
       color: '#FFFFFF',
+    },
+    replyBadge: {
+      position: 'absolute',
+      top: -2,
+      right: -4,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.destructive.DEFAULT,
     },
 
     // Invite Card

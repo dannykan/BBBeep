@@ -23,6 +23,7 @@ LogBox.ignoreLogs([
 
 import { AuthProvider } from './src/context/AuthContext';
 import { UnreadProvider } from './src/context/UnreadContext';
+import { UnreadReplyProvider } from './src/context/UnreadReplyContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -134,7 +135,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <UnreadProvider>
-            <AppContent />
+            <UnreadReplyProvider>
+              <AppContent />
+            </UnreadReplyProvider>
           </UnreadProvider>
         </AuthProvider>
       </ThemeProvider>

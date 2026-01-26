@@ -65,4 +65,16 @@ export class MessagesController {
   ) {
     return this.messagesService.reportMessage(user.userId, id, dto.reason);
   }
+
+  @Post(':id/reply-read')
+  @ApiOperation({ summary: '標記回覆為已讀（發送者使用）' })
+  async markReplyAsRead(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.messagesService.markReplyAsRead(user.userId, id);
+  }
+
+  @Get('sent/unread-reply-count')
+  @ApiOperation({ summary: '獲取未讀回覆數量' })
+  async getUnreadReplyCount(@CurrentUser() user: any) {
+    return this.messagesService.getUnreadReplyCount(user.userId);
+  }
 }

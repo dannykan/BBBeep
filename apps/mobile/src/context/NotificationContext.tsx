@@ -183,6 +183,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             params: { messageId: data.messageId },
           },
         });
+      } else if (data?.type === 'reply' && data?.messageId) {
+        // Navigate to sent screen with the reply message
+        navigation.navigate('Main', {
+          screen: 'Settings',
+          params: {
+            screen: 'Sent',
+            params: { selectedMessageId: data.messageId },
+          },
+        });
       }
     },
     [navigation]
