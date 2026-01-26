@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: bbbeeep-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: bbbeeep
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-bbbeeep}
     ports:
       - '5433:5432'  # 使用 5433 端口避免與其他 PostgreSQL 衝突
     volumes:
@@ -35,13 +35,13 @@ services:
       dockerfile: Dockerfile
     container_name: bbbeeep-backend
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/bbbeeep
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bbbeeep}
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-secret-key-change-in-production
-      JWT_EXPIRES_IN: 7d
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 3001
-      NODE_ENV: development
-      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: ${NODE_ENV:-development}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     ports:
       - '3001:3001'
     depends_on:

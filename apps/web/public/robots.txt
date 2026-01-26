@@ -1,0 +1,17 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://ubeep.app/sitemap.xml
+
+# Disallow admin and auth pages
+Disallow: /BBBeepadmin2026/
+Disallow: /auth/
+Disallow: /api/
+
+# Allow common pages
+Allow: /landing
+Allow: /login
+Allow: /privacy
+Allow: /terms

@@ -50,3 +50,7 @@ DEPLOYMENT_CONFIG.md
 
 # Uploads
 uploads/
+
+# Firebase config files (optional - these are safe to expose but better to keep private)
+GoogleService-Info.plist
+google-services.json

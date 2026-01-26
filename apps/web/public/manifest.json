@@ -1,0 +1,26 @@
+{
+  "name": "UBeep - 路上提醒平台",
+  "short_name": "UBeep",
+  "description": "一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F6F4",
+  "theme_color": "#4A6FA5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "lang": "zh-TW",
+  "categories": ["social", "utilities", "lifestyle"]
+}

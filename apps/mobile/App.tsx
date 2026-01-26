@@ -3,9 +3,14 @@
  * React Native (Expo) 行動應用程式
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainerRef,
+} from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -15,12 +20,16 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import CustomSplashScreen from './src/components/CustomSplashScreen';
+import { useAnalytics } from './src/hooks/useAnalytics';
 
 // 防止 native splash screen 自動隱藏
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { isDark, colors } = useTheme();
+  const { trackScreenView } = useAnalytics();
+  const navigationRef = useRef<NavigationContainerRef<ReactNavigation.RootParamList>>(null);
+  const routeNameRef = useRef<string | undefined>();
 
   // Custom navigation theme
   const navigationTheme = isDark
@@ -47,8 +56,29 @@ function AppContent() {
         },
       };
 
+  const onNavigationReady = useCallback(() => {
+    routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+  }, []);
+
+  const onNavigationStateChange = useCallback(() => {
+    const previousRouteName = routeNameRef.current;
+    const currentRouteName = navigationRef.current?.getCurrentRoute()?.name;
+
+    if (previousRouteName !== currentRouteName && currentRouteName) {
+      // Track screen view
+      trackScreenView(currentRouteName);
+    }
+
+    routeNameRef.current = currentRouteName;
+  }, [trackScreenView]);
+
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      onReady={onNavigationReady}
+      onStateChange={onNavigationStateChange}
+    >
       <NotificationProvider>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <RootNavigator />

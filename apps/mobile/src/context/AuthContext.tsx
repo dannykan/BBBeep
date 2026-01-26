@@ -34,7 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeApiClient();
 
     // 初始化 LINE SDK
-    LineLogin.setup({ channelId: '2008933864' })
+    const lineChannelId = process.env.EXPO_PUBLIC_LINE_CHANNEL_ID || '2008933864';
+    LineLogin.setup({ channelId: lineChannelId })
       .catch((error: any) => {
         // 如果已經初始化過會報錯，可以忽略
         if (error.code !== 'SETUP_ALREADY_COMPLETED') {
