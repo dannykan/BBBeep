@@ -379,8 +379,12 @@ export default function HomeScreen() {
                 size={20}
                 color={colors.muted.foreground}
               />
-              {hasUnreadReplies && (
-                <View style={styles.replyBadge} />
+              {unreadReplyCount > 0 && (
+                <View style={styles.replyBadge}>
+                  <Text style={styles.replyBadgeText}>
+                    {unreadReplyCount > 99 ? '99+' : unreadReplyCount}
+                  </Text>
+                </View>
               )}
             </View>
             <Text style={styles.quickActionText}>發送記錄</Text>
@@ -717,12 +721,20 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     },
     replyBadge: {
       position: 'absolute',
-      top: -2,
-      right: -4,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      top: -6,
+      right: -8,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
       backgroundColor: colors.destructive.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing[1],
+    },
+    replyBadgeText: {
+      fontSize: 10,
+      fontWeight: typography.fontWeight.bold as any,
+      color: '#FFFFFF',
     },
 
     // Invite Card

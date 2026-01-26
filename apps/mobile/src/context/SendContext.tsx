@@ -39,7 +39,7 @@ interface SendState {
   locationLatitude: number | null;
   locationLongitude: number | null;
   occurredAt: Date;
-  selectedTimeOption: 'now' | '5min' | '10min' | '15min';
+  selectedTimeOption: 'now' | '5min' | '10min' | '15min' | 'custom';
 
   // Loading
   isLoading: boolean;
@@ -75,7 +75,7 @@ interface SendContextType extends SendState {
   setAiLimit: (limit: { canUse: boolean; remaining: number }) => void;
   setLocation: (location: string, latitude?: number, longitude?: number) => void;
   setOccurredAt: (date: Date) => void;
-  setSelectedTimeOption: (option: 'now' | '5min' | '10min' | '15min') => void;
+  setSelectedTimeOption: (option: 'now' | '5min' | '10min' | '15min' | 'custom') => void;
   setIsLoading: (loading: boolean) => void;
 
   // Voice setters
@@ -198,7 +198,7 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, occurredAt: date }));
   }, []);
 
-  const setSelectedTimeOption = useCallback((option: 'now' | '5min' | '10min' | '15min') => {
+  const setSelectedTimeOption = useCallback((option: 'now' | '5min' | '10min' | '15min' | 'custom') => {
     setState((prev) => ({ ...prev, selectedTimeOption: option }));
   }, []);
 

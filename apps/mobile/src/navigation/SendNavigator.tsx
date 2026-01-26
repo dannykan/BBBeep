@@ -26,7 +26,6 @@ import SituationScreen from '../screens/send/SituationScreen';
 import ReviewScreen from '../screens/send/ReviewScreen';
 import CustomScreen from '../screens/send/CustomScreen';
 import AiSuggestScreen from '../screens/send/AiSuggestScreen';
-import ConfirmScreen from '../screens/send/ConfirmScreen';
 
 const Stack = createNativeStackNavigator<SendStackParamList>();
 

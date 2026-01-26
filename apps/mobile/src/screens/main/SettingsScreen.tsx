@@ -37,7 +37,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { themeMode, colors } = useTheme();
-  const { hasUnreadReplies, refreshUnreadReplyCount } = useUnreadReply();
+  const { unreadReplyCount, refreshUnreadReplyCount } = useUnreadReply();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const totalPoints = getTotalPoints(user);
@@ -75,14 +75,14 @@ export default function SettingsScreen() {
     value,
     onPress,
     showChevron = true,
-    showBadge = false,
+    badgeCount = 0,
   }: {
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
     value?: string;
     onPress?: () => void;
     showChevron?: boolean;
-    showBadge?: boolean;
+    badgeCount?: number;
   }) => (
     <TouchableOpacity
       style={styles.menuItem}
@@ -93,7 +93,13 @@ export default function SettingsScreen() {
       <View style={styles.menuLeft}>
         <View style={styles.menuIconContainer}>
           <Ionicons name={icon} size={18} color={colors.primary.DEFAULT} />
-          {showBadge && <View style={styles.menuBadge} />}
+          {badgeCount > 0 && (
+            <View style={styles.menuBadge}>
+              <Text style={styles.menuBadgeText}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </Text>
+            </View>
+          )}
         </View>
         <Text style={styles.menuLabel}>{label}</Text>
       </View>
@@ -195,7 +201,7 @@ export default function SettingsScreen() {
               icon="time-outline"
               label="已發送提醒"
               onPress={() => navigation.navigate('Sent')}
-              showBadge={hasUnreadReplies}
+              badgeCount={unreadReplyCount}
             />
             <MenuItem
               icon="ban-outline"
@@ -465,12 +471,20 @@ const createStyles = (colors: ThemeColors) =>
     },
     menuBadge: {
       position: 'absolute',
-      top: 0,
-      right: 0,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      top: -4,
+      right: -4,
+      minWidth: 16,
+      height: 16,
+      borderRadius: 8,
       backgroundColor: colors.destructive.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing[0.5],
+    },
+    menuBadgeText: {
+      fontSize: 9,
+      fontWeight: typography.fontWeight.bold as any,
+      color: '#FFFFFF',
     },
     menuLabel: {
       fontSize: typography.fontSize.sm,

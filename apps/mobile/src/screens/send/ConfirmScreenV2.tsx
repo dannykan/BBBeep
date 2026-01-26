@@ -15,7 +15,9 @@ import {
   TextInput,
   Platform,
   Linking,
+  Modal,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -35,6 +37,7 @@ import {
   activitiesApi,
 } from '@bbbeeep/shared';
 import { typography, spacing, borderRadius } from '../../theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapLocationPicker from '../../components/MapLocationPicker';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 
@@ -74,6 +77,10 @@ export default function ConfirmScreenV2({ navigation }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [customDate, setCustomDate] = useState(new Date());
+  const [customTime, setCustomTime] = useState(new Date());
   const soundRef = useRef<Audio.Sound | null>(null);
 
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -92,7 +99,14 @@ export default function ConfirmScreenV2({ navigation }: Props) {
   const canAfford = userPoints >= pointCost;
   const remainingPoints = userPoints - pointCost;
 
-  const handleTimeOptionSelect = (option: 'now' | '5min' | '10min' | '15min') => {
+  const handleTimeOptionSelect = (option: 'now' | '5min' | '10min' | '15min' | 'custom') => {
+    if (option === 'custom') {
+      setCustomDate(occurredAt);
+      setCustomTime(occurredAt);
+      setShowDatePicker(true);
+      return;
+    }
+
     setSelectedTimeOption(option);
     const now = new Date();
     switch (option) {
@@ -109,6 +123,54 @@ export default function ConfirmScreenV2({ navigation }: Props) {
         setOccurredAt(new Date(now.getTime() - 15 * 60 * 1000));
         break;
     }
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (selectedDate) {
+      const now = new Date();
+      const validDate = selectedDate > now ? now : selectedDate;
+      setCustomDate(validDate);
+    }
+  };
+
+  const handleTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
+    if (selectedTime) {
+      setCustomTime(selectedTime);
+    }
+  };
+
+  const handleConfirmDate = () => {
+    setShowDatePicker(false);
+    setShowTimePicker(true);
+  };
+
+  const handleConfirmTime = () => {
+    // Combine date and time
+    const combined = new Date(customDate);
+    combined.setHours(customTime.getHours());
+    combined.setMinutes(customTime.getMinutes());
+    combined.setSeconds(0);
+    combined.setMilliseconds(0);
+
+    const now = new Date();
+    const validTime = combined > now ? now : combined;
+    setOccurredAt(validTime);
+    setSelectedTimeOption('custom');
+    setShowTimePicker(false);
+  };
+
+  const handleBackToDate = () => {
+    setShowTimePicker(false);
+    setShowDatePicker(true);
+  };
+
+  const formatCustomTime = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
   };
 
   const toggleVoicePlayback = async () => {
@@ -353,7 +415,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
     }
   };
 
-  const timeOptions = [
+  const presetTimeOptions = [
     { id: 'now', label: '剛剛' },
     { id: '5min', label: '5 分鐘前' },
     { id: '10min', label: '10 分鐘前' },
@@ -554,8 +616,10 @@ export default function ConfirmScreenV2({ navigation }: Props) {
             <Ionicons name="time-outline" size={16} color={colors.muted.foreground} />
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>發生時間</Text>
           </View>
+
+          {/* Preset time options */}
           <View style={styles.timeOptions}>
-            {timeOptions.map((option) => (
+            {presetTimeOptions.map((option) => (
               <TouchableOpacity
                 key={option.id}
                 style={[
@@ -581,7 +645,142 @@ export default function ConfirmScreenV2({ navigation }: Props) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Custom time button */}
+          <TouchableOpacity
+            style={[
+              styles.customTimeButton,
+              { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+              selectedTimeOption === 'custom' && {
+                backgroundColor: colors.primary.soft,
+                borderColor: colors.primary.DEFAULT,
+              },
+            ]}
+            onPress={() => handleTimeOptionSelect('custom')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.customTimeLeft}>
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color={selectedTimeOption === 'custom' ? colors.primary.DEFAULT : colors.muted.foreground}
+              />
+              <Text
+                style={[
+                  styles.customTimeLabel,
+                  { color: selectedTimeOption === 'custom' ? colors.primary.DEFAULT : colors.foreground },
+                ]}
+              >
+                其他時間
+              </Text>
+            </View>
+            <View style={styles.customTimeRight}>
+              {selectedTimeOption === 'custom' && (
+                <Text style={[styles.customTimeValue, { color: colors.primary.DEFAULT }]}>
+                  {formatCustomTime(occurredAt)}
+                </Text>
+              )}
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={selectedTimeOption === 'custom' ? colors.primary.DEFAULT : colors.muted.foreground}
+              />
+            </View>
+          </TouchableOpacity>
         </View>
+
+        {/* Date Picker Modal */}
+        <Modal
+          visible={showDatePicker}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDatePicker(false)}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+              <View style={[styles.pickerModal, { backgroundColor: colors.card.DEFAULT }]}>
+                <View style={[styles.pickerHeader, { borderBottomColor: colors.borderSolid }]}>
+                  <TouchableOpacity
+                    style={styles.pickerHeaderButton}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={[styles.pickerCancelText, { color: colors.muted.foreground }]}>取消</Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.pickerTitle, { color: colors.foreground }]}>選擇日期</Text>
+                  <TouchableOpacity
+                    style={styles.pickerHeaderButton}
+                    onPress={handleConfirmDate}
+                  >
+                    <Text style={[styles.pickerConfirmText, { color: colors.primary.DEFAULT }]}>下一步</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.pickerContent}>
+                  <DateTimePicker
+                    value={customDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={handleDateChange}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}
+                    locale="zh-TW"
+                    style={styles.dateTimePicker}
+                  />
+                </View>
+                <SafeAreaView edges={['bottom']} />
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Time Picker Modal */}
+        <Modal
+          visible={showTimePicker}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimePicker(false)}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+              <View style={[styles.pickerModal, { backgroundColor: colors.card.DEFAULT }]}>
+                <View style={[styles.pickerHeader, { borderBottomColor: colors.borderSolid }]}>
+                  <TouchableOpacity
+                    style={styles.pickerHeaderButton}
+                    onPress={handleBackToDate}
+                  >
+                    <Ionicons name="chevron-back" size={20} color={colors.muted.foreground} />
+                  </TouchableOpacity>
+                  <Text style={[styles.pickerTitle, { color: colors.foreground }]}>選擇時間</Text>
+                  <TouchableOpacity
+                    style={styles.pickerHeaderButton}
+                    onPress={handleConfirmTime}
+                  >
+                    <Text style={[styles.pickerConfirmText, { color: colors.primary.DEFAULT }]}>確定</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.pickerContent}>
+                  <DateTimePicker
+                    value={customTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={handleTimeChange}
+                    locale="zh-TW"
+                    minuteInterval={1}
+                    style={styles.dateTimePicker}
+                  />
+                </View>
+                <SafeAreaView edges={['bottom']} />
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Point cost breakdown - ONLY SHOWN HERE */}
         <View style={[styles.costCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
@@ -869,6 +1068,34 @@ const styles = StyleSheet.create({
   timeOptionText: {
     fontSize: typography.fontSize.sm,
   },
+  customTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    marginTop: spacing[2],
+  },
+  customTimeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  customTimeLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  customTimeRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  customTimeValue: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+  },
   costCard: {
     borderRadius: borderRadius.xl,
     borderWidth: 1,
@@ -939,5 +1166,44 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    borderTopLeftRadius: borderRadius['2xl'],
+    borderTopRightRadius: borderRadius['2xl'],
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: 1,
+  },
+  pickerHeaderButton: {
+    paddingVertical: spacing[1],
+    paddingHorizontal: spacing[2],
+  },
+  pickerTitle: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  pickerCancelText: {
+    fontSize: typography.fontSize.base,
+  },
+  pickerConfirmText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  pickerContent: {
+    paddingVertical: spacing[2],
+  },
+  dateTimePicker: {
+    width: '100%',
+    height: 200,
   },
 });
