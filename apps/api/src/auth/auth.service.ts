@@ -862,7 +862,7 @@ export class AuthService {
     const publicKey = key.getPublicKey();
 
     // 驗證 token
-    const appleClientId = this.configService.get<string>('APPLE_CLIENT_ID') || 'com.bbbeeep.mobile';
+    const appleClientId = this.configService.get<string>('APPLE_CLIENT_ID') || 'com.ubeep.mobile';
 
     const decoded = jwt.verify(identityToken, publicKey, {
       algorithms: ['RS256'],
