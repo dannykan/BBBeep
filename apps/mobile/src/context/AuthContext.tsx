@@ -17,6 +17,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (phone: string, code: string) => Promise<void>;
   passwordLogin: (phone: string, password: string) => Promise<void>;
+  licensePlateLogin: (licensePlate: string, password: string) => Promise<void>;
   appleLogin: () => Promise<void>;
   lineLogin: () => Promise<void>;
   logout: () => Promise<void>;
@@ -86,6 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 密碼登入
   const passwordLogin = async (phone: string, password: string) => {
     const response = await authApi.passwordLogin(phone, password);
+    await mobileStorageAdapter.setToken(response.access_token);
+    // 登入後立即獲取完整用戶資料（包含點數）
+    const fullUserData = await usersApi.getMe();
+    await mobileStorageAdapter.setUser(fullUserData);
+    setUser(fullUserData);
+  };
+
+  // 車牌 + 密碼登入
+  const licensePlateLogin = async (licensePlate: string, password: string) => {
+    const response = await authApi.licensePlateLogin(licensePlate, password);
     await mobileStorageAdapter.setToken(response.access_token);
     // 登入後立即獲取完整用戶資料（包含點數）
     const fullUserData = await usersApi.getMe();
@@ -194,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         passwordLogin,
+        licensePlateLogin,
         appleLogin,
         lineLogin,
         logout,

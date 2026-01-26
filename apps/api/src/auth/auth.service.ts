@@ -10,6 +10,8 @@ import { PasswordLoginDto } from './dto/password-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LineLoginDto } from './dto/line-login.dto';
 import { AppleLoginDto } from './dto/apple-login.dto';
+import { LicensePlateLoginDto } from './dto/license-plate-login.dto';
+import { normalizeLicensePlate } from '../common/utils/license-plate-format';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
@@ -243,6 +245,84 @@ export class AuthService {
     // 生成 JWT token
     const payload = { sub: user.id, phone: user.phone };
     const token = this.jwtService.sign(payload);
+
+    return {
+      access_token: token,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        nickname: user.nickname,
+        licensePlate: user.licensePlate,
+        userType: user.userType,
+        vehicleType: user.vehicleType,
+        points: user.points,
+        hasCompletedOnboarding: user.hasCompletedOnboarding,
+        email: user.email,
+      },
+    };
+  }
+
+  // 車牌 + 密碼登入（App Store 審核用，也可作為一般登入方式）
+  async licensePlateLogin(dto: LicensePlateLoginDto) {
+    // 正規化車牌號碼
+    const normalizedPlate = normalizeLicensePlate(dto.licensePlate);
+
+    // 檢查密碼錯誤次數限制
+    const errorKey = `plate_password_error:${normalizedPlate}`;
+    const errorCount = await this.redis.get(errorKey);
+    const errors = errorCount ? parseInt(errorCount, 10) : 0;
+
+    // 查找用戶
+    const user = await this.prisma.user.findFirst({
+      where: { licensePlate: normalizedPlate },
+    });
+
+    if (!user) {
+      // 用戶不存在，增加錯誤次數
+      const newErrorCount = errors + 1;
+      await this.redis.set(errorKey, newErrorCount.toString(), 300);
+
+      const remaining = 5 - newErrorCount;
+      if (remaining <= 0) {
+        await this.redis.del(errorKey);
+        throw new UnauthorizedException('連續5次輸入錯誤，請稍後再試');
+      }
+
+      throw new UnauthorizedException(`車牌或密碼錯誤，剩餘 ${remaining} 次機會`);
+    }
+
+    // 檢查用戶是否被封鎖
+    if (user.isBlockedByAdmin) {
+      throw new UnauthorizedException('您的帳號已被停用，如有疑問請聯繫客服');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('此帳號尚未設置密碼');
+    }
+
+    // 驗證密碼
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      const newErrorCount = errors + 1;
+      await this.redis.set(errorKey, newErrorCount.toString(), 300);
+
+      const remaining = 5 - newErrorCount;
+      if (remaining <= 0) {
+        await this.redis.del(errorKey);
+        throw new UnauthorizedException('連續5次輸入錯誤，請稍後再試');
+      }
+
+      throw new UnauthorizedException(`車牌或密碼錯誤，剩餘 ${remaining} 次機會`);
+    }
+
+    // 驗證成功，清除錯誤計數
+    await this.redis.del(errorKey);
+
+    // 生成 JWT token
+    const payload = { sub: user.id, phone: user.phone };
+    const token = this.jwtService.sign(payload);
+
+    console.log(`[LICENSE_PLATE_LOGIN] User logged in: ${user.id}, plate: ${normalizedPlate}`);
 
     return {
       access_token: token,

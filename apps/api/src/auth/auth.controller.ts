@@ -9,6 +9,7 @@ import { PasswordLoginDto } from './dto/password-login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LineLoginDto } from './dto/line-login.dto';
 import { AppleLoginDto } from './dto/apple-login.dto';
+import { LicensePlateLoginDto } from './dto/license-plate-login.dto';
 import { Public } from './decorators/public.decorator';
 
 @ApiTags('Auth')
@@ -65,6 +66,16 @@ export class AuthController {
   @ApiResponse({ status: 401, description: '手機號碼或密碼錯誤' })
   async passwordLogin(@Body() dto: PasswordLoginDto) {
     return this.authService.passwordLogin(dto);
+  }
+
+  @Public()
+  @Post('license-plate-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '車牌 + 密碼登入' })
+  @ApiResponse({ status: 200, description: '登入成功' })
+  @ApiResponse({ status: 401, description: '車牌或密碼錯誤' })
+  async licensePlateLogin(@Body() dto: LicensePlateLoginDto) {
+    return this.authService.licensePlateLogin(dto);
   }
 
   @Public()

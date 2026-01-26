@@ -62,4 +62,10 @@ export const authApi = {
     getApiClient()
       .post<LoginResponse>('/auth/apple/login', { identityToken, fullName, email })
       .then((res) => res.data),
+
+  // 車牌 + 密碼登入
+  licensePlateLogin: (licensePlate: string, password: string) =>
+    getApiClient()
+      .post<LoginResponse>('/auth/license-plate-login', { licensePlate, password })
+      .then((res) => res.data),
 };

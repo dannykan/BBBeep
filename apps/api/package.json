@@ -24,6 +24,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:seed-bbp2999": "ts-node prisma/seed-bbp2999.ts",
+    "prisma:seed-test-account": "ts-node prisma/seed-test-account.ts",
     "prisma:reset-users": "ts-node prisma/reset-users.ts",
     "prisma:reset-redis": "ts-node prisma/reset-redis.ts",
     "prisma:reset-all": "pnpm prisma:reset-users && pnpm prisma:reset-redis",
