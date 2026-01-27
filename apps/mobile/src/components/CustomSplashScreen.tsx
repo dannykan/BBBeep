@@ -10,25 +10,16 @@ import {
   Image,
   StyleSheet,
   Animated,
-  Dimensions,
-  useColorScheme,
 } from 'react-native';
 
-const { width } = Dimensions.get('window');
-
 // 品牌主色藍
-const BRAND_BLUE = '#4A6FA5';
+const BRAND_BLUE = '#3B82F6';
 
-// Light mode 顏色
-const LIGHT_COLORS = {
-  background: '#F6F6F4', // 與 ThemeContext 一致
-  tagline: '#6B6B6B', // muted-foreground
-};
-
-// Dark mode 顏色
-const DARK_COLORS = {
-  background: '#121212',
-  tagline: '#9CA3AF',
+// Splash screen 固定使用藍色背景、白色文字
+const SPLASH_COLORS = {
+  background: BRAND_BLUE,
+  tagline: '#FFFFFF',
+  dots: '#FFFFFF',
 };
 
 interface CustomSplashScreenProps {
@@ -36,9 +27,7 @@ interface CustomSplashScreenProps {
 }
 
 export default function CustomSplashScreen({ onFinish }: CustomSplashScreenProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
+  const colors = SPLASH_COLORS;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -134,7 +123,7 @@ export default function CustomSplashScreen({ onFinish }: CustomSplashScreenProps
 
         {/* Tagline */}
         <Text style={[styles.tagline, { color: colors.tagline }]}>
-          路上提醒平台
+          一鍵提醒，避免衝突{'\n'}讓道路溝通更友善
         </Text>
 
         {/* Loading dots */}
@@ -187,25 +176,27 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
-    borderRadius: 16, // rounded-2xl
+    borderRadius: 24, // rounded-3xl
     overflow: 'hidden',
     marginBottom: 32,
-    // 陰影效果 - drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08))
+    // 強化陰影效果
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
   logo: {
     width: '100%',
     height: '100%',
   },
   tagline: {
-    fontSize: 14, // text-sm
+    fontSize: 16,
     letterSpacing: 1,
-    fontWeight: '400',
+    fontWeight: '500',
     marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -218,6 +209,6 @@ const styles = StyleSheet.create({
     width: 8, // w-2
     height: 8, // h-2
     borderRadius: 4,
-    backgroundColor: BRAND_BLUE, // #4A6FA5
+    backgroundColor: '#FFFFFF',
   },
 });

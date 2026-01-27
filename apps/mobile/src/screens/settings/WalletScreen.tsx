@@ -1,6 +1,6 @@
 /**
  * Wallet Screen
- * 點數錢包頁面 - 對齊 Web 版本設計
+ * 點數錢包頁面 - Warm Blue 設計
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -29,15 +29,12 @@ import {
   type PurchaseError,
   type Product,
 } from 'react-native-iap';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import { getTotalPoints, pointsApi } from '@bbbeeep/shared';
-import type { PointHistory } from '@bbbeeep/shared';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
+import { getTotalPoints, pointsApi, usersApi } from '@bbbeeep/shared';
+import type { PointHistory, TrialStatusResponse } from '@bbbeeep/shared';
+import GradientBackground from '../../components/GradientBackground';
 
 // IAP 產品 ID（需要在 App Store Connect 設定對應的產品）
 const IAP_SKUS = Platform.select({
@@ -75,6 +72,7 @@ export default function WalletScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [iapProducts, setIapProducts] = useState<Product[]>([]);
   const [iapConnected, setIapConnected] = useState(false);
+  const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
 
   const loadPointHistory = useCallback(async () => {
     try {
@@ -87,6 +85,22 @@ export default function WalletScreen() {
       setIsRefreshing(false);
     }
   }, []);
+
+  const loadTrialStatus = useCallback(async () => {
+    try {
+      const data = await usersApi.getTrialStatus();
+      setTrialStatus(data);
+    } catch (error) {
+      console.error('Failed to load trial status:', error);
+    }
+  }, []);
+
+  // 載入試用狀態
+  useFocusEffect(
+    useCallback(() => {
+      loadTrialStatus();
+    }, [loadTrialStatus])
+  );
 
   // 初始化 IAP
   useEffect(() => {
@@ -173,6 +187,7 @@ export default function WalletScreen() {
     setIsRefreshing(true);
     refreshUser();
     loadPointHistory();
+    loadTrialStatus();
   };
 
   const handleRecharge = async (option: typeof RECHARGE_OPTIONS[0]) => {
@@ -232,46 +247,48 @@ export default function WalletScreen() {
   const getHistoryIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     switch (type) {
       case 'recharge':
-        return 'trending-up';
+        return 'wallet';
       case 'spend':
-        return 'trending-down';
+        return 'paper-plane';
       case 'earn':
-        return 'trending-up';
+        return 'gift';
       case 'bonus':
-        return 'gift-outline';
+        return 'gift';
       default:
         return 'swap-horizontal';
     }
   };
 
-  const getHistoryColor = (amount: number) => {
-    return amount > 0 ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#F87171' : '#DC2626');
+  const getHistoryIconColors = (type: string, amount: number) => {
+    if (type === 'spend' || amount < 0) {
+      return { bg: isDark ? 'rgba(220, 38, 38, 0.15)' : '#FEE2E2', icon: isDark ? '#F87171' : '#DC2626' };
+    }
+    if (type === 'earn' || type === 'bonus') {
+      return { bg: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7', icon: isDark ? '#4ADE80' : '#22C55E' };
+    }
+    if (type === 'recharge') {
+      return { bg: colors.primary.bg, icon: colors.primary.DEFAULT };
+    }
+    return { bg: colors.muted.DEFAULT, icon: colors.text.secondary };
+  };
+
+  const getHistoryAmountColor = (type: string, amount: number) => {
+    if (amount < 0) return '#DC2626';
+    if (type === 'earn' || type === 'bonus') return '#22C55E';
+    if (type === 'recharge') return colors.primary.DEFAULT;
+    return '#22C55E';
   };
 
   const totalPoints = getTotalPoints(user);
 
   return (
     <View style={styles.container}>
-      {/* Header with safe area */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color={colors.muted.foreground}
-              />
-              <Text style={styles.backText}>返回</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>點數</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>點數</Text>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         style={styles.scrollView}
@@ -285,143 +302,161 @@ export default function WalletScreen() {
           />
         }
       >
-        {/* Points Balance Card */}
+        {/* Gradient Balance Card */}
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>目前剩餘</Text>
-          <Text style={styles.balanceValue}>{totalPoints}</Text>
-          <Text style={styles.balanceUnit}>點</Text>
+          <GradientBackground
+            colors={['#3B82F6', '#1D4ED8']}
+            angle={135}
+            style={styles.balanceGradient}
+          />
+          <View style={styles.balanceContent}>
+            <View style={styles.balanceIconContainer}>
+              <Ionicons name="wallet" size={22} color="#FFFFFF" />
+            </View>
+            <Text style={styles.balanceLabel}>目前點數餘額</Text>
+            <Text style={styles.balanceValue}>{totalPoints}</Text>
+            <Text style={styles.balanceUnit}>點</Text>
+            {/* Trial Badge */}
+            {trialStatus?.isInTrial && trialStatus.daysRemaining > 0 && (
+              <View style={styles.trialBadge}>
+                <Ionicons name="time-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.trialBadgeText}>免費試用剩餘 {trialStatus.daysRemaining} 天</Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Recharge Options */}
+        {/* Low Balance Warning */}
+        {totalPoints <= 4 && (
+          <View style={styles.warningCard}>
+            <Ionicons name="warning" size={20} color="#F59E0B" />
+            <View style={styles.warningTextContainer}>
+              <Text style={styles.warningTitle}>點數不足</Text>
+              <Text style={styles.warningSubtitle}>
+                餘額偏低，建議購買點數以繼續發送提醒
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Purchase Plans Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>儲值方案</Text>
-          <View style={styles.rechargeOptions}>
-            {RECHARGE_OPTIONS.map((option) => (
-              <View
-                key={option.points}
-                style={[
-                  styles.rechargeOption,
-                  option.popular && styles.rechargeOptionPopular,
-                ]}
-              >
-                <View style={styles.rechargeOptionLeft}>
-                  <View style={styles.rechargePointsRow}>
-                    <Text style={styles.rechargePoints}>{option.points}</Text>
-                    <Text style={styles.rechargePointsUnit}>點</Text>
-                    {option.popular && (
-                      <View style={styles.popularBadge}>
-                        <Text style={styles.popularBadgeText}>推薦</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.rechargePrice}>NT$ {option.price}</Text>
-                </View>
+          <Text style={styles.sectionTitle}>購買點數</Text>
+
+          {/* 2x2 Grid */}
+          <View style={styles.plansGrid}>
+            <View style={styles.plansRow}>
+              {RECHARGE_OPTIONS.slice(0, 2).map((option) => (
                 <TouchableOpacity
-                  style={styles.purchaseButton}
+                  key={option.points}
+                  style={[
+                    styles.planCard,
+                    option.popular && styles.planCardPopular,
+                  ]}
                   onPress={() => handleRecharge(option)}
                   disabled={isRecharging}
                   activeOpacity={0.7}
                 >
                   {isRecharging && selectedOption === option.points ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary.DEFAULT}
+                      style={styles.planLoading}
+                    />
                   ) : (
-                    <Text style={styles.purchaseButtonText}>購買</Text>
+                    <>
+                      {option.popular ? (
+                        <View style={styles.popularBadge}>
+                          <Text style={styles.popularBadgeText}>熱門</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.planSpacer} />
+                      )}
+                      <Text style={styles.planPoints}>{option.points}</Text>
+                      <Text style={styles.planPointsLabel}>點</Text>
+                      <Text style={styles.planPrice}>NT$ {option.price}</Text>
+                    </>
                   )}
                 </TouchableOpacity>
-              </View>
-            ))}
+              ))}
+            </View>
+            <View style={styles.plansRow}>
+              {RECHARGE_OPTIONS.slice(2, 4).map((option) => (
+                <TouchableOpacity
+                  key={option.points}
+                  style={styles.planCard}
+                  onPress={() => handleRecharge(option)}
+                  disabled={isRecharging}
+                  activeOpacity={0.7}
+                >
+                  {isRecharging && selectedOption === option.points ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary.DEFAULT}
+                      style={styles.planLoading}
+                    />
+                  ) : (
+                    <>
+                      <View style={styles.planSpacer} />
+                      <Text style={styles.planPoints}>{option.points}</Text>
+                      <Text style={styles.planPointsLabel}>點</Text>
+                      <Text style={styles.planPrice}>NT$ {option.price}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
         {/* Point History */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>點數紀錄</Text>
-          <View style={styles.historyCard}>
+          <View style={styles.historyList}>
             {isLoadingHistory ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color={colors.primary.DEFAULT} />
               </View>
             ) : pointHistory.length > 0 ? (
               <>
-                {pointHistory.slice(0, 10).map((history, index) => (
-                  <View
-                    key={history.id}
-                    style={[
-                      styles.historyItem,
-                      index < Math.min(pointHistory.length, 10) - 1 && styles.historyItemBorder,
-                    ]}
-                  >
-                    <View style={styles.historyLeft}>
-                      <Ionicons
-                        name={getHistoryIcon(history.type)}
-                        size={16}
-                        color={getHistoryColor(history.amount)}
-                      />
-                      <View style={styles.historyInfo}>
-                        <Text style={styles.historyDescription} numberOfLines={1}>
-                          {history.description}
-                        </Text>
-                        <Text style={styles.historyTime}>
-                          {formatTime(history.createdAt)}
-                        </Text>
+                {pointHistory.slice(0, 10).map((history) => {
+                  const iconColors = getHistoryIconColors(history.type, history.amount);
+                  return (
+                    <View key={history.id} style={styles.historyItem}>
+                      <View style={styles.historyLeft}>
+                        <View style={[styles.historyIconContainer, { backgroundColor: iconColors.bg }]}>
+                          <Ionicons
+                            name={getHistoryIcon(history.type)}
+                            size={16}
+                            color={iconColors.icon}
+                          />
+                        </View>
+                        <View style={styles.historyInfo}>
+                          <Text style={styles.historyDescription} numberOfLines={1}>
+                            {history.description}
+                          </Text>
+                          <Text style={styles.historyTime}>
+                            {formatTime(history.createdAt)}
+                          </Text>
+                        </View>
                       </View>
+                      <Text
+                        style={[
+                          styles.historyAmount,
+                          { color: getHistoryAmountColor(history.type, history.amount) },
+                        ]}
+                      >
+                        {history.amount > 0 ? '+' : ''}{history.amount}
+                      </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.historyAmount,
-                        { color: getHistoryColor(history.amount) },
-                      ]}
-                    >
-                      {history.amount > 0 ? '+' : ''}{history.amount}
-                    </Text>
-                  </View>
-                ))}
-                {pointHistory.length > 10 && (
-                  <View style={styles.moreRecords}>
-                    <Text style={styles.moreRecordsText}>
-                      還有 {pointHistory.length - 10} 筆記錄
-                    </Text>
-                  </View>
-                )}
+                  );
+                })}
               </>
             ) : (
               <View style={styles.emptyHistory}>
                 <Text style={styles.emptyHistoryText}>暫無紀錄</Text>
               </View>
             )}
-          </View>
-        </View>
-
-        {/* Points Pricing Info */}
-        <View style={styles.section}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>車況提醒</Text>
-              <Text style={styles.infoValue}>1 點</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>行車安全提醒（模板）</Text>
-              <Text style={styles.infoValue}>1 點</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>行車安全提醒（補充文字）</Text>
-              <Text style={styles.infoValue}>4 點</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>AI 協助改寫</Text>
-              <Text style={styles.infoValue}>+1 點</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>讚美感謝</Text>
-              <Text style={[styles.infoValue, styles.infoValueFree]}>免費</Text>
-            </View>
-            <View style={styles.infoDivider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>收到讚美回饋</Text>
-              <Text style={[styles.infoValue, styles.infoValueFree]}>+1 點</Text>
-            </View>
-            <View style={styles.infoDivider} />
-            <Text style={styles.infoNote}>點數永久有效</Text>
           </View>
         </View>
       </ScrollView>
@@ -436,256 +471,232 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       backgroundColor: colors.background,
     },
 
-  // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[1],
-  },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 80,
-  },
+    // Header
+    safeArea: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text.primary,
+    },
 
-  // Scroll Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing[6],
-    gap: spacing[6],
-  },
+    // Scroll Content
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 24,
+      gap: 24,
+    },
 
-  // Balance Card
-  balanceCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    padding: spacing[6],
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    alignItems: 'center',
-  },
-  balanceLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    marginBottom: spacing[2],
-  },
-  balanceValue: {
-    fontSize: 56,
-    fontWeight: typography.fontWeight.bold as any,
-    color: colors.primary.dark,
-    fontVariant: ['tabular-nums'],
-  },
-  balanceUnit: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginTop: spacing[1],
-  },
+    // Balance Card
+    balanceCard: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    balanceGradient: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    balanceContent: {
+      padding: 20,
+      alignItems: 'center',
+      gap: 8,
+    },
+    balanceIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    balanceLabel: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.8)',
+    },
+    balanceValue: {
+      fontSize: 36,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      fontVariant: ['tabular-nums'],
+    },
+    balanceUnit: {
+      fontSize: 16,
+      color: 'rgba(255, 255, 255, 0.8)',
+    },
+    trialBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 16,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginTop: 4,
+    },
+    trialBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: '#FFFFFF',
+    },
 
-  // Section
-  section: {
-    gap: spacing[3],
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
+    // Warning Card
+    warningCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      backgroundColor: '#FFFBEB',
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: '#FEF3C7',
+    },
+    warningTextContainer: {
+      flex: 1,
+      gap: 4,
+    },
+    warningTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#92400E',
+    },
+    warningSubtitle: {
+      fontSize: 13,
+      color: '#B45309',
+      lineHeight: 18,
+    },
 
-  // Recharge Options
-  rechargeOptions: {
-    gap: spacing[2],
-  },
-  rechargeOption: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rechargeOptionPopular: {
-    borderColor: `${colors.primary.DEFAULT}50`,
-  },
-  rechargeOptionLeft: {
-    flex: 1,
-  },
-  rechargePointsRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing[1.5],
-  },
-  rechargePoints: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-    fontVariant: ['tabular-nums'],
-  },
-  rechargePointsUnit: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
-  popularBadge: {
-    backgroundColor: `${colors.primary.DEFAULT}15`,
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[0.5],
-    borderRadius: borderRadius.sm,
-    marginLeft: spacing[1],
-  },
-  popularBadgeText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.primary.DEFAULT,
-  },
-  rechargePrice: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginTop: spacing[1],
-    fontVariant: ['tabular-nums'],
-  },
-  purchaseButton: {
-    backgroundColor: colors.primary.DEFAULT,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.md,
-    minWidth: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  purchaseButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.primary.foreground,
-  },
+    // Section
+    section: {
+      gap: 12,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
 
-  // History Card
-  historyCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    overflow: 'hidden',
-  },
-  loadingContainer: {
-    padding: spacing[8],
-    alignItems: 'center',
-  },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing[4],
-  },
-  historyItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-  },
-  historyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    flex: 1,
-    minWidth: 0,
-  },
-  historyInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  historyDescription: {
-    fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-    marginBottom: spacing[0.5],
-  },
-  historyTime: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    fontVariant: ['tabular-nums'],
-  },
-  historyAmount: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-    fontVariant: ['tabular-nums'],
-  },
-  moreRecords: {
-    padding: spacing[4],
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSolid,
-  },
-  moreRecordsText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
-  emptyHistory: {
-    padding: spacing[8],
-    alignItems: 'center',
-  },
-  emptyHistoryText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
+    // Plans Grid
+    plansGrid: {
+      gap: 12,
+    },
+    plansRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    planCard: {
+      flex: 1,
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 8,
+    },
+    planCardPopular: {
+      backgroundColor: colors.primary.bg,
+      borderWidth: 2,
+      borderColor: colors.primary.DEFAULT,
+    },
+    planSpacer: {
+      height: 18,
+    },
+    planLoading: {
+      height: 100,
+    },
+    popularBadge: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    popularBadgeText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    planPoints: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: colors.text.primary,
+      fontVariant: ['tabular-nums'],
+    },
+    planPointsLabel: {
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
+    planPrice: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primary.DEFAULT,
+    },
 
-  // Info Card
-  infoCard: {
-    backgroundColor: `${colors.muted.DEFAULT}30`,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    gap: spacing[2],
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  infoLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.foreground,
-  },
-  infoValue: {
-    fontSize: typography.fontSize.xs,
-    color: colors.foreground,
-  },
-  infoValueFree: {
-    color: isDark ? '#4ADE80' : '#16A34A',
-  },
-  infoDivider: {
-    height: 1,
-    backgroundColor: `${colors.borderSolid}50`,
-    marginVertical: spacing[1],
-  },
-  infoNote: {
-    fontSize: typography.fontSize.xs,
-    color: colors.foreground,
-    marginTop: spacing[1],
-  },
+    // History List
+    historyList: {
+      gap: 8,
+    },
+    loadingContainer: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 12,
+      padding: 32,
+      alignItems: 'center',
+    },
+    historyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 12,
+      padding: 14,
+    },
+    historyLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+      minWidth: 0,
+    },
+    historyIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    historyInfo: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    historyDescription: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    historyTime: {
+      fontSize: 11,
+      color: colors.text.secondary,
+    },
+    historyAmount: {
+      fontSize: 16,
+      fontWeight: '600',
+      fontVariant: ['tabular-nums'],
+    },
+    emptyHistory: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 12,
+      padding: 32,
+      alignItems: 'center',
+    },
+    emptyHistoryText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+    },
   });

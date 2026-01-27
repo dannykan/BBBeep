@@ -74,7 +74,7 @@ export default function LandingScreen({ navigation }: Props) {
             </View>
             <View style={styles.featureTextContainer}>
               <Text style={styles.featureTitle}>善意提醒</Text>
-              <Text style={styles.featureDescription}>透過車牌發送友善訊息</Text>
+              <Text style={styles.featureDescription}>僅限對方查看的私密提醒</Text>
             </View>
           </View>
 
@@ -84,7 +84,7 @@ export default function LandingScreen({ navigation }: Props) {
             </View>
             <View style={styles.featureTextContainer}>
               <Text style={styles.featureTitle}>安全匿名</Text>
-              <Text style={styles.featureDescription}>保護您的隱私安全</Text>
+              <Text style={styles.featureDescription}>不顯示身分、不公開、不留紀錄</Text>
             </View>
           </View>
         </View>
@@ -92,7 +92,7 @@ export default function LandingScreen({ navigation }: Props) {
         {/* Trial Badge */}
         <View style={styles.trialBadge}>
           <Ionicons name="gift-outline" size={16} color="#D97706" />
-          <Text style={styles.trialBadgeText}>新用戶 7 天試用期送 50 點！</Text>
+          <Text style={styles.trialBadgeText}>新用戶 7 天試用，免費體驗</Text>
         </View>
       </ScrollView>
 
