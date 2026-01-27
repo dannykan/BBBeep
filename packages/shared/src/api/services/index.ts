@@ -27,3 +27,4 @@ export {
   type CreateActivityData,
   type UserActivity,
 } from './activities';
+export { appContentApi, type AppContentResponse } from './app-content';

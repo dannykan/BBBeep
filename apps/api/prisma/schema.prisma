@@ -265,6 +265,16 @@ model InviteSettings {
   updatedAt            DateTime @updatedAt
 }
 
+// 應用程式內容設定（Landing Page、首頁標題等）
+model AppContent {
+  id                String   @id @default(cuid())
+  landingTagline    String   @default("讓路上多一點善意 💙")
+  landingSubtext    String   @default("透過車牌發送善意提醒\n讓每一位駕駛更安全")
+  homeHeroTitle     String   @default("讓路上多一點善意 💙")
+  homeHeroSubtitle  String   @default("透過車牌發送善意提醒，讓駕駛更安全")
+  updatedAt         DateTime @updatedAt
+}
+
 model InviteHistory {
   id            String       @id @default(cuid())
   inviterId     String

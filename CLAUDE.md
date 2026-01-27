@@ -169,12 +169,31 @@ Swagger UI available at `http://localhost:3001/api` when backend is running.
 
 ## Design System
 
-Modern Calm Blue theme:
-- Primary: `#4A6FA5`
-- CTA: `#3C5E8C`
-- Selected state: `#EAF0F8`
+**Warm Blue Theme (2026-01 更新):**
+- Primary: `#3B82F6`
+- Primary Dark: `#2563EB`
+- Primary Light: `#93C5FD`
+- Primary BG: `#EFF6FF`
+- Warning/CTA: `#F59E0B`
 
-Mobile supports dark mode via `ThemeContext`.
+Theme files: `packages/shared/src/theme/` (colors, typography, spacing)
+Mobile dark mode: `apps/mobile/src/context/ThemeContext.tsx`
+
+### Pencil 設計轉移注意事項
+
+從 Pencil 設計工具轉移 UI 到 React Native 時的常見問題與解法：
+
+| 問題 | 原因 | 解法 |
+|------|------|------|
+| **漸層不顯示** | `expo-linear-gradient` 不支援 New Architecture | 使用 `react-native-svg` 建立 `GradientBackground` 組件 |
+| **多個漸層衝突** | SVG gradient ID 重複 | 每個 gradient 實例生成唯一 ID (`gradient-${++counter}`) |
+| **漸層不隨內容擴展** | SVG 絕對定位無法自動調整大小 | 使用 `onLayout` 測量容器尺寸，傳入 SVG 的 width/height |
+| **Tab Bar 消失** | 樣式衝突或高度未設定 | 在 `MainNavigator` 明確設定 `tabBarStyle` 的 height 和 padding |
+| **Theme 屬性變更** | 更新 theme 後舊屬性被移除 | 全域搜尋替換 (如 `borderSolid` → `border`) |
+
+**GradientBackground 組件:** `apps/mobile/src/components/GradientBackground.tsx`
+- 支援 colors, start, end, borderRadius
+- 使用 `onLayout` + explicit dimensions 確保 SVG 正確填滿容器
 
 ## Deployment
 
@@ -211,7 +230,7 @@ When displaying or calculating point costs, follow these rules strictly:
 | Text (AI 審核通過) | Any | 2 點 |
 | Text (堅持原內容) | Any | 4 點 |
 | AI 優化 | Any | 2 點 |
-| Voice | Any | 6 點 |
+| Voice | Any | 8 點 |
 
 **Key Implementation:**
 - `SendContext.tsx` → `getPointCost()` handles the logic

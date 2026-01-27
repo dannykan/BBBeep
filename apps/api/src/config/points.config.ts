@@ -46,7 +46,7 @@ export const POINTS_CONFIG = {
   voice: {
     enabled: true,        // 是否啟用語音功能
     maxDuration: 15,      // 最大秒數
-    cost: 6,              // 發送成本
+    cost: 8,              // 發送成本
     trialMaxUsage: 2,     // 試用期最多使用次數
   },
 

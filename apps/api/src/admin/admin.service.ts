@@ -840,4 +840,31 @@ export class AdminService {
       recentLogs,
     };
   }
+
+  // ========== 應用程式內容管理 ==========
+
+  // 取得應用程式內容
+  async getAppContent() {
+    let content = await this.prisma.appContent.findFirst();
+    if (!content) {
+      content = await this.prisma.appContent.create({
+        data: {},
+      });
+    }
+    return content;
+  }
+
+  // 更新應用程式內容
+  async updateAppContent(data: {
+    landingTagline?: string;
+    landingSubtext?: string;
+    homeHeroTitle?: string;
+    homeHeroSubtitle?: string;
+  }) {
+    const content = await this.getAppContent();
+    return this.prisma.appContent.update({
+      where: { id: content.id },
+      data,
+    });
+  }
 }

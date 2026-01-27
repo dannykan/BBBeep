@@ -563,7 +563,7 @@ export default function CustomScreen({ navigation }: Props) {
               <TextInput
                 style={[
                   styles.textArea,
-                  { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid, color: colors.foreground },
+                  { backgroundColor: colors.card.DEFAULT, borderColor: colors.border, color: colors.foreground },
                 ]}
                 value={customText}
                 onChangeText={setCustomText}
@@ -709,7 +709,7 @@ export default function CustomScreen({ navigation }: Props) {
                     <Text style={[styles.optionText, { color: '#FFFFFF' }]}>使用語音</Text>
                   </View>
                   <View style={styles.pointBadge}>
-                    <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>6 點</Text>
+                    <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>8 點</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -762,7 +762,7 @@ export default function CustomScreen({ navigation }: Props) {
                   style={[
                     styles.submitOption,
                     styles.directOption,
-                    { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+                    { backgroundColor: colors.card.DEFAULT, borderColor: colors.border },
                     isLoading && styles.buttonDisabled,
                   ]}
                   onPress={handleDirectSubmit}

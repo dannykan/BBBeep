@@ -289,9 +289,9 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       return 1;
     }
 
-    // Voice mode: 6 points for voice
+    // Voice mode: 8 points for voice
     if (state.sendMode === 'voice') {
-      return 6;
+      return 8;
     }
 
     // AI 優化版本扣 2 點

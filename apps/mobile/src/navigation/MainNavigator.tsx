@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import type { MainTabParamList } from './types';
@@ -20,15 +20,17 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function InboxTabIcon({ focused, color, size }: { focused: boolean; color: string; size: number }) {
+function InboxTabIcon({ focused, size }: { focused: boolean; color: string; size: number }) {
   const { unreadCount } = useUnread();
   const { colors } = useTheme();
-  const iconName = focused ? 'mail' : 'mail-outline';
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <View style={styles.iconContainer}>
-      <Ionicons name={iconName} size={size} color={color} />
+      <Image
+        source={focused ? require('../../assets/inbox-icon.png') : require('../../assets/inbox-icon-inactive.png')}
+        style={{ width: size + 12, height: size + 12 }}
+      />
       {unreadCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -75,7 +77,15 @@ export default function MainNavigator() {
         tabBarInactiveTintColor: colors.muted.foreground,
         tabBarStyle: {
           backgroundColor: colors.card.DEFAULT,
-          borderTopColor: colors.borderSolid,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: 85,
+          paddingTop: 8,
+          paddingBottom: 28,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
         },
         headerShown: false,
       })}
@@ -118,7 +128,7 @@ const createStyles = (colors: ThemeColors) =>
       position: 'absolute',
       top: -4,
       right: -10,
-      backgroundColor: colors.destructive.DEFAULT,
+      backgroundColor: '#F59E0B',
       borderRadius: 10,
       minWidth: 16,
       height: 16,
@@ -129,6 +139,6 @@ const createStyles = (colors: ThemeColors) =>
     badgeText: {
       fontSize: 10,
       fontWeight: '700',
-      color: colors.destructive.foreground,
+      color: '#FFFFFF',
     },
   });

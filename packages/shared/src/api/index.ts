@@ -26,6 +26,21 @@ export {
   inviteApi,
   adminInviteApi,
   activitiesApi,
+  draftsApi,
+  appContentApi,
 } from './services';
 
-export type { UploadFile, AiModerationResponse, ActivityType, CreateActivityData, UserActivity } from './services';
+export type {
+  UploadFile,
+  AiModerationResponse,
+  ActivityType,
+  CreateActivityData,
+  UserActivity,
+  VoiceDraft,
+  ParsedPlate,
+  ParsedVehicle,
+  ParsedEvent,
+  DraftStatus,
+  CreateDraftRequest,
+  AppContentResponse,
+} from './services';

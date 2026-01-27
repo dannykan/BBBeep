@@ -613,17 +613,17 @@ export default function MessageEditScreen({ navigation, route }: Props) {
   const aiModerationPassed = !effectiveIsUsingTemplate && !isAiModerating &&
     aiModeration?.isAppropriate && !combinedWarning.hasIssue;
 
-  // Get category display info
+  // Get category display info (matching CategoryScreenV2 design)
   const getCategoryInfo = () => {
     switch (selectedCategory) {
       case '車況提醒':
-        return { icon: vehicleType === 'car' ? 'car' : 'motorcycle', iconFamily: 'fontawesome' };
+        return { icon: 'alert-circle-outline', iconColor: '#F59E0B', iconBgColor: '#FEF3C7' };
       case '行車安全':
-        return { icon: 'warning-outline', iconFamily: 'ionicons' };
+        return { icon: 'shield-checkmark-outline', iconColor: colors.primary.DEFAULT, iconBgColor: '#DBEAFE' };
       case '讚美感謝':
-        return { icon: 'heart-outline', iconFamily: 'ionicons' };
+        return { icon: 'heart', iconColor: '#22C55E', iconBgColor: '#DCFCE7' };
       default:
-        return { icon: 'chatbubble-outline', iconFamily: 'ionicons' };
+        return { icon: 'chatbubble-outline', iconColor: '#A855F7', iconBgColor: '#F3E8FF' };
     }
   };
 
@@ -648,14 +648,10 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                 {displayLicensePlate(targetPlate)}
               </Text>
             </View>
-            <View style={[styles.categoryBadge, { backgroundColor: colors.card.DEFAULT }]}>
-              {categoryInfo.iconFamily === 'ionicons' ? (
-                <Ionicons name={categoryInfo.icon as any} size={14} color={colors.primary.DEFAULT} />
-              ) : (
-                <FontAwesome6 name={categoryInfo.icon as any} size={12} color={colors.primary.DEFAULT} />
-              )}
-              <Text style={[styles.categoryBadgeText, { color: colors.foreground }]}>
-                {selectedCategory}
+            <View style={[styles.categoryBadge, { backgroundColor: categoryInfo.iconBgColor }]}>
+              <Ionicons name={categoryInfo.icon as any} size={14} color={categoryInfo.iconColor} />
+              <Text style={[styles.categoryBadgeText, { color: categoryInfo.iconColor }]}>
+                {selectedCategory === '其他情況' ? '其他' : selectedCategory}
               </Text>
             </View>
           </View>
@@ -689,7 +685,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         borderColor:
                           selectedSituationId === situation.id
                             ? colors.primary.DEFAULT
-                            : colors.borderSolid,
+                            : colors.border,
                       },
                     ]}
                     onPress={() => handleSelectSituation(situation.id)}
@@ -779,7 +775,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                       styles.messageInput,
                       {
                         backgroundColor: colors.card.DEFAULT,
-                        borderColor: colors.borderSolid,
+                        borderColor: colors.border,
                         color: colors.foreground,
                       },
                     ]}
@@ -831,7 +827,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                     <Text style={[styles.playbackTime, { color: colors.foreground }]}>
                       {formatDuration(isPlaying ? playbackPosition : 0)} / {formatDuration(voiceRecording.duration)}
                     </Text>
-                    <View style={[styles.progressBar, { backgroundColor: colors.borderSolid }]}>
+                    <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
                       <View
                         style={[
                           styles.progressFill,
@@ -928,7 +924,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                   {/* 按鈕 */}
                   <View style={styles.aiPreviewButtons}>
                     <TouchableOpacity
-                      style={[styles.aiPreviewButton, styles.aiPreviewButtonSecondary, { borderColor: colors.borderSolid }]}
+                      style={[styles.aiPreviewButton, styles.aiPreviewButtonSecondary, { borderColor: colors.border }]}
                       onPress={handleCancelAiPreview}
                       activeOpacity={0.7}
                     >
@@ -995,7 +991,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                             </Text>
                           </View>
                           <View style={styles.pointBadge}>
-                            <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>6 點</Text>
+                            <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>8 點</Text>
                           </View>
                         </TouchableOpacity>
                       )}
@@ -1053,7 +1049,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                           {/* 堅持原內容 - 語音 */}
                           {hasVoice && (
                             <TouchableOpacity
-                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.borderSolid }]}
+                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.border }]}
                               onPress={handleVoiceSubmit}
                               activeOpacity={0.8}
                             >
@@ -1064,7 +1060,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                                 </Text>
                               </View>
                               <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>6 點</Text>
+                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>8 點</Text>
                               </View>
                             </TouchableOpacity>
                           )}
@@ -1072,7 +1068,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                           {/* 堅持原內容 - 文字 */}
                           {!hasVoice && (
                             <TouchableOpacity
-                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.borderSolid }]}
+                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.border }]}
                               onPress={handleTextSubmit}
                               activeOpacity={0.8}
                             >
@@ -1117,26 +1113,26 @@ const styles = StyleSheet.create({
   plateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.lg,
+    gap: 8,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 12,
   },
   plateText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold as any,
+    fontSize: 14,
+    fontWeight: '600',
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[1.5],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.lg,
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 12,
   },
   categoryBadgeText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
+    fontSize: 14,
+    fontWeight: '500',
   },
   situationSection: {
     marginBottom: spacing[5],

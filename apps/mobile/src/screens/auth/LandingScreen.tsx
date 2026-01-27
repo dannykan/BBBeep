@@ -1,10 +1,10 @@
 /**
  * Landing Screen
  * 首次開啟 App 的歡迎頁面
- * 設計對齊 Web 版本 - UBeep 新設計
+ * 對齊 Pencil 設計 - Warm Blue
  */
 
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,23 +17,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
-import { useTheme } from '../../context/ThemeContext';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
-
-// Import logo
-const ubeepLogo = require('../../../assets/ubeep-logo.png');
+import { useTheme, ThemeColors } from '../../context/ThemeContext';
+import { appContentApi } from '@bbbeeep/shared';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Landing'>;
 
 export default function LandingScreen({ navigation }: Props) {
   const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  // App content state with defaults
+  const [tagline, setTagline] = useState('讓路上多一點善意 💙');
+  const [subtext, setSubtext] = useState('透過車牌發送善意提醒\n讓每一位駕駛更安全');
+
+  useEffect(() => {
+    appContentApi.getContent()
+      .then((content) => {
+        if (content.landingTagline) setTagline(content.landingTagline);
+        if (content.landingSubtext) setSubtext(content.landingSubtext);
+      })
+      .catch((error) => {
+        console.log('Failed to load app content, using defaults:', error);
+      });
+  }, []);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -41,260 +50,192 @@ export default function LandingScreen({ navigation }: Props) {
       >
         {/* Logo & Hero Section */}
         <View style={styles.heroSection}>
-          <View style={styles.logoContainer}>
-            <Image source={ubeepLogo} style={styles.logo} resizeMode="cover" />
-          </View>
+          {/* Logo */}
+          <Image
+            source={require('../../../assets/ubeep-logo.png')}
+            style={styles.logo}
+          />
 
-          <Text style={[styles.heroTitle, { color: colors.foreground }]}>
-            一個更溫和的路上提醒選擇
-          </Text>
+          {/* Brand Name */}
+          <Text style={styles.brandName}>UBeep</Text>
 
-          <Text style={[styles.heroSubtitle, { color: colors.muted.foreground }]}>
-            私下提醒對方，不對罵、不公開，也不會變成衝突
-          </Text>
-        </View>
+          {/* Tagline */}
+          <Text style={styles.tagline}>{tagline}</Text>
 
-        {/* Trial Card - Highlighted */}
-        <View style={[
-          styles.trialCard,
-          {
-            backgroundColor: isDark ? 'rgba(74, 111, 165, 0.15)' : '#EAF0F8',
-            borderColor: isDark ? 'rgba(74, 111, 165, 0.3)' : 'rgba(74, 111, 165, 0.2)',
-          }
-        ]}>
-          <Text style={[styles.trialTitle, { color: isDark ? '#7AA3D4' : '#3C5E8C' }]}>
-            立即體驗完整提醒流程
-          </Text>
-          <View style={styles.trialBadgeRow}>
-            <Ionicons
-              name="time-outline"
-              size={16}
-              color={isDark ? '#7AA3D4' : '#3C5E8C'}
-            />
-            <Text style={[styles.trialBadgeText, { color: isDark ? '#7AA3D4' : '#3C5E8C' }]}>
-              免費試用 7 天｜贈送 50 點提醒次數
-            </Text>
-          </View>
-          <Text style={[styles.trialNote, { color: isDark ? '#5A8FD4' : '#4A6FA5' }]}>
-            試用結束後，未使用點數不會保留
-          </Text>
+          {/* Subtext */}
+          <Text style={styles.subtext}>{subtext}</Text>
         </View>
 
         {/* Feature Cards */}
         <View style={styles.featureCards}>
-          <View style={[styles.featureCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={18}
-              color={colors.primary.DEFAULT}
-              style={styles.featureIcon}
-            />
-            <Text style={[styles.featureText, { color: colors.foreground }]}>
-              不公開車牌與任何個人資訊
-            </Text>
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIconContainer, styles.featureIconBlue]}>
+              <Ionicons name="chatbubble-outline" size={20} color="#3B82F6" />
+            </View>
+            <View style={styles.featureTextContainer}>
+              <Text style={styles.featureTitle}>善意提醒</Text>
+              <Text style={styles.featureDescription}>透過車牌發送友善訊息</Text>
+            </View>
           </View>
 
-          <View style={[styles.featureCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
-            <Ionicons
-              name="shield-outline"
-              size={18}
-              color={colors.primary.DEFAULT}
-              style={styles.featureIcon}
-            />
-            <Text style={[styles.featureText, { color: colors.foreground }]}>
-              只提醒、不對話，不會變成爭執
-            </Text>
-          </View>
-
-          <View style={[styles.featureCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
-            <Ionicons
-              name="phone-portrait-outline"
-              size={18}
-              color={colors.primary.DEFAULT}
-              style={styles.featureIcon}
-            />
-            <Text style={[styles.featureText, { color: colors.foreground }]}>
-              流程簡單，30 秒內就能送出
-            </Text>
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIconContainer, styles.featureIconAmber]}>
+              <Ionicons name="shield-outline" size={20} color="#D97706" />
+            </View>
+            <View style={styles.featureTextContainer}>
+              <Text style={styles.featureTitle}>安全匿名</Text>
+              <Text style={styles.featureDescription}>保護您的隱私安全</Text>
+            </View>
           </View>
         </View>
 
-        {/* CTA Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: isDark ? '#4A6FA5' : '#3C5E8C' }]}
-            onPress={() => navigation.navigate('Login')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>開始免費提醒</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.buttonHint, { color: colors.muted.foreground }]}>
-            包含 7 天試用與 50 點提醒次數
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
-            onPress={() => navigation.navigate('Login')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="log-in-outline"
-              size={18}
-              color={colors.foreground}
-            />
-            <Text style={[styles.secondaryButtonText, { color: colors.foreground }]}>
-              已有帳號登入
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Footer Notes */}
-        <View style={styles.footerNotes}>
-          <Text style={[styles.footerNote, { color: colors.muted.foreground }]}>
-            駕駛、騎士、行人都能使用
-          </Text>
-          <Text style={[styles.footerNote, { color: colors.muted.foreground }]}>
-            UBeep 是提醒工具，不是聊天平台，也不會變成對話
-          </Text>
+        {/* Trial Badge */}
+        <View style={styles.trialBadge}>
+          <Ionicons name="gift-outline" size={16} color="#D97706" />
+          <Text style={styles.trialBadgeText}>新用戶 7 天試用期送 50 點！</Text>
         </View>
       </ScrollView>
+
+      {/* Bottom CTA Section */}
+      <View style={styles.bottomSection}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.primaryButtonText}>立即開始</Text>
+          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing[6],
-  },
+const createStyles = (colors: ThemeColors, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.background : '#FFFFFF',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 40,
+    },
 
-  // Hero Section
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: spacing[6],
-  },
-  logoContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: spacing[4],
-  },
-  logo: {
-    width: '100%',
-    height: '100%',
-  },
-  heroTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.normal as any,
-    textAlign: 'center',
-    lineHeight: typography.fontSize.xl * typography.lineHeight.relaxed,
-    marginBottom: spacing[2],
-  },
-  heroSubtitle: {
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
-    paddingHorizontal: spacing[2],
-  },
+    // Hero Section
+    heroSection: {
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    logo: {
+      width: 80,
+      height: 80,
+      marginBottom: 16,
+    },
+    brandName: {
+      fontSize: 40,
+      fontWeight: '700',
+      color: '#3B82F6',
+      marginBottom: 16,
+    },
+    tagline: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: isDark ? colors.text.primary : '#1F2937',
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    subtext: {
+      fontSize: 15,
+      color: isDark ? colors.text.secondary : '#6B7280',
+      textAlign: 'center',
+      lineHeight: 24,
+    },
 
-  // Trial Card
-  trialCard: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    padding: spacing[5],
-    alignItems: 'center',
-    marginBottom: spacing[4],
-  },
-  trialTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold as any,
-    marginBottom: spacing[2.5],
-  },
-  trialBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[2],
-  },
-  trialBadgeText: {
-    fontSize: typography.fontSize.sm,
-  },
-  trialNote: {
-    fontSize: typography.fontSize.xs,
-    marginTop: spacing[1],
-  },
+    // Feature Cards
+    featureCards: {
+      gap: 12,
+      marginBottom: 24,
+    },
+    featureCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: isDark ? colors.card.DEFAULT : '#F8FAFC',
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#E2E8F0',
+      borderRadius: 16,
+      padding: 16,
+    },
+    featureIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureIconBlue: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+    },
+    featureIconAmber: {
+      backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+    },
+    featureTextContainer: {
+      flex: 1,
+      gap: 2,
+    },
+    featureTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: isDark ? colors.text.primary : '#1F2937',
+    },
+    featureDescription: {
+      fontSize: 14,
+      color: isDark ? colors.text.secondary : '#6B7280',
+    },
 
-  // Feature Cards
-  featureCards: {
-    gap: spacing[2.5],
-    marginBottom: spacing[6],
-  },
-  featureCard: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    padding: spacing[3.5],
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  featureIcon: {
-    marginRight: spacing[3],
-  },
-  featureText: {
-    fontSize: typography.fontSize.sm,
-    flex: 1,
-  },
+    // Trial Badge
+    trialBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+      borderRadius: 20,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      alignSelf: 'center',
+    },
+    trialBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#D97706',
+    },
 
-  // Action Buttons
-  actionButtons: {
-    marginBottom: spacing[5],
-  },
-  primaryButton: {
-    borderRadius: borderRadius.xl,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-  },
-  buttonHint: {
-    fontSize: typography.fontSize.xs,
-    textAlign: 'center',
-    marginTop: spacing[2],
-    marginBottom: spacing[3],
-  },
-  secondaryButton: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
-  secondaryButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-  },
-
-  // Footer Notes
-  footerNotes: {
-    gap: spacing[2],
-  },
-  footerNote: {
-    fontSize: typography.fontSize.xs,
-    textAlign: 'center',
-    lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-  },
-});
+    // Bottom Section
+    bottomSection: {
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 16,
+      backgroundColor: isDark ? colors.background : '#FFFFFF',
+    },
+    primaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#3B82F6',
+      borderRadius: 16,
+      height: 56,
+    },
+    primaryButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+  });

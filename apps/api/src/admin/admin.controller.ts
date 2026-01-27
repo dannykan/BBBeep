@@ -539,4 +539,36 @@ export class AdminController {
       limit: limit ? parseInt(limit) : 50,
     });
   }
+
+  // ========== 應用程式內容管理 ==========
+
+  @Get('app-content')
+  @ApiOperation({ summary: '取得應用程式內容（Landing Page、首頁標題等）' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getAppContent(@Headers('x-admin-token') token: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getAppContent();
+  }
+
+  @Put('app-content')
+  @ApiOperation({ summary: '更新應用程式內容' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async updateAppContent(
+    @Headers('x-admin-token') token: string,
+    @Body() data: {
+      landingTagline?: string;
+      landingSubtext?: string;
+      homeHeroTitle?: string;
+      homeHeroSubtitle?: string;
+    },
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.updateAppContent(data);
+  }
 }

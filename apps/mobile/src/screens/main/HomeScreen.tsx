@@ -1,9 +1,9 @@
 /**
  * Home Screen
- * 首頁 - 對齊 Web 版本設計
+ * 首頁 - Warm Blue 設計
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,15 +16,17 @@ import {
   ActivityIndicator,
   Platform,
   Linking,
+  Image,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import VehicleIcon from '../../components/VehicleIcon';
+import GradientBackground from '../../components/GradientBackground';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import { getTotalPoints, displayLicensePlate, inviteApi, usersApi } from '@bbbeeep/shared';
+import { getTotalPoints, displayLicensePlate, inviteApi, usersApi, appContentApi } from '@bbbeeep/shared';
 import type { InviteCodeResponse, TrialStatusResponse } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
@@ -33,7 +35,6 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../theme';
 
 export default function HomeScreen() {
@@ -41,7 +42,7 @@ export default function HomeScreen() {
   const { user, refreshUser } = useAuth();
   const { colors, isDark } = useTheme();
   const { unreadCount, refreshUnreadCount } = useUnread();
-  const { unreadReplyCount, refreshUnreadReplyCount, hasUnreadReplies } = useUnreadReply();
+  const { unreadReplyCount, refreshUnreadReplyCount } = useUnreadReply();
   const { pendingCount, fetchPendingCount } = useDraft();
   const [refreshing, setRefreshing] = useState(false);
   const [inviteData, setInviteData] = useState<InviteCodeResponse | null>(null);
@@ -49,19 +50,22 @@ export default function HomeScreen() {
   const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
   const [isLoadingTrial, setIsLoadingTrial] = useState(true);
 
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  // App content (dynamic titles)
+  const [heroTitle, setHeroTitle] = useState('讓路上多一點善意 💙');
+  const [heroSubtitle, setHeroSubtitle] = useState('透過車牌發送善意提醒，讓駕駛更安全');
 
-  // 當畫面獲得焦點時刷新用戶資料（包含點數）
-  useFocusEffect(
-    useCallback(() => {
-      refreshUser();
-      loadInviteData();
-      loadTrialStatus();
-      refreshUnreadCount();
-      refreshUnreadReplyCount();
-      fetchPendingCount();
-    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount, refreshUnreadReplyCount, fetchPendingCount])
-  );
+  useEffect(() => {
+    appContentApi.getContent()
+      .then((content) => {
+        if (content.homeHeroTitle) setHeroTitle(content.homeHeroTitle);
+        if (content.homeHeroSubtitle) setHeroSubtitle(content.homeHeroSubtitle);
+      })
+      .catch((error) => {
+        console.log('Failed to load app content, using defaults:', error);
+      });
+  }, []);
+
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const loadInviteData = useCallback(async () => {
     try {
@@ -85,6 +89,18 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // 當畫面獲得焦點時刷新用戶資料（包含點數）
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+      loadInviteData();
+      loadTrialStatus();
+      refreshUnreadCount();
+      refreshUnreadReplyCount();
+      fetchPendingCount();
+    }, [refreshUser, loadInviteData, loadTrialStatus, refreshUnreadCount, refreshUnreadReplyCount, fetchPendingCount])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), refreshUnreadReplyCount(), loadTrialStatus(), fetchPendingCount()]);
@@ -100,11 +116,6 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Failed to share:', error);
     }
-  };
-
-  const handleCopyInviteCode = () => {
-    if (!inviteData?.inviteCode) return;
-    Alert.alert('已複製', `邀請碼 ${inviteData.inviteCode} 已複製到剪貼簿`);
   };
 
   const totalPoints = getTotalPoints(user);
@@ -137,20 +148,16 @@ export default function HomeScreen() {
       const { status: existingStatus, canAskAgain } = await Audio.getPermissionsAsync();
 
       if (existingStatus === 'granted') {
-        // 已有權限，直接導航
         navigation.navigate('QuickRecord');
         return;
       }
 
       if (canAskAgain) {
-        // 還可以詢問，嘗試請求權限
         const { status } = await Audio.requestPermissionsAsync();
         if (status === 'granted') {
           navigation.navigate('QuickRecord');
         }
-        // 如果用戶拒絕，什麼都不做
       } else {
-        // 之前已經拒絕過，無法再詢問，引導去設定
         showMicPermissionDeniedAlert();
       }
     } catch (error) {
@@ -162,54 +169,39 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header with safe area */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              {user?.nickname && (
-                <Text style={styles.headerLabel}>暱稱</Text>
-              )}
-              <View style={styles.userInfo}>
-                <VehicleIcon
-                  userType={user?.userType}
-                  vehicleType={user?.vehicleType}
-                  size={16}
-                  color={colors.foreground}
-                />
-                {user?.nickname ? (
-                  <View style={styles.userTextContainer}>
-                    <Text style={styles.userName}>{user.nickname}</Text>
-                    {user.licensePlate && (
-                      <Text style={styles.licensePlate}>
-                        {displayLicensePlate(user.licensePlate)}
-                      </Text>
-                    )}
-                  </View>
-                ) : (
-                  <Text style={styles.userName}>
-                    {user?.userType === 'pedestrian'
-                      ? '行人用戶'
-                      : user?.licensePlate
-                      ? displayLicensePlate(user.licensePlate)
-                      : ''}
-                  </Text>
-                )}
+      {/* Header */}
+      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          {/* Left: Logo and Brand */}
+          <View style={styles.headerLeft}>
+            <Image
+              source={require('../../../assets/ubeep-logo.png')}
+              style={styles.logo}
+            />
+            <Text style={styles.brandText}>UBeep</Text>
+          </View>
+
+          {/* Right: Trial and Points */}
+          <View style={styles.headerRight}>
+            {/* Trial Badge */}
+            {trialStatus?.isInTrial && trialStatus.daysRemaining > 0 && (
+              <View style={styles.trialBadge}>
+                <Ionicons name="time-outline" size={14} color="#8B5CF6" />
+                <Text style={styles.trialText}>試用 {trialStatus.daysRemaining} 天</Text>
               </View>
-            </View>
+            )}
+
             <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={() => navigation.navigate('Settings')}
+              style={styles.pointsBadge}
+              onPress={() => navigation.navigate('Wallet')}
+              activeOpacity={0.7}
             >
-              <Ionicons
-                name="settings-outline"
-                size={20}
-                color={colors.muted.foreground}
-              />
+              <Ionicons name="wallet" size={18} color="#F59E0B" />
+              <Text style={styles.pointsText}>{totalPoints}</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
-      </View>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         style={styles.scrollView}
@@ -219,269 +211,201 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 狀態列：點數 + 試用期 */}
-        <View style={styles.statusRow}>
-          {/* 點數顯示 */}
-          <TouchableOpacity
-            style={[
-              styles.pointsChip,
-              isLowPoints && styles.pointsChipWarning,
-            ]}
-            onPress={() => navigation.navigate('Wallet')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={isLowPoints ? 'alert-circle' : 'diamond'}
-              size={16}
-              color={isLowPoints ? colors.destructive.DEFAULT : colors.primary.DEFAULT}
-            />
-            <Text style={[
-              styles.pointsChipText,
-              isLowPoints && styles.pointsChipTextWarning,
-            ]}>
-              {totalPoints} 點
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={14}
-              color={colors.muted.foreground}
-            />
-          </TouchableOpacity>
+        {/* Hero Section */}
+        <GradientBackground
+          colors={[colors.primary.DEFAULT, '#1D4ED8']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroSection}
+        >
+          <Text style={styles.heroTitle}>{heroTitle}</Text>
+          <Text style={styles.heroSubtitle}>{heroSubtitle}</Text>
 
-          {/* 試用期顯示 */}
-          {trialStatus?.isInTrial && (
-            <View style={styles.trialChip}>
-              <Ionicons
-                name="time"
-                size={14}
-                color="#10B981"
-              />
-              <Text style={styles.trialChipText}>
-                試用期 {trialStatus.daysRemaining} 天
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* 點數不足警告 */}
-        {isLowPoints && (
-          <TouchableOpacity
-            style={styles.lowPointsBanner}
-            onPress={() => navigation.navigate('Wallet')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.lowPointsBannerContent}>
-              <Ionicons name="alert-circle" size={18} color={colors.destructive.DEFAULT} />
-              <Text style={styles.lowPointsBannerText}>點數即將用完，點此儲值</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.destructive.DEFAULT} />
-          </TouchableOpacity>
-        )}
-
-        {/* 發送提醒區塊 */}
-        <View style={styles.sendSection}>
-          <Text style={styles.sendSectionTitle}>發送提醒</Text>
-          <Text style={styles.sendSectionSubtitle}>一次性提醒，不開啟聊天</Text>
-
-          <View style={styles.sendButtonsRow}>
-            {/* 手動輸入 */}
+          <View style={styles.heroButtons}>
             <TouchableOpacity
-              style={[
-                styles.sendOptionCard,
-                { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
-                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
-              ]}
+              style={styles.heroButtonWhite}
               onPress={() => navigation.navigate('Send')}
               disabled={isLowPoints && totalPoints < 1}
               activeOpacity={0.8}
             >
-              <View style={[styles.sendOptionIconContainer, { backgroundColor: `${colors.primary.DEFAULT}15` }]}>
-                <Ionicons name="create-outline" size={28} color={colors.primary.DEFAULT} />
-              </View>
-              <Text style={[styles.sendOptionTitle, { color: colors.foreground }]}>
-                手動輸入
-              </Text>
-              <Text style={[styles.sendOptionDesc, { color: colors.muted.foreground }]}>
-                輸入車牌號碼{'\n'}選擇提醒類型
-              </Text>
+              <Ionicons name="create-outline" size={20} color={colors.primary.DEFAULT} />
+              <Text style={styles.heroButtonWhiteText}>手動輸入</Text>
             </TouchableOpacity>
 
-            {/* 快速錄音 */}
             <TouchableOpacity
-              style={[
-                styles.sendOptionCard,
-                styles.sendOptionPrimary,
-                { backgroundColor: colors.primary.DEFAULT },
-                isLowPoints && totalPoints < 1 && styles.sendButtonDisabled,
-              ]}
+              style={styles.heroButtonWarm}
               onPress={handleQuickRecordPress}
               disabled={isLowPoints && totalPoints < 1}
               activeOpacity={0.8}
             >
-              <View style={[styles.sendOptionIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <Ionicons name="mic" size={28} color={colors.primary.foreground} />
+              <Ionicons name="mic" size={20} color="#FFFFFF" />
+              <Text style={styles.heroButtonWarmText}>語音錄製</Text>
+            </TouchableOpacity>
+          </View>
+        </GradientBackground>
+
+        {/* User Profile Card */}
+        <View style={styles.userCard}>
+          <View style={styles.userAvatar}>
+            <VehicleIcon
+              userType={user?.userType}
+              vehicleType={user?.vehicleType}
+              size={28}
+              color={colors.primary.DEFAULT}
+            />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.userNickname}>{user?.nickname || '用戶'}</Text>
+            <View style={styles.userPlateRow}>
+              <View style={styles.userTypeBadge}>
+                <Text style={styles.userTypeBadgeText}>
+                  {user?.userType === 'pedestrian' ? '行人' : user?.vehicleType === 'motorcycle' ? '機車' : '汽車'}
+                </Text>
               </View>
-              <Text style={[styles.sendOptionTitle, { color: colors.primary.foreground }]}>
-                快速錄音
-              </Text>
-              <Text style={[styles.sendOptionDesc, { color: colors.primary.foreground, opacity: 0.85 }]}>
-                說出車牌和事件{'\n'}AI 自動辨識
-              </Text>
+              {user?.licensePlate && (
+                <Text style={styles.userPlateText}>{displayLicensePlate(user.licensePlate)}</Text>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.userEditButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Ionicons name="pencil" size={16} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Access Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>快速存取</Text>
+          <View style={styles.quickAccessGrid}>
+            {/* Sent Card */}
+            <TouchableOpacity
+              style={styles.quickAccessCard}
+              onPress={() => navigation.navigate('Sent')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickAccessIcon, { backgroundColor: colors.primary.bg }]}>
+                <Ionicons name="paper-plane" size={18} color={colors.primary.DEFAULT} />
+              </View>
+              <View style={styles.quickAccessTextGroup}>
+                <Text style={styles.quickAccessLabel}>發送紀錄</Text>
+                {unreadReplyCount > 0 && (
+                  <View style={styles.quickAccessBadge}>
+                    <Text style={styles.quickAccessBadgeText}>{unreadReplyCount > 99 ? '99+' : unreadReplyCount}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Inbox Card */}
+            <TouchableOpacity
+              style={styles.quickAccessCard}
+              onPress={() => navigation.navigate('Inbox')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickAccessIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Image
+                  source={require('../../../assets/inbox-icon-orange.png')}
+                  style={{ width: 38, height: 38 }}
+                />
+              </View>
+              <View style={styles.quickAccessTextGroup}>
+                <Text style={styles.quickAccessLabel}>提醒訊息</Text>
+                {unreadCount > 0 && (
+                  <View style={[styles.quickAccessBadge, { backgroundColor: '#F59E0B' }]}>
+                    <Text style={styles.quickAccessBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Voice Drafts Card */}
+        {pendingCount > 0 && (
+          <TouchableOpacity
+            style={styles.draftsCard}
+            onPress={() => navigation.navigate('Drafts')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.draftsLeft}>
+              <View style={styles.draftsIcon}>
+                <Ionicons name="mic" size={20} color="#8B5CF6" />
+              </View>
+              <View style={styles.draftsInfo}>
+                <Text style={styles.draftsLabel}>語音草稿</Text>
+                <Text style={styles.draftsCount}>{pendingCount} 則待處理</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+          </TouchableOpacity>
+        )}
+
+        {/* Invite Card */}
+        <GradientBackground
+          colors={['#DBEAFE', '#BFDBFE']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.inviteCard}
+        >
+          <Text style={styles.inviteTitle}>邀請好友 🎁</Text>
+          <Text style={styles.inviteSubtitle}>每成功邀請一位好友，雙方各獲得 10 點！</Text>
+
+          {isLoadingInvite ? (
+            <ActivityIndicator color={colors.primary.DEFAULT} size="small" style={{ marginTop: 12 }} />
+          ) : inviteData ? (
+            <>
+              {/* Invite Code Display */}
+              <View style={styles.inviteCodeContainer}>
+                <Text style={styles.inviteCodeLabel}>你的邀請碼</Text>
+                <Text style={styles.inviteCode}>{inviteData.inviteCode}</Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.inviteButtonsRow}>
+                <TouchableOpacity
+                  style={styles.inviteButtonPrimary}
+                  onPress={async () => {
+                    if (inviteData?.inviteCode) {
+                      try {
+                        await Share.share({ message: inviteData.inviteCode });
+                      } catch (error) {
+                        console.error('Failed to copy:', error);
+                      }
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.inviteButtonText}>複製邀請碼</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.inviteButtonSecondary}
+                  onPress={handleShareInviteCode}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="share-social-outline" size={16} color={colors.primary.DEFAULT} />
+                  <Text style={styles.inviteButtonSecondaryText}>分享好友</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null}
+        </GradientBackground>
+
         {/* Pedestrian Mode Notice */}
         {user?.userType === 'pedestrian' && (
           <View style={styles.pedestrianCard}>
-            <Ionicons
-              name="person-outline"
-              size={20}
-              color={colors.muted.foreground}
-            />
+            <Ionicons name="person-outline" size={20} color={colors.text.secondary} />
             <View style={styles.pedestrianTextContainer}>
               <Text style={styles.pedestrianTitle}>行人用戶模式</Text>
               <Text style={styles.pedestrianSubtitle}>
-                你可以發送提醒給汽車/機車駕駛{'\n'}
-                但無法收到提醒（因為沒有車牌號碼）
+                你可以發送提醒給汽車/機車駕駛，但無法收到提醒
               </Text>
             </View>
           </View>
         )}
-
-        {/* Quick Actions Grid */}
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => navigation.navigate('Inbox')}
-          >
-            <View style={styles.quickActionIconContainer}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color={colors.muted.foreground}
-              />
-              {unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.quickActionText}>提醒訊息</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => navigation.navigate('Sent')}
-          >
-            <View style={styles.quickActionIconContainer}>
-              <Ionicons
-                name="time-outline"
-                size={20}
-                color={colors.muted.foreground}
-              />
-              {unreadReplyCount > 0 && (
-                <View style={styles.replyBadge}>
-                  <Text style={styles.replyBadgeText}>
-                    {unreadReplyCount > 99 ? '99+' : unreadReplyCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.quickActionText}>發送記錄</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={() => navigation.navigate('Drafts')}
-          >
-            <View style={styles.quickActionIconContainer}>
-              <Ionicons
-                name="mic-outline"
-                size={20}
-                color={colors.muted.foreground}
-              />
-              {pendingCount > 0 && (
-                <View style={styles.draftBadge}>
-                  <Text style={styles.draftBadgeText}>
-                    {pendingCount > 99 ? '99+' : pendingCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.quickActionText}>語音草稿</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Invite Card */}
-        <View style={styles.inviteCard}>
-          <View style={styles.inviteHeader}>
-            <View style={styles.inviteIconContainer}>
-              <Ionicons
-                name="gift-outline"
-                size={20}
-                color={colors.primary.DEFAULT}
-              />
-            </View>
-            <View style={styles.inviteHeaderText}>
-              <Text style={styles.inviteTitle}>邀請好友賺點數</Text>
-              <Text style={styles.inviteReward}>你我各得 10 點！</Text>
-            </View>
-          </View>
-
-          {isLoadingInvite ? (
-            <View style={styles.inviteLoadingContainer}>
-              <ActivityIndicator color={colors.primary.DEFAULT} size="small" />
-              <Text style={styles.inviteLoadingText}>載入中...</Text>
-            </View>
-          ) : inviteData ? (
-            <View style={styles.inviteContent}>
-              {/* Invite code display */}
-              <View style={styles.inviteCodeCard}>
-                <Text style={styles.inviteCodeLabel}>我的邀請碼</Text>
-                <Text style={styles.inviteCodeText}>{inviteData.inviteCode}</Text>
-              </View>
-
-              {/* Copy and share buttons */}
-              <View style={styles.inviteButtonsRow}>
-                <TouchableOpacity
-                  style={styles.inviteOutlineButton}
-                  onPress={handleCopyInviteCode}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="copy-outline" size={16} color={colors.foreground} />
-                  <Text style={styles.inviteOutlineButtonText}>複製邀請碼</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.invitePrimaryButton}
-                  onPress={handleShareInviteCode}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="share-social-outline" size={16} color={colors.primary.foreground} />
-                  <Text style={styles.invitePrimaryButtonText}>分享給好友</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Invite stats */}
-              {inviteData.inviteCount > 0 && (
-                <View style={styles.inviteStats}>
-                  <Ionicons name="people-outline" size={16} color={colors.primary.DEFAULT} />
-                  <Text style={styles.inviteStatsText}>
-                    已邀請 <Text style={styles.inviteStatsBold}>{inviteData.inviteCount}</Text> 人，獲得{' '}
-                    <Text style={styles.inviteStatsHighlight}>{inviteData.totalRewards}</Text> 點
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.inviteLoadingContainer}>
-              <Text style={styles.inviteLoadingText}>無法載入邀請碼</Text>
-            </View>
-          )}
-        </View>
       </ScrollView>
     </View>
   );
@@ -495,50 +419,63 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     },
 
     // Header
-    headerContainer: {
-      backgroundColor: colors.card.DEFAULT,
-    },
     headerSafeArea: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     header: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
-      paddingHorizontal: spacing[6],
-      paddingVertical: spacing[4],
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingHorizontal: 24,
+      paddingVertical: 16,
     },
     headerLeft: {
-      flex: 1,
-    },
-    headerLabel: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      marginBottom: spacing[0.5],
-    },
-    userInfo: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 12,
     },
-    userTextContainer: {
-      flexDirection: 'column',
+    logo: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
     },
-    userName: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+    brandText: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.primary.DEFAULT,
     },
-    licensePlate: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      fontFamily: 'monospace',
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
-    settingsButton: {
-      padding: spacing[2],
-      borderRadius: borderRadius.lg,
+    trialBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: '#F3E8FF',
+      borderRadius: 16,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    trialText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#8B5CF6',
+    },
+    pointsBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: '#FFFBEB',
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    pointsText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#F59E0B',
     },
 
     // Content
@@ -546,347 +483,314 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       flex: 1,
     },
     scrollContent: {
-      padding: spacing[6],
-      gap: spacing[6],
+      padding: 24,
+      paddingTop: 16,
+      paddingBottom: 120,
+      gap: 24,
     },
 
-    // Status Row (Points + Trial)
-    statusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-      flexWrap: 'wrap',
+    // Hero Section
+    heroSection: {
+      borderRadius: 24,
+      padding: 24,
+      gap: 16,
     },
-    pointsChip: {
+    heroTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    heroSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.8)',
+      lineHeight: 21,
+    },
+    heroButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    heroButtonWhite: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[1.5],
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 16,
+      height: 52,
+    },
+    heroButtonWhiteText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.primary.DEFAULT,
+    },
+    heroButtonWarm: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#F59E0B',
+      borderRadius: 16,
+      height: 52,
+    },
+    heroButtonWarmText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+
+    // User Profile Card
+    userCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.full,
+      borderRadius: 16,
+      padding: 16,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
+      borderColor: colors.border,
     },
-    pointsChipWarning: {
-      borderColor: `${colors.destructive.DEFAULT}40`,
-      backgroundColor: `${colors.destructive.DEFAULT}08`,
+    userAvatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: colors.primary.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    pointsChipText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.semibold as any,
-      color: colors.foreground,
+    userInfo: {
+      flex: 1,
+      gap: 4,
     },
-    pointsChipTextWarning: {
-      color: colors.destructive.DEFAULT,
+    userNickname: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
     },
-    trialChip: {
+    userPlateRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[1],
-      backgroundColor: 'rgba(16, 185, 129, 0.1)',
-      borderRadius: borderRadius.full,
-      paddingHorizontal: spacing[2.5],
-      paddingVertical: spacing[1.5],
+      gap: 8,
     },
-    trialChipText: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
-      color: '#10B981',
+    userTypeBadge: {
+      backgroundColor: colors.primary.bg,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
     },
-    lowPointsBanner: {
+    userTypeBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.primary.DEFAULT,
+    },
+    userPlateText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.secondary,
+      letterSpacing: 1,
+    },
+    userEditButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.card.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    // Quick Access Section
+    sectionContainer: {
+      gap: 12,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    quickAccessGrid: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    quickAccessCard: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    quickAccessIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quickAccessTextGroup: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    quickAccessLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    quickAccessBadge: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      minWidth: 20,
+      alignItems: 'center',
+    },
+    quickAccessBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+
+    // Drafts Card
+    draftsCard: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: `${colors.destructive.DEFAULT}10`,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2.5],
-    },
-    lowPointsBannerContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-    },
-    lowPointsBannerText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.destructive.DEFAULT,
-      fontWeight: typography.fontWeight.medium as any,
-    },
-
-    // Send Section
-    sendSection: {
-      gap: spacing[3],
-    },
-    sendSectionTitle: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.semibold as any,
-      color: colors.foreground,
-    },
-    sendSectionSubtitle: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
-      marginTop: -spacing[2],
-    },
-    sendButtonsRow: {
-      flexDirection: 'row',
-      gap: spacing[3],
-    },
-    sendOptionCard: {
-      flex: 1,
-      borderRadius: borderRadius.xl,
-      padding: spacing[4],
-      borderWidth: 1,
-      alignItems: 'center',
-      gap: spacing[2],
-      ...shadows.sm,
-    },
-    sendOptionPrimary: {
-      borderWidth: 0,
-    },
-    sendOptionIconContainer: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: spacing[1],
-    },
-    sendOptionTitle: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.semibold as any,
-    },
-    sendOptionDesc: {
-      fontSize: typography.fontSize.xs,
-      textAlign: 'center',
-      lineHeight: typography.fontSize.xs * 1.5,
-    },
-    sendButtonDisabled: {
-      opacity: 0.5,
-    },
-
-    // Pedestrian Card
-    pedestrianCard: {
-      backgroundColor: isDark ? `${colors.muted.DEFAULT}` : `${colors.muted.DEFAULT}30`,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      padding: spacing[4],
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing[3],
-    },
-    pedestrianTextContainer: {
-      flex: 1,
-      gap: spacing[1],
-    },
-    pedestrianTitle: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
-    },
-    pedestrianSubtitle: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-    },
-
-    // Quick Actions Grid
-    quickActionsGrid: {
-      flexDirection: 'row',
-      gap: spacing[3],
-    },
-    quickActionButton: {
-      flex: 1,
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
+      borderRadius: 16,
+      padding: 16,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      paddingVertical: spacing[5],
+      borderColor: colors.border,
+    },
+    draftsLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    draftsIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: '#EDE9FE',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing[2],
     },
-    quickActionIconContainer: {
-      position: 'relative',
+    draftsInfo: {
+      gap: 2,
     },
-    quickActionText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.foreground,
+    draftsLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
     },
-    unreadBadge: {
-      position: 'absolute',
-      top: -6,
-      right: -10,
-      backgroundColor: colors.destructive.DEFAULT,
-      borderRadius: 10,
-      minWidth: 18,
-      height: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing[1],
-    },
-    unreadBadgeText: {
-      fontSize: 10,
-      fontWeight: typography.fontWeight.bold as any,
-      color: '#FFFFFF',
-    },
-    replyBadge: {
-      position: 'absolute',
-      top: -6,
-      right: -8,
-      minWidth: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: colors.destructive.DEFAULT,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing[1],
-    },
-    replyBadgeText: {
-      fontSize: 10,
-      fontWeight: typography.fontWeight.bold as any,
-      color: '#FFFFFF',
-    },
-    draftBadge: {
-      position: 'absolute',
-      top: -6,
-      right: -8,
-      minWidth: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: colors.warning.DEFAULT,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing[1],
-    },
-    draftBadgeText: {
-      fontSize: 10,
-      fontWeight: typography.fontWeight.bold as any,
-      color: '#FFFFFF',
+    draftsCount: {
+      fontSize: 12,
+      color: colors.text.secondary,
     },
 
     // Invite Card
     inviteCard: {
-      backgroundColor: colors.primary.soft,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: `${colors.primary.DEFAULT}20`,
-      padding: spacing[4],
-    },
-    inviteHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[3],
-      marginBottom: spacing[3],
-    },
-    inviteIconContainer: {
-      width: 40,
-      height: 40,
       borderRadius: 20,
-      backgroundColor: `${colors.primary.DEFAULT}15`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    inviteHeaderText: {
-      flex: 1,
+      padding: 20,
+      paddingBottom: 20,
+      gap: 16,
     },
     inviteTitle: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#1E40AF',
     },
-    inviteReward: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.primary.DEFAULT,
+    inviteSubtitle: {
+      fontSize: 13,
+      color: '#1D4ED8',
+      lineHeight: 18,
     },
-    inviteLoadingContainer: {
+    inviteCodeContainer: {
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
       alignItems: 'center',
-      paddingVertical: spacing[2],
-      gap: spacing[2],
-    },
-    inviteLoadingText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
-    },
-    inviteContent: {
-      gap: spacing[3],
-    },
-    inviteCodeCard: {
-      backgroundColor: isDark ? colors.card.DEFAULT : 'rgba(255, 255, 255, 0.8)',
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      borderRadius: borderRadius.lg,
-      padding: spacing[3],
-      alignItems: 'center',
+      gap: 6,
     },
     inviteCodeLabel: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      marginBottom: spacing[1],
+      fontSize: 12,
+      color: '#64748B',
+      fontWeight: '500',
     },
-    inviteCodeText: {
-      fontSize: typography.fontSize.xl,
-      fontWeight: typography.fontWeight.bold as any,
-      fontFamily: 'monospace',
-      letterSpacing: 4,
-      color: colors.foreground,
+    inviteCode: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.primary.dark,
+      letterSpacing: 2,
     },
     inviteButtonsRow: {
       flexDirection: 'row',
-      gap: spacing[2],
+      gap: 12,
     },
-    inviteOutlineButton: {
+    inviteButtonPrimary: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing[1.5],
-      backgroundColor: isDark ? colors.card.DEFAULT : 'rgba(255, 255, 255, 0.5)',
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
-      borderRadius: borderRadius.lg,
-      paddingVertical: spacing[2.5],
-    },
-    inviteOutlineButtonText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.foreground,
-    },
-    invitePrimaryButton: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing[1.5],
+      gap: 6,
       backgroundColor: colors.primary.DEFAULT,
-      borderRadius: borderRadius.lg,
-      paddingVertical: spacing[2.5],
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
     },
-    invitePrimaryButtonText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.primary.foreground,
-    },
-    inviteStats: {
+    inviteButtonSecondary: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing[2],
-      paddingTop: spacing[2],
-      borderTopWidth: 1,
-      borderTopColor: `${colors.primary.DEFAULT}10`,
+      gap: 6,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: colors.primary.DEFAULT,
     },
-    inviteStatsText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.foreground,
+    inviteButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
-    inviteStatsBold: {
-      fontWeight: typography.fontWeight.medium as any,
-    },
-    inviteStatsHighlight: {
-      fontWeight: typography.fontWeight.medium as any,
+    inviteButtonSecondaryText: {
+      fontSize: 14,
+      fontWeight: '600',
       color: colors.primary.DEFAULT,
     },
 
+    // Pedestrian Card
+    pedestrianCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      backgroundColor: colors.muted.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pedestrianTextContainer: {
+      flex: 1,
+      gap: 4,
+    },
+    pedestrianTitle: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    pedestrianSubtitle: {
+      fontSize: 13,
+      color: colors.text.secondary,
+      lineHeight: 18,
+    },
   });
