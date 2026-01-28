@@ -551,7 +551,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
               {transcript}
             </Text>
             <Text style={[styles.transcriptBannerHint, { color: colors.muted.foreground }]}>
-              僅供參考
+              預覽僅供參考
             </Text>
           </View>
         )}
