@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useDraft } from '../../context/DraftContext';
-import { useSend } from '../../context/SendContext';
 import { DraftCard } from './components/DraftCard';
 import type { VoiceDraft } from '@bbbeeep/shared';
 
@@ -25,7 +24,6 @@ export function DraftsScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const { drafts, isLoading, error, fetchDrafts, deleteDraft } = useDraft();
-  const { setVoiceMemo, resetSend } = useSend();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -61,21 +59,18 @@ export function DraftsScreen() {
 
   const handleSend = useCallback(
     (draft: VoiceDraft) => {
-      // 重置發送狀態並設定語音備忘
-      resetSend();
-      setVoiceMemo({
-        uri: draft.voiceUrl,
-        duration: draft.voiceDuration,
-        transcript: draft.transcript || undefined,
-        latitude: draft.latitude || undefined,
-        longitude: draft.longitude || undefined,
-        address: draft.address || undefined,
-        recordedAt: new Date(draft.createdAt),
+      // 直接導航到語音提醒頁面
+      navigation.navigate('QuickVoiceSend', {
+        voiceUri: draft.voiceUrl,
+        voiceDuration: draft.voiceDuration,
+        transcript: draft.transcript || '',
+        recordedAt: draft.createdAt,
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        address: draft.address,
       });
-      // 導航到發送流程
-      navigation.navigate('Main', { screen: 'Send' });
     },
-    [navigation, resetSend, setVoiceMemo],
+    [navigation],
   );
 
   const renderEmpty = () => (
