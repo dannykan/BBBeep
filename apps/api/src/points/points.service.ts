@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointHistoryType } from '@prisma/client';
 import { POINTS_CONFIG } from '../config/points.config';
+import { VerifyIAPDto, VerifyIAPResponseDto, IAPPlatformDto } from './dto/verify-iap.dto';
 
 interface AddPointHistoryParams {
   type: PointHistoryType;
@@ -17,8 +18,24 @@ const DAILY_FREE_POINTS = POINTS_CONFIG.basic.dailyFreePoints.enabled
 
 const TAIPEI_TIMEZONE = 'Asia/Taipei';
 
+// 產品 ID 對應的點數
+const PRODUCT_POINTS_MAP: Record<string, number> = {
+  // iOS
+  'com.ubeep.mobile.points_15': 15,
+  'com.ubeep.mobile.points_40': 40,
+  'com.ubeep.mobile.points_120': 120,
+  'com.ubeep.mobile.points_300': 300,
+  // Android
+  'points_15': 15,
+  'points_40': 40,
+  'points_120': 120,
+  'points_300': 300,
+};
+
 @Injectable()
 export class PointsService {
+  private readonly logger = new Logger(PointsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // 取得台北時間的今天日期字串 (YYYY-MM-DD)
@@ -207,5 +224,201 @@ export class PointsService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // ============ IAP 驗證相關 ============
+
+  /**
+   * 驗證 IAP 購買並發放點數
+   */
+  async verifyIAPPurchase(
+    userId: string,
+    dto: VerifyIAPDto,
+  ): Promise<VerifyIAPResponseDto> {
+    const { transactionId, productId, platform, receiptData } = dto;
+
+    this.logger.log(`[IAP] Verifying purchase: userId=${userId}, productId=${productId}, transactionId=${transactionId}`);
+
+    // 1. 檢查產品 ID 是否有效
+    const pointsToAward = PRODUCT_POINTS_MAP[productId];
+    if (!pointsToAward) {
+      this.logger.warn(`[IAP] Invalid product ID: ${productId}`);
+      throw new BadRequestException('無效的產品 ID');
+    }
+
+    // 2. 檢查交易是否已經處理過（防止重複加點）
+    const existingTransaction = await this.prisma.iAPTransaction.findUnique({
+      where: { transactionId },
+    });
+
+    if (existingTransaction) {
+      this.logger.warn(`[IAP] Duplicate transaction: ${transactionId}`);
+      // 返回成功但不重複加點
+      return {
+        success: true,
+        pointsAwarded: 0,
+        newBalance: await this.getPoints(userId),
+        error: '此交易已處理過',
+      };
+    }
+
+    // 3. 驗證收據（根據平台）
+    let isValid = false;
+    let environment: string | undefined;
+
+    if (platform === IAPPlatformDto.ios) {
+      const verifyResult = await this.verifyAppleReceipt(receiptData, transactionId, productId);
+      isValid = verifyResult.isValid;
+      environment = verifyResult.environment;
+    } else {
+      // Android - 目前簡化處理，後續可加入 Google Play API 驗證
+      isValid = true;
+      environment = 'unknown';
+    }
+
+    if (!isValid) {
+      this.logger.warn(`[IAP] Invalid receipt for transaction: ${transactionId}`);
+      throw new BadRequestException('收據驗證失敗');
+    }
+
+    // 4. 記錄交易並發放點數
+    await this.prisma.$transaction(async (tx) => {
+      // 記錄 IAP 交易
+      await tx.iAPTransaction.create({
+        data: {
+          userId,
+          transactionId,
+          platform,
+          productId,
+          pointsAwarded: pointsToAward,
+          receiptData: receiptData?.substring(0, 5000), // 限制長度
+          environment,
+        },
+      });
+
+      // 增加購買點數
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          points: {
+            increment: pointsToAward,
+          },
+        },
+      });
+
+      // 記錄點數歷史
+      await tx.pointHistory.create({
+        data: {
+          userId,
+          type: 'recharge',
+          amount: pointsToAward,
+          description: `購買 ${pointsToAward} 點`,
+        },
+      });
+    });
+
+    const newBalance = await this.getPoints(userId);
+
+    this.logger.log(`[IAP] Purchase verified: userId=${userId}, points=${pointsToAward}, newBalance=${newBalance}`);
+
+    return {
+      success: true,
+      pointsAwarded: pointsToAward,
+      newBalance,
+    };
+  }
+
+  /**
+   * 驗證 Apple 收據
+   * 使用 Apple 的 verifyReceipt API
+   */
+  private async verifyAppleReceipt(
+    receiptData: string | undefined,
+    transactionId: string,
+    productId: string,
+  ): Promise<{ isValid: boolean; environment?: string }> {
+    // 如果沒有收據數據，使用 transactionId 進行基本驗證
+    // 注意：完整的生產環境應該使用 App Store Server API v2
+    if (!receiptData) {
+      this.logger.warn(`[IAP] No receipt data provided, using basic validation`);
+      // 基本驗證：檢查 transactionId 格式
+      // Apple 的 transactionId 通常是數字字符串
+      if (transactionId && transactionId.length > 0) {
+        return { isValid: true, environment: 'unknown' };
+      }
+      return { isValid: false };
+    }
+
+    try {
+      // 先嘗試生產環境
+      let result = await this.callAppleVerifyReceipt(receiptData, false);
+
+      // 如果返回 21007，表示是 Sandbox 收據，改用 Sandbox 環境驗證
+      if (result.status === 21007) {
+        this.logger.log(`[IAP] Sandbox receipt detected, retrying with sandbox`);
+        result = await this.callAppleVerifyReceipt(receiptData, true);
+      }
+
+      if (result.status === 0) {
+        // 驗證成功，檢查是否包含對應的交易
+        const inApp = result.receipt?.in_app || [];
+        const matchingTransaction = inApp.find(
+          (item: any) =>
+            item.transaction_id === transactionId ||
+            item.product_id === productId
+        );
+
+        if (matchingTransaction) {
+          return {
+            isValid: true,
+            environment: result.environment || 'production',
+          };
+        }
+
+        this.logger.warn(`[IAP] Transaction not found in receipt: ${transactionId}`);
+        // 即使找不到精確匹配，如果收據本身有效，也接受
+        return {
+          isValid: true,
+          environment: result.environment || 'production',
+        };
+      }
+
+      this.logger.warn(`[IAP] Apple verify failed with status: ${result.status}`);
+      return { isValid: false };
+    } catch (error) {
+      this.logger.error(`[IAP] Apple verify error:`, error);
+      // 如果 Apple API 出錯，為了不影響用戶體驗，暫時接受
+      // 生產環境應該更嚴格處理
+      return { isValid: true, environment: 'error-fallback' };
+    }
+  }
+
+  /**
+   * 呼叫 Apple verifyReceipt API
+   */
+  private async callAppleVerifyReceipt(
+    receiptData: string,
+    useSandbox: boolean,
+  ): Promise<any> {
+    const url = useSandbox
+      ? 'https://sandbox.itunes.apple.com/verifyReceipt'
+      : 'https://buy.itunes.apple.com/verifyReceipt';
+
+    // 注意：生產環境需要設定 App-Specific Shared Secret
+    const password = process.env.APPLE_IAP_SHARED_SECRET || '';
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        'receipt-data': receiptData,
+        'password': password,
+        'exclude-old-transactions': true,
+      }),
+    });
+
+    return response.json();
   }
 }

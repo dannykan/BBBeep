@@ -65,6 +65,8 @@ module.exports = {
       'expo-font',
       // Firebase - requires expo-build-properties for native config
       '@react-native-firebase/app',
+      // Custom plugin to fix Firebase/GoogleUtilities Swift module compatibility
+      './plugins/withModularHeaders',
     ],
     splash: {
       image: './assets/splash-icon.png',

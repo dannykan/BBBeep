@@ -39,25 +39,25 @@ import GradientBackground from '../../components/GradientBackground';
 // IAP 產品 ID（需要在 App Store Connect 設定對應的產品）
 const IAP_SKUS = Platform.select({
   ios: [
-    'com.ubeep.mobile.points_10',
-    'com.ubeep.mobile.points_30',
-    'com.ubeep.mobile.points_50',
-    'com.ubeep.mobile.points_100',
+    'com.ubeep.mobile.points_15',
+    'com.ubeep.mobile.points_40',
+    'com.ubeep.mobile.points_120',
+    'com.ubeep.mobile.points_300',
   ],
   android: [
-    'points_10',
-    'points_30',
-    'points_50',
-    'points_100',
+    'points_15',
+    'points_40',
+    'points_120',
+    'points_300',
   ],
   default: [],
 });
 
 const RECHARGE_OPTIONS = [
-  { points: 10, price: 30, popular: false, productId: 'com.ubeep.mobile.points_10' },
-  { points: 30, price: 80, popular: true, productId: 'com.ubeep.mobile.points_30' },
-  { points: 50, price: 120, popular: false, productId: 'com.ubeep.mobile.points_50' },
-  { points: 100, price: 200, popular: false, productId: 'com.ubeep.mobile.points_100' },
+  { points: 15, price: 75, popular: false, productId: 'com.ubeep.mobile.points_15' },
+  { points: 40, price: 150, popular: true, productId: 'com.ubeep.mobile.points_40' },
+  { points: 120, price: 300, popular: false, productId: 'com.ubeep.mobile.points_120' },
+  { points: 300, price: 600, popular: false, productId: 'com.ubeep.mobile.points_300' },
 ];
 
 export default function WalletScreen() {
@@ -142,21 +142,58 @@ export default function WalletScreen() {
     // 監聽購買更新
     purchaseUpdateSubscription = purchaseUpdatedListener(
       async (purchase: Purchase) => {
-        const receipt = purchase.purchaseToken;
-        if (receipt) {
-          try {
-            // TODO: 向後端驗證收據並加點
-            // await pointsApi.verifyPurchase(receipt);
-            await refreshUser();
-            loadPointHistory();
-            Alert.alert('購買成功', '點數已加入您的帳戶！');
-          } catch (error) {
-            console.error('Purchase verification error:', error);
+        console.log('[IAP] Purchase updated:', JSON.stringify({
+          productId: purchase.productId,
+          transactionId: purchase.transactionId,
+          // iOS 用 transactionReceipt, Android 用 purchaseToken
+        }));
+
+        try {
+          // 取得交易 ID 和收據
+          // iOS: transactionId + transactionReceipt
+          // Android: purchaseToken (同時作為交易 ID 和收據)
+          const transactionId = Platform.OS === 'ios'
+            ? purchase.transactionId
+            : purchase.purchaseToken;
+
+          const receiptData = Platform.OS === 'ios'
+            ? purchase.transactionReceipt
+            : purchase.purchaseToken;
+
+          if (!transactionId) {
+            throw new Error('Missing transaction ID');
           }
 
-          // 完成交易
-          await finishTransaction({ purchase, isConsumable: true });
+          // 呼叫後端驗證 API
+          const result = await pointsApi.verifyIAP({
+            transactionId,
+            productId: purchase.productId,
+            platform: Platform.OS as 'ios' | 'android',
+            receiptData,
+          });
+
+          console.log('[IAP] Verify result:', result);
+
+          if (result.success) {
+            await refreshUser();
+            loadPointHistory();
+
+            if (result.pointsAwarded > 0) {
+              Alert.alert('購買成功', `已加入 ${result.pointsAwarded} 點到您的帳戶！`);
+            } else if (result.error) {
+              // 已處理過的交易
+              Alert.alert('提示', result.error);
+            }
+          } else {
+            throw new Error(result.error || '驗證失敗');
+          }
+        } catch (error: any) {
+          console.error('[IAP] Purchase verification error:', error);
+          Alert.alert('加點失敗', error.message || '購買成功但點數加值失敗，請聯繫客服');
         }
+
+        // 完成交易
+        await finishTransaction({ purchase, isConsumable: true });
         setIsRecharging(false);
       }
     );
@@ -209,11 +246,25 @@ export default function WalletScreen() {
 
     try {
       console.log('[IAP] Requesting purchase for:', option.productId);
-      // react-native-iap v14+ API
+      // react-native-iap v14+ API - 需要嵌套在 request 裡
       if (Platform.OS === 'ios') {
-        await requestPurchase({ sku: option.productId } as any);
+        await requestPurchase({
+          request: {
+            apple: {
+              sku: option.productId,
+              quantity: 1,
+              andDangerouslyFinishTransactionAutomatically: false,
+            },
+          },
+        });
       } else {
-        await requestPurchase({ skus: [option.productId] } as any);
+        await requestPurchase({
+          request: {
+            google: {
+              skus: [option.productId],
+            },
+          },
+        });
       }
     } catch (error: any) {
       console.error('[IAP] Purchase error:', error);

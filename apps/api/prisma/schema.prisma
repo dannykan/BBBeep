@@ -382,6 +382,29 @@ model VoiceDraft {
   @@index([status, expiresAt])
 }
 
+// ============ IAP 交易記錄 ============
+
+enum IAPPlatform {
+  ios
+  android
+}
+
+model IAPTransaction {
+  id              String      @id @default(cuid())
+  userId          String
+  transactionId   String      @unique  // Apple/Google 的交易 ID，防止重複處理
+  platform        IAPPlatform
+  productId       String                // 產品 ID (e.g., com.ubeep.mobile.points_15)
+  pointsAwarded   Int                   // 實際發放的點數
+  receiptData     String?     @db.Text  // 原始收據數據（用於審計）
+  environment     String?               // sandbox 或 production
+  verifiedAt      DateTime    @default(now())
+
+  @@index([userId])
+  @@index([transactionId])
+  @@index([verifiedAt])
+}
+
 // ============ 用戶行為追蹤 ============
 
 enum ActivityType {
