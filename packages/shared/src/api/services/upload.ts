@@ -60,6 +60,7 @@ export const uploadApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 60000, // 60 seconds for voice upload
       })
       .then((res) => res.data);
   },
@@ -86,6 +87,7 @@ export const uploadApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 120000, // 120 seconds for transcription (OpenAI Whisper can be slow)
       })
       .then((res) => res.data);
   },

@@ -491,3 +491,89 @@ Firebase 與 React Native New Architecture 有 Swift module 衝突問題。
 
 ### API Client 初始化
 `initializeApiClient()` 必須在 App.tsx 模組層級呼叫（不是在 useEffect 裡），確保所有 Provider 的 useEffect 執行前 API Client 已初始化。
+
+### iOS Build 流程（使用 Xcode）
+
+1. 更新 build number：
+   ```bash
+   # 更新 app.json
+   # "buildNumber": "X" → "X+1"
+
+   # 更新 Info.plist（ios 在 gitignore 所以不用 commit）
+   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion X" apps/mobile/ios/UBeep/Info.plist
+   ```
+
+2. 開啟 Xcode：
+   ```bash
+   open apps/mobile/ios/UBeep.xcworkspace
+   ```
+
+3. 在 Xcode 中：
+   - Product → Archive
+   - Distribute App → App Store Connect
+   - 上傳完成後在 App Store Connect 提交審核
+
+## React Native 常見問題與解法
+
+### RefreshControl 卡住問題
+
+所有使用 `RefreshControl` 的頁面，`handleRefresh` 必須使用 `try-catch-finally`：
+
+```javascript
+// ❌ 錯誤 - API 失敗時 refreshing 永遠不會停止
+const handleRefresh = async () => {
+  setRefreshing(true);
+  await loadData();
+  setRefreshing(false);
+};
+
+// ✅ 正確
+const handleRefresh = useCallback(async () => {
+  setRefreshing(true);
+  try {
+    await loadData();
+  } catch (error) {
+    console.error('Refresh failed:', error);
+  } finally {
+    setRefreshing(false);
+  }
+}, [loadData]);
+```
+
+使用此模式的頁面：HomeScreen, InboxListScreen, DraftsScreen, WalletScreen, BlockListScreen, SentScreen
+
+### API Timeout 設定
+
+預設 API timeout 為 30 秒，但某些操作需要更長時間：
+
+| 操作 | 預設 Timeout | 實際需要 |
+|------|-------------|---------|
+| 語音上傳 | 30s | **60s** |
+| 語音轉文字 (Whisper) | 30s | **120s** |
+| 一般 API | 30s | 30s |
+
+**Key File:** `packages/shared/src/api/services/upload.ts`
+- `uploadVoice`: timeout 60000ms
+- `transcribeVoice`: timeout 120000ms
+
+### VoiceMessagePlayer 統一組件
+
+位置：`apps/mobile/src/components/VoiceMessagePlayer.tsx`
+
+所有語音播放使用此統一組件，特點：
+- 平滑進度條動畫（`progressUpdateIntervalMillis: 50`）
+- 使用 `Animated.timing` 實現流暢過渡
+- 統一的播放/暫停 UI
+
+使用位置：MessageDetailScreen, SentScreen, DraftCard, QuickVoiceSendScreen
+
+### Inbox 隱私設計
+
+為保護用戶隱私，Inbox 列表不顯示訊息內容：
+- 顯示：發送者暱稱（無暱稱則顯示「匿名用戶」）
+- 顯示：訊息類型標籤
+- 顯示：隨機可愛動物 emoji 頭像（12 種）
+- 顯示：橘色未讀點
+- **不顯示**：訊息內容（需點擊進入詳情才能看到）
+
+這確保平台可以確認用戶確實打開並閱讀了訊息。
