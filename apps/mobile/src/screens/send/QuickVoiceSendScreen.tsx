@@ -543,17 +543,15 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* 轉錄文字預覽 */}
+        {/* 轉錄文字預覽（緊湊版） */}
         {transcript && (
-          <View style={[styles.transcriptCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
-            <Text style={[styles.transcriptLabel, { color: colors.muted.foreground }]}>
-              AI 轉錄內容（僅供預覽）
+          <View style={[styles.transcriptBanner, { backgroundColor: colors.muted.DEFAULT }]}>
+            <Ionicons name="text-outline" size={14} color={colors.muted.foreground} />
+            <Text style={[styles.transcriptBannerText, { color: colors.muted.foreground }]} numberOfLines={1}>
+              {transcript}
             </Text>
-            <Text style={[styles.transcriptText, { color: colors.foreground }]}>
-              「{transcript}」
-            </Text>
-            <Text style={[styles.transcriptHint, { color: colors.muted.foreground }]}>
-              實際發送的是語音訊息，不會送出文字內容
+            <Text style={[styles.transcriptBannerHint, { color: colors.muted.foreground }]}>
+              僅預覽
             </Text>
           </View>
         )}
@@ -936,24 +934,22 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
 
-  // Transcript
-  transcriptCard: {
-    padding: spacing[4],
+  // Transcript (compact banner)
+  transcriptBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
     gap: spacing[2],
   },
-  transcriptLabel: {
+  transcriptBannerText: {
+    flex: 1,
     fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as any,
   },
-  transcriptText: {
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.5,
-  },
-  transcriptHint: {
+  transcriptBannerHint: {
     fontSize: typography.fontSize.xs,
-    marginTop: spacing[1],
+    opacity: 0.7,
   },
 
   // Fields
