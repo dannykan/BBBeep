@@ -546,7 +546,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         {/* 轉錄文字預覽（緊湊版） */}
         {transcript && (
           <View style={[styles.transcriptBanner, { backgroundColor: colors.muted.DEFAULT }]}>
-            <Ionicons name="text-outline" size={14} color={colors.muted.foreground} />
+            <Ionicons name="document-text-outline" size={14} color={colors.muted.foreground} />
             <Text style={[styles.transcriptBannerText, { color: colors.muted.foreground }]} numberOfLines={1}>
               {transcript}
             </Text>
