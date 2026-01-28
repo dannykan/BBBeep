@@ -58,7 +58,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ubeep.mobile",
-      "buildNumber": "9",
+      "buildNumber": "10",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",

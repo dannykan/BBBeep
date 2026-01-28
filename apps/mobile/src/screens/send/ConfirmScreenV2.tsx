@@ -329,13 +329,14 @@ export default function ConfirmScreenV2({ navigation }: Props) {
       return;
     }
 
-    if (customText.trim()) {
-      const validation = validateContent(customText);
-      if (!validation.isValid) {
-        Alert.alert('內容不當', validation.message || '請修改內容後再試');
-        return;
-      }
-    }
+    // 暫時停用本地內容過濾（後端已有審核機制）
+    // if (customText.trim()) {
+    //   const validation = validateContent(customText);
+    //   if (!validation.isValid) {
+    //     Alert.alert('內容不當', validation.message || '請修改內容後再試');
+    //     return;
+    //   }
+    // }
 
     setIsLoading(true);
     try {
