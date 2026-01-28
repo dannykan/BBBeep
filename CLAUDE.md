@@ -492,13 +492,19 @@ POST /points/verify-iap
 
 Firebase 與 React Native New Architecture 有 Swift module 衝突問題。
 
-**解決方案：** 使用 Expo Config Plugin 自動修改 Podfile：
-- Plugin 位置：`apps/mobile/plugins/withModularHeaders.js`
-- 已在 `app.config.js` 中引用
+**解決方案：** `ios/Podfile` 已有 `use_modular_headers!`，本地 Xcode build 不需額外設定。
 
-如果 EAS Build 失敗並顯示 `FirebaseCoreInternal depends upon GoogleUtilities, which does not define modules`，確認 plugin 已正確設定。
+### Firebase Analytics 設定
 
-**本地開發時**，`ios/Podfile` 已有 `use_modular_headers!`，但 EAS Build 會重新生成，所以需要 plugin。
+Firebase Analytics 已啟用，配置文件位置：
+- `apps/mobile/ios/UBeep/GoogleService-Info.plist`（iOS，gitignore）
+- `apps/mobile/google-services.json`（Android，gitignore）
+
+**重要：** `GoogleService-Info.plist` 中的 `IS_ANALYTICS_ENABLED` 必須是 `true`。
+
+**Analytics 追蹤模組：** `apps/mobile/src/lib/analytics.ts`
+- 可在任何地方使用（不依賴 React hooks）
+- 已追蹤事件：app_open, login_success, send_message, iap_initiated/complete/failed
 
 ### Build Number 管理
 - `app.json` 的 `buildNumber` 和 `ios/UBeep/Info.plist` 的 `CFBundleVersion` 要同步
