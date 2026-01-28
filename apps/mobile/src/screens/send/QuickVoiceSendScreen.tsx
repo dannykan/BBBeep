@@ -28,12 +28,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { messagesApi, uploadApi, aiApi, normalizeLicensePlate, displayLicensePlate } from '@bbbeeep/shared';
 import type { RootStackParamList } from '../../navigation/types';
 import { typography, spacing, borderRadius } from '../../theme';
+import MapLocationPicker from '../../components/MapLocationPicker';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickVoiceSend'>;
 
@@ -62,6 +65,10 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   const [longitude, setLongitude] = useState<number | null>(initialLng || null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Google Maps API Key
+  const googleMapsApiKey = Constants.expoConfig?.extra?.googleMapsApiKey || '';
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -102,7 +109,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
   // 初始化：取得位置和上傳語音
   useEffect(() => {
-    getLocation();
+    getLocationOnInit();
     uploadVoice();
     moderateVoiceContent();
 
@@ -113,10 +120,44 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     };
   }, []);
 
-  // 取得當前位置
-  const getLocation = async () => {
+  // 設定位置資料的 helper function
+  const setLocationData = useCallback((address: string, lat?: number, lng?: number) => {
+    setLocation(address);
+    if (lat !== undefined) setLatitude(lat);
+    if (lng !== undefined) setLongitude(lng);
+  }, []);
+
+  // 反向地理編碼（使用 Google Maps API）
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<string> => {
+    if (!googleMapsApiKey) {
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleMapsApiKey}&language=zh-TW&region=tw`
+      );
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        let address = data.results[0].formatted_address;
+        // 移除郵遞區號和國家名稱
+        address = address.replace(/\d{3,5}(台灣)?/g, '').replace(/Taiwan/g, '').trim();
+        // 移除開頭的逗號
+        address = address.replace(/^,\s*/, '');
+        return address;
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }, [googleMapsApiKey]);
+
+  // 取得當前位置（初始化時呼叫）
+  const getLocationOnInit = async () => {
     // 如果已經有位置資料，不需要重新取得
-    if (latitude && longitude && location) {
+    if (initialLat && initialLng && initialAddress) {
       return;
     }
 
@@ -143,23 +184,59 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      setLatitude(loc.coords.latitude);
-      setLongitude(loc.coords.longitude);
+      const { latitude: lat, longitude: lng } = loc.coords;
+      setLatitude(lat);
+      setLongitude(lng);
 
-      // 反向地理編碼取得地址
-      const [addr] = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-
-      if (addr) {
-        const address = [addr.city, addr.district, addr.street]
-          .filter(Boolean)
-          .join('');
-        setLocation(address);
-      }
+      const address = await reverseGeocode(lat, lng);
+      setLocation(address);
     } catch (err) {
       console.error('Location error:', err);
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
+  // 取得當前位置（按鈕點擊時呼叫）
+  const handleGetCurrentLocation = async () => {
+    setIsLoadingLocation(true);
+    try {
+      const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        if (canAskAgain) {
+          const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+          if (newStatus !== 'granted') {
+            setLocationPermissionDenied(true);
+            Alert.alert('需要位置權限', '請在設定中開啟位置權限');
+            setIsLoadingLocation(false);
+            return;
+          }
+        } else {
+          setLocationPermissionDenied(true);
+          Alert.alert(
+            '需要位置權限',
+            '您之前拒絕了位置權限。請前往設定開啟位置權限。',
+            [
+              { text: '取消', style: 'cancel' },
+              { text: '前往設定', onPress: openSettings },
+            ]
+          );
+          setIsLoadingLocation(false);
+          return;
+        }
+      }
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const { latitude: lat, longitude: lng } = loc.coords;
+      const address = await reverseGeocode(lat, lng);
+      setLocationData(address, lat, lng);
+    } catch (err) {
+      console.error('Location error:', err);
+      Alert.alert('錯誤', '無法取得目前位置');
     } finally {
       setIsLoadingLocation(false);
     }
@@ -466,42 +543,59 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* 位置顯示 */}
-        <View style={styles.fieldSection}>
+        {/* 位置選擇 */}
+        <View style={[styles.fieldSection, styles.locationFieldSection]}>
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
             事發地點 <Text style={{ color: colors.destructive.DEFAULT }}>*</Text>
           </Text>
 
-          {locationPermissionDenied ? (
-            <View style={[styles.locationWarning, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
-              <Ionicons name="location-outline" size={20} color="#DC2626" />
-              <View style={styles.locationWarningContent}>
-                <Text style={[styles.locationWarningText, { color: isDark ? '#FECACA' : '#991B1B' }]}>
-                  需要位置權限才能發送語音提醒
-                </Text>
-                <TouchableOpacity onPress={openSettings}>
-                  <Text style={[styles.locationWarningLink, { color: colors.primary.DEFAULT }]}>
-                    前往設定開啟權限
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : isLoadingLocation ? (
-            <View style={[styles.locationLoading, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
-              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-              <Text style={[styles.locationLoadingText, { color: colors.muted.foreground }]}>
-                正在取得位置...
-              </Text>
-            </View>
-          ) : (
-            <View style={[styles.locationDisplay, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
-              <Ionicons name="location" size={18} color={colors.primary.DEFAULT} />
-              <Text style={[styles.locationText, { color: colors.foreground }]} numberOfLines={2}>
-                {location || '無法取得位置'}
-              </Text>
-            </View>
-          )}
+          {/* 兩個按鈕：目前位置 + 地圖選擇 */}
+          <View style={styles.locationButtonsRow}>
+            <TouchableOpacity
+              style={[styles.locationOptionButton, { backgroundColor: colors.muted.DEFAULT }]}
+              onPress={handleGetCurrentLocation}
+              disabled={isLoadingLocation}
+              activeOpacity={0.7}
+            >
+              {isLoadingLocation ? (
+                <ActivityIndicator size="small" color={colors.foreground} />
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={16} color={colors.foreground} />
+                  <Text style={[styles.locationOptionText, { color: colors.foreground }]}>目前位置</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.locationOptionButton, { backgroundColor: colors.muted.DEFAULT }]}
+              onPress={() => setShowMapPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="map-outline" size={16} color={colors.foreground} />
+              <Text style={[styles.locationOptionText, { color: colors.foreground }]}>地圖選擇</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 可編輯的地址輸入框 */}
+          <AddressAutocomplete
+            value={location}
+            onChangeText={(text, lat, lng) => setLocationData(text, lat, lng)}
+            placeholder="輸入或選擇地點..."
+          />
         </View>
+
+        <MapLocationPicker
+          visible={showMapPicker}
+          onClose={() => setShowMapPicker(false)}
+          onConfirm={(locationData) => {
+            setLocationData(locationData.address, locationData.latitude, locationData.longitude);
+          }}
+          initialLocation={
+            latitude && longitude
+              ? { address: location, latitude, longitude }
+              : undefined
+          }
+        />
 
         {/* 錄製時間 */}
         <View style={styles.fieldSection}>
@@ -744,46 +838,26 @@ const styles = StyleSheet.create({
   },
 
   // Location
-  locationWarning: {
+  locationFieldSection: {
+    zIndex: 1000,
+  },
+  locationButtonsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: spacing[3],
-    borderRadius: borderRadius.lg,
-    gap: spacing[2.5],
+    gap: spacing[2],
+    marginBottom: spacing[2],
   },
-  locationWarningContent: {
+  locationOptionButton: {
     flex: 1,
-    gap: spacing[1],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[2.5],
+    borderRadius: borderRadius.lg,
   },
-  locationWarningText: {
-    fontSize: typography.fontSize.sm,
-  },
-  locationWarningLink: {
+  locationOptionText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
-  },
-  locationLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3.5],
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    gap: spacing[2],
-  },
-  locationLoadingText: {
-    fontSize: typography.fontSize.sm,
-  },
-  locationDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[3.5],
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    gap: spacing[2],
-  },
-  locationText: {
-    flex: 1,
-    fontSize: typography.fontSize.base,
   },
 
   // Time display
