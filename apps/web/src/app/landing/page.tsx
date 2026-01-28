@@ -2,77 +2,82 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Lock, Shield, Coins, UserPlus, LogIn } from 'lucide-react';
+import { Car, MessageCircle, Shield, Gift, ArrowRight } from 'lucide-react';
 
 const LandingPage = React.memo(() => {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center space-y-3">
-          <h1 className="text-2xl tracking-tight text-foreground">
-            一句善意提醒<br />讓路上少一點誤會
-          </h1>
-          <p className="text-muted-foreground">私密、不公開、不對罵</p>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Hero Section */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-md space-y-8">
+          {/* Logo */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-[32px] bg-[#3B82F6] flex items-center justify-center">
+              <Car className="w-10 h-10 text-white" strokeWidth={1.5} />
+            </div>
+            <h1 className="text-4xl font-bold text-[#3B82F6] tracking-tight">
+              UBeep
+            </h1>
+          </div>
+
+          {/* Tagline & Subtext */}
+          <div className="text-center space-y-3">
+            <p className="text-xl font-semibold text-gray-900">
+              讓路上多一點善意 💙
+            </p>
+            <p className="text-[15px] text-gray-500 leading-relaxed">
+              透過車牌發送善意提醒<br />
+              讓每一位駕駛更安全
+            </p>
+          </div>
+
+          {/* Feature Cards */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl">
+              <div className="w-11 h-11 rounded-xl bg-[#EFF6FF] flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-[#3B82F6]" strokeWidth={1.5} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-semibold text-gray-900">善意提醒</p>
+                <p className="text-sm text-gray-500">透過車牌發送友善訊息</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl">
+              <div className="w-11 h-11 rounded-xl bg-[#FEF3C7] flex items-center justify-center flex-shrink-0">
+                <Shield className="w-5 h-5 text-[#D97706]" strokeWidth={1.5} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-semibold text-gray-900">安全匿名</p>
+                <p className="text-sm text-gray-500">保護您的隱私安全</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trial Badge */}
+          <div className="flex justify-center">
+            <div className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FEF3C7] rounded-full">
+              <Gift className="w-4 h-4 text-[#D97706]" strokeWidth={2} />
+              <span className="text-[13px] font-semibold text-[#D97706]">
+                新用戶 7 天試用期送 50 點！
+              </span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-3">
-          <Card className="p-4 bg-card border-border shadow-none">
-            <div className="flex items-start gap-3">
-              <Lock className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-              <div className="text-sm space-y-0.5">
-                <p className="text-foreground">不公開車牌、不公開任何個人資訊</p>
-                <p className="text-muted-foreground text-xs">完全保護隱私</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-card border-border shadow-none">
-            <div className="flex items-start gap-3">
-              <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-              <div className="text-sm space-y-0.5">
-                <p className="text-foreground">不顯示對方身分</p>
-                <p className="text-muted-foreground text-xs">單向提醒，安全無壓力</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 bg-card border-border shadow-none">
-            <div className="flex items-start gap-3">
-              <Coins className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-              <div className="text-sm space-y-0.5">
-                <p className="text-foreground">使用需點數</p>
-                <p className="text-muted-foreground text-xs">每天免費 2 點，用完隔天補滿</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="space-y-3">
-          <Button
-            className="w-full h-12 bg-primary hover:bg-primary-dark text-white"
-            onClick={() => router.push('/login')}
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            立即註冊
-          </Button>
-
+      {/* Bottom CTA Section */}
+      <div className="px-6 pb-10 pt-4 bg-white">
+        <div className="max-w-md mx-auto">
           <button
             onClick={() => router.push('/login')}
-            className="w-full h-12 bg-card border-2 border-border hover:border-primary text-foreground rounded-xl transition-all font-medium flex items-center justify-center gap-2"
+            className="w-full h-14 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition-colors"
           >
-            <LogIn className="h-4 w-4" />
-            已有帳號？登入
+            立即開始
+            <ArrowRight className="w-5 h-5" strokeWidth={2} />
           </button>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-center text-xs text-muted-foreground leading-relaxed">
-            這不是聊天平台，而是一次性的善意提醒服務
-          </p>
         </div>
       </div>
     </div>

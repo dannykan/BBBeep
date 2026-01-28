@@ -53,7 +53,7 @@ export default function AiSuggestScreen({ navigation }: Props) {
       />
 
       {/* AI suggestion card */}
-      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
         <View style={styles.optionHeader}>
           <View style={[styles.optionBadge, { backgroundColor: `${colors.primary.DEFAULT}20` }]}>
             <Ionicons name="sparkles" size={14} color={colors.primary.DEFAULT} />
@@ -77,13 +77,13 @@ export default function AiSuggestScreen({ navigation }: Props) {
       </View>
 
       {/* Original text card */}
-      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+      <View style={[styles.optionCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
         <View style={styles.optionHeader}>
           <Text style={[styles.optionLabel, { color: colors.foreground }]}>原始版本</Text>
         </View>
         <Text style={[styles.optionText, { color: colors.foreground }]}>{originalText}</Text>
         <TouchableOpacity
-          style={[styles.originalButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.originalButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={handleUseOriginal}
           activeOpacity={0.8}
         >

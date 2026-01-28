@@ -1,6 +1,6 @@
 /**
  * Settings Screen
- * 設定頁面 - 對齊 Web 版本設計
+ * 設定頁面 - Warm Blue 設計
  */
 
 import React, { useMemo } from 'react';
@@ -15,34 +15,35 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import VehicleIcon from '../../components/VehicleIcon';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme, ThemeMode, ThemeColors } from '../../context/ThemeContext';
+import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
-import { getTotalPoints, displayLicensePlate } from '@bbbeeep/shared';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
+import { displayLicensePlate } from '@bbbeeep/shared';
+import VehicleIcon from '../../components/VehicleIcon';
 
-const themeModeLabels: Record<ThemeMode, string> = {
-  light: '淺色',
-  dark: '深色',
-  system: '跟隨系統',
-};
+// Menu item configuration with colors
+interface MenuItemConfig {
+  id: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  iconColor: string;
+  iconBgColor: string;
+  onPress: () => void;
+  value?: string;
+  externalLink?: boolean;
+  badgeCount?: number;
+}
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
-  const { themeMode, colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { unreadReplyCount, refreshUnreadReplyCount } = useUnreadReply();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const totalPoints = getTotalPoints(user);
 
-  // 當畫面獲得焦點時刷新未讀回覆數
+  // Refresh unread count on focus
   useFocusEffect(
     React.useCallback(() => {
       refreshUnreadReplyCount();
@@ -52,220 +53,191 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert('登出', '確定要登出嗎？', [
       { text: '取消', style: 'cancel' },
-      {
-        text: '登出',
-        style: 'destructive',
-        onPress: logout,
-      },
+      { text: '登出', style: 'destructive', onPress: logout },
     ]);
   };
 
   const handleFeedback = async () => {
-    const lineUrl = 'https://line.me/R/ti/p/@556vmzwz';
+    const email = 'mailto:dannytjkan@gmail.com?subject=UBeep%20問題回報';
     try {
-      await Linking.openURL(lineUrl);
+      await Linking.openURL(email);
     } catch (error) {
-      Alert.alert('無法開啟', '請確認已安裝 LINE App');
+      Alert.alert('無法開啟', '請手動發送郵件至 dannytjkan@gmail.com');
     }
   };
 
-  const MenuItem = ({
-    icon,
-    label,
-    value,
-    onPress,
-    showChevron = true,
-    badgeCount = 0,
-  }: {
-    icon: keyof typeof Ionicons.glyphMap;
-    label: string;
-    value?: string;
-    onPress?: () => void;
-    showChevron?: boolean;
-    badgeCount?: number;
-  }) => (
+  // Section 1: Main features
+  const section1Items: MenuItemConfig[] = [
+    {
+      id: 'notifications',
+      icon: 'notifications',
+      label: '通知設定',
+      iconColor: colors.primary.DEFAULT,
+      iconBgColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+      onPress: () => navigation.navigate('NotificationSettings'),
+    },
+    {
+      id: 'appearance',
+      icon: 'color-palette',
+      label: '外觀',
+      iconColor: isDark ? '#A855F7' : '#9333EA',
+      iconBgColor: isDark ? 'rgba(147, 51, 234, 0.15)' : '#F3E8FF',
+      onPress: () => navigation.navigate('Appearance'),
+    },
+    {
+      id: 'sent',
+      icon: 'paper-plane',
+      label: '發送紀錄',
+      iconColor: isDark ? '#4ADE80' : '#22C55E',
+      iconBgColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7',
+      onPress: () => navigation.navigate('Sent'),
+      badgeCount: unreadReplyCount,
+    },
+    {
+      id: 'wallet',
+      icon: 'wallet',
+      label: '點數',
+      iconColor: isDark ? '#FBBF24' : '#D97706',
+      iconBgColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+      onPress: () => navigation.navigate('Wallet'),
+    },
+  ];
+
+  // Section 2: Account
+  const section2Items: MenuItemConfig[] = [
+    {
+      id: 'invite',
+      icon: 'person-add',
+      label: '邀請好友',
+      iconColor: isDark ? '#FBBF24' : '#D97706',
+      iconBgColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+      onPress: () => navigation.navigate('InviteFriends'),
+    },
+    {
+      id: 'blocklist',
+      icon: 'ban',
+      label: '封鎖名單',
+      iconColor: isDark ? '#F87171' : '#DC2626',
+      iconBgColor: isDark ? 'rgba(220, 38, 38, 0.15)' : '#FEE2E2',
+      onPress: () => navigation.navigate('BlockList'),
+    },
+    {
+      id: 'platechange',
+      icon: 'car',
+      label: '車牌變更',
+      iconColor: isDark ? '#60A5FA' : '#2563EB',
+      iconBgColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#DBEAFE',
+      onPress: () => navigation.navigate('LicensePlateChange'),
+    },
+  ];
+
+  // Section 3: Support
+  const section3Items: MenuItemConfig[] = [
+    {
+      id: 'legal',
+      icon: 'document-text',
+      label: '相關條款',
+      iconColor: isDark ? '#94A3B8' : '#64748B',
+      iconBgColor: isDark ? colors.muted.DEFAULT : '#F1F5F9',
+      onPress: () => navigation.navigate('Legal'),
+    },
+    {
+      id: 'feedback',
+      icon: 'chatbubble',
+      label: '問題回報',
+      iconColor: isDark ? '#34D399' : '#10B981',
+      iconBgColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+      onPress: handleFeedback,
+      externalLink: true,
+    },
+  ];
+
+  const renderMenuItem = (item: MenuItemConfig, isLast: boolean) => (
     <TouchableOpacity
-      style={styles.menuItem}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={onPress ? 0.7 : 1}
+      key={item.id}
+      style={[styles.menuItem, !isLast && styles.menuItemBorder]}
+      onPress={item.onPress}
+      activeOpacity={0.7}
     >
-      <View style={styles.menuLeft}>
-        <View style={styles.menuIconContainer}>
-          <Ionicons name={icon} size={18} color={colors.primary.DEFAULT} />
-          {badgeCount > 0 && (
-            <View style={styles.menuBadge}>
-              <Text style={styles.menuBadgeText}>
-                {badgeCount > 99 ? '99+' : badgeCount}
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.menuLabel}>{label}</Text>
+      <View style={[styles.menuIconContainer, { backgroundColor: item.iconBgColor }]}>
+        <Ionicons name={item.icon} size={18} color={item.iconColor} />
+        {item.badgeCount && item.badgeCount > 0 ? (
+          <View style={styles.menuBadge}>
+            <Text style={styles.menuBadgeText}>
+              {item.badgeCount > 99 ? '99+' : item.badgeCount}
+            </Text>
+          </View>
+        ) : null}
       </View>
-      <View style={styles.menuRight}>
-        {value && <Text style={styles.menuValue}>{value}</Text>}
-        {onPress && showChevron && (
-          <Ionicons name="chevron-forward" size={18} color={colors.muted.foreground} />
-        )}
-      </View>
+      <Text style={styles.menuLabel}>{item.label}</Text>
+      <Ionicons
+        name={item.externalLink ? 'open-outline' : 'chevron-forward'}
+        size={18}
+        color={colors.text.secondary}
+      />
     </TouchableOpacity>
   );
 
+  const renderSection = (items: MenuItemConfig[]) => (
+    <View style={styles.menuSection}>
+      {items.map((item, index) => renderMenuItem(item, index === items.length - 1))}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      {/* Header with safe area */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>設定</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>設定</Text>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <VehicleIcon
-                userType={user?.userType}
-                vehicleType={user?.vehicleType}
-                size={24}
-                color={colors.primary.DEFAULT}
-              />
-            </View>
+        {/* Profile Card - Same as HomeScreen */}
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => navigation.navigate('EditProfile')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.avatar}>
+            <VehicleIcon
+              userType={user?.userType}
+              vehicleType={user?.vehicleType}
+              size={28}
+              color={colors.primary.DEFAULT}
+            />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.nickname}>
-              {user?.nickname || '未設定暱稱'}
-            </Text>
-            {user?.licensePlate && (
-              <View style={styles.licensePlateContainer}>
-                <VehicleIcon
-                  userType={user?.userType}
-                  vehicleType={user?.vehicleType}
-                  size={12}
-                  color={colors.muted.foreground}
-                />
-                <Text style={styles.licensePlate}>
-                  {displayLicensePlate(user.licensePlate)}
+            <Text style={styles.profileName}>{user?.nickname || '用戶'}</Text>
+            <View style={styles.profilePlateRow}>
+              <View style={styles.userTypeBadge}>
+                <Text style={styles.userTypeBadgeText}>
+                  {user?.userType === 'pedestrian' ? '行人' : user?.vehicleType === 'motorcycle' ? '機車' : '汽車'}
                 </Text>
               </View>
-            )}
-            <View style={styles.userTypeBadge}>
-              <Text style={styles.userTypeBadgeText}>
-                {user?.userType === 'pedestrian' ? '行人用戶' : '駕駛用戶'}
-              </Text>
+              {user?.licensePlate && (
+                <Text style={styles.profilePlate}>{displayLicensePlate(user.licensePlate)}</Text>
+              )}
             </View>
           </View>
-        </View>
-
-        {/* Points Card */}
-        <View style={styles.pointsCard}>
-          <View style={styles.pointsHeader}>
-            <View style={styles.pointsIconContainer}>
-              <Ionicons name="wallet-outline" size={20} color={colors.primary.DEFAULT} />
-            </View>
-            <View style={styles.pointsInfo}>
-              <Text style={styles.pointsLabel}>剩餘點數</Text>
-              <Text style={styles.pointsValue}>{totalPoints} 點</Text>
-            </View>
+          <View style={styles.editButton}>
+            <Ionicons name="pencil" size={16} color={colors.text.secondary} />
           </View>
-          <TouchableOpacity
-            style={styles.topUpButton}
-            onPress={() => navigation.navigate('Wallet')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add-circle-outline" size={16} color={colors.primary.foreground} />
-            <Text style={styles.topUpButtonText}>儲值</Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
-        {/* Menu Sections */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>功能</Text>
-          <View style={styles.menuGroup}>
-            <MenuItem
-              icon="gift-outline"
-              label="邀請好友"
-              value="你我各得 10 點"
-              onPress={() => navigation.navigate('InviteFriends')}
-            />
-            <MenuItem
-              icon="time-outline"
-              label="已發送提醒"
-              onPress={() => navigation.navigate('Sent')}
-              badgeCount={unreadReplyCount}
-            />
-            <MenuItem
-              icon="ban-outline"
-              label="封鎖名單"
-              onPress={() => navigation.navigate('BlockList')}
-            />
-          </View>
-        </View>
+        {/* Section 1 */}
+        {renderSection(section1Items)}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>帳戶</Text>
-          <View style={styles.menuGroup}>
-            <MenuItem
-              icon="person-outline"
-              label="編輯個人資料"
-              onPress={() => navigation.navigate('EditProfile')}
-            />
-            <MenuItem
-              icon="notifications-outline"
-              label="通知設定"
-              onPress={() => navigation.navigate('NotificationSettings')}
-            />
-            <MenuItem
-              icon="contrast-outline"
-              label="外觀模式"
-              value={themeModeLabels[themeMode]}
-              onPress={() => navigation.navigate('Appearance')}
-            />
-          </View>
-        </View>
+        {/* Section 2 */}
+        {renderSection(section2Items)}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>支援</Text>
-          <View style={styles.menuGroup}>
-            <MenuItem
-              icon="chatbubble-ellipses-outline"
-              label="問題反饋"
-              value="LINE 客服"
-              onPress={handleFeedback}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>關於</Text>
-          <View style={styles.menuGroup}>
-            <MenuItem
-              icon="document-text-outline"
-              label="服務條款"
-              onPress={() => navigation.navigate('Legal', { type: 'terms' })}
-            />
-            <MenuItem
-              icon="shield-outline"
-              label="隱私權政策"
-              onPress={() => navigation.navigate('Legal', { type: 'privacy' })}
-            />
-            <MenuItem
-              icon="information-circle-outline"
-              label="版本"
-              value="v1.0.0"
-              showChevron={false}
-            />
-          </View>
-        </View>
+        {/* Section 3 */}
+        {renderSection(section3Items)}
 
         {/* Logout Button */}
         <TouchableOpacity
@@ -273,13 +245,13 @@ export default function SettingsScreen() {
           onPress={handleLogout}
           activeOpacity={0.7}
         >
-          <Ionicons name="log-out-outline" size={18} color={colors.destructive.DEFAULT} />
+          <Ionicons name="log-out-outline" size={18} color="#DC2626" />
           <Text style={styles.logoutText}>登出</Text>
         </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>UBeep - 路上善意提醒平台</Text>
+          <Text style={styles.footerText}>UBeep v1.0.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -292,180 +264,109 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-
-    // Header
-    headerContainer: {
-      backgroundColor: colors.card.DEFAULT,
-    },
-    headerSafeArea: {
-      backgroundColor: colors.card.DEFAULT,
+    safeArea: {
+      backgroundColor: colors.background,
     },
     header: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
-      paddingHorizontal: spacing[6],
-      paddingVertical: spacing[4],
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 16,
     },
     headerTitle: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text.primary,
     },
-
-    // Scroll Content
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      padding: spacing[6],
-      gap: spacing[4],
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 40,
+      gap: 16,
     },
 
-    // Profile Card
+    // Profile Card - Same as HomeScreen userCard
     profileCard: {
-      backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
-      padding: spacing[5],
-      borderWidth: 1,
-      borderColor: colors.borderSolid,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[4],
-    },
-    avatarContainer: {
-      alignItems: 'center',
+      gap: 14,
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     avatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: colors.primary.soft,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: colors.primary.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
     profileInfo: {
       flex: 1,
-      gap: spacing[1],
+      gap: 4,
     },
-    nickname: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+    profileName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
     },
-    licensePlateContainer: {
+    profilePlateRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[1],
-    },
-    licensePlate: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
-      fontFamily: 'monospace',
+      gap: 8,
     },
     userTypeBadge: {
-      alignSelf: 'flex-start',
-      backgroundColor: colors.muted.DEFAULT,
-      paddingHorizontal: spacing[2],
-      paddingVertical: spacing[0.5],
-      borderRadius: borderRadius.sm,
-      marginTop: spacing[1],
+      backgroundColor: colors.primary.bg,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
     },
     userTypeBadgeText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.primary.DEFAULT,
     },
-
-    // Points Card
-    pointsCard: {
-      backgroundColor: colors.primary.soft,
-      borderRadius: borderRadius.lg,
-      padding: spacing[4],
-      borderWidth: 1,
-      borderColor: `${colors.primary.DEFAULT}20`,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    profilePlate: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.secondary,
+      letterSpacing: 1,
     },
-    pointsHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[3],
-    },
-    pointsIconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: `${colors.primary.DEFAULT}15`,
+    editButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.card.DEFAULT,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    pointsInfo: {
-      gap: spacing[0.5],
-    },
-    pointsLabel: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-    },
-    pointsValue: {
-      fontSize: typography.fontSize.xl,
-      fontWeight: typography.fontWeight.bold as any,
-      color: colors.foreground,
-    },
-    topUpButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[1],
-      backgroundColor: colors.primary.DEFAULT,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
-      borderRadius: borderRadius.lg,
-    },
-    topUpButtonText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.primary.foreground,
-    },
 
-    // Sections
-    section: {
-      gap: spacing[2],
-    },
-    sectionTitle: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.muted.foreground,
-      textTransform: 'uppercase',
-      paddingLeft: spacing[1],
-    },
-    menuGroup: {
+    // Menu Section
+    menuSection: {
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
+      borderColor: colors.border,
       overflow: 'hidden',
     },
     menuItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: spacing[3.5],
-      paddingHorizontal: spacing[4],
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
+      gap: 12,
+      padding: 16,
     },
-    menuLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[3],
+    menuItemBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     menuIconContainer: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.primary.soft,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -476,56 +377,46 @@ const createStyles = (colors: ThemeColors) =>
       minWidth: 16,
       height: 16,
       borderRadius: 8,
-      backgroundColor: colors.destructive.DEFAULT,
+      backgroundColor: '#DC2626',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: spacing[0.5],
+      paddingHorizontal: 4,
     },
     menuBadgeText: {
-      fontSize: 9,
-      fontWeight: typography.fontWeight.bold as any,
+      fontSize: 10,
+      fontWeight: '600',
       color: '#FFFFFF',
     },
     menuLabel: {
-      fontSize: typography.fontSize.sm,
-      color: colors.foreground,
-    },
-    menuRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-    },
-    menuValue: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text.primary,
     },
 
-    // Logout
+    // Logout Button
     logoutButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing[2],
-      backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.destructive.DEFAULT,
-      paddingVertical: spacing[3.5],
-      marginTop: spacing[2],
+      gap: 8,
+      backgroundColor: colors.destructive.light,
+      borderRadius: 14,
+      height: 52,
     },
     logoutText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.destructive.DEFAULT,
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#DC2626',
     },
 
     // Footer
     footer: {
       alignItems: 'center',
-      paddingVertical: spacing[6],
+      paddingTop: 16,
     },
     footerText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+      fontSize: 12,
+      color: colors.text.secondary,
     },
   });

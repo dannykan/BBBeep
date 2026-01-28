@@ -24,11 +24,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
+import { typography, spacing, borderRadius } from '../../theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -93,9 +89,9 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with safe area */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
-          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
+          <View style={styles.header}>
             <TouchableOpacity
               onPress={() => {
                 if (showPlateLogin) {
@@ -109,11 +105,11 @@ export default function LoginScreen({ navigation }: Props) {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
-              <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
+              <Text style={[styles.backText, { color: colors.text.secondary }]}>返回</Text>
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>登入</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>登入</Text>
             <View style={styles.headerSpacer} />
           </View>
         </SafeAreaView>
@@ -130,7 +126,7 @@ export default function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           {/* Card */}
-          <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+          <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
             {/* Title Section */}
             <View style={styles.titleSection}>
               <Text style={[styles.title, { color: colors.foreground }]}>
@@ -151,7 +147,7 @@ export default function LoginScreen({ navigation }: Props) {
                       styles.input,
                       {
                         backgroundColor: colors.background,
-                        borderColor: colors.borderSolid,
+                        borderColor: colors.border,
                         color: colors.foreground,
                       }
                     ]}
@@ -171,7 +167,7 @@ export default function LoginScreen({ navigation }: Props) {
                       styles.input,
                       {
                         backgroundColor: colors.background,
-                        borderColor: colors.borderSolid,
+                        borderColor: colors.border,
                         color: colors.foreground,
                       }
                     ]}
@@ -215,9 +211,9 @@ export default function LoginScreen({ navigation }: Props) {
                 {/* Divider */}
                 {Platform.OS === 'ios' && (
                   <View style={styles.dividerContainer}>
-                    <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                     <Text style={[styles.dividerText, { color: colors.muted.foreground }]}>或</Text>
-                    <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
+                    <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                   </View>
                 )}
 
@@ -242,14 +238,14 @@ export default function LoginScreen({ navigation }: Props) {
 
                 {/* Divider */}
                 <View style={styles.dividerContainer}>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                   <Text style={[styles.dividerText, { color: colors.muted.foreground }]}>或</Text>
-                  <View style={[styles.dividerLine, { backgroundColor: colors.borderSolid }]} />
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
                 </View>
 
                 {/* 車牌登入按鈕 */}
                 <TouchableOpacity
-                  style={[styles.plateButton, { borderColor: colors.borderSolid }]}
+                  style={[styles.plateButton, { borderColor: colors.border }]}
                   onPress={() => setShowPlateLogin(true)}
                   activeOpacity={0.7}
                 >
@@ -278,9 +274,8 @@ const styles = StyleSheet.create({
   // Header
   headerContainer: {},
   header: {
-    borderBottomWidth: 1,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -288,15 +283,15 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[1],
+    padding: 4,
   },
   backText: {
-    fontSize: typography.fontSize.sm,
-    marginLeft: spacing[1],
+    fontSize: 14,
+    marginLeft: 4,
   },
   headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
+    fontSize: 16,
+    fontWeight: '600',
     position: 'absolute',
     left: 0,
     right: 0,
@@ -424,7 +419,7 @@ const styles = StyleSheet.create({
     height: 48,
   },
   plateLoginButton: {
-    backgroundColor: '#4A6FA5',
+    backgroundColor: '#3B82F6',
     borderRadius: borderRadius.lg,
     paddingVertical: spacing[3],
     alignItems: 'center',

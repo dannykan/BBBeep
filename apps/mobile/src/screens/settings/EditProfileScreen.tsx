@@ -23,17 +23,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { usersApi, displayLicensePlate } from '@bbbeeep/shared';
 import VehicleIcon from '../../components/VehicleIcon';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, refreshUser } = useAuth();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -82,7 +77,7 @@ export default function EditProfileScreen() {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
@@ -131,7 +126,7 @@ export default function EditProfileScreen() {
                 value={nickname}
                 onChangeText={setNickname}
                 placeholder="輸入暱稱（最多 12 字）"
-                placeholderTextColor={colors.muted.foreground}
+                placeholderTextColor={colors.text.secondary}
                 maxLength={12}
               />
               <Text style={styles.formHint}>{nickname.length} / 12</Text>
@@ -176,7 +171,7 @@ export default function EditProfileScreen() {
                     userType={user?.userType}
                     vehicleType={user?.vehicleType}
                     size={20}
-                    color={colors.muted.foreground}
+                    color={colors.text.secondary}
                   />
                   <Text style={styles.readOnlyText}>
                     {user?.vehicleType === 'car' ? '汽車' : '機車'}
@@ -232,7 +227,7 @@ export default function EditProfileScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -241,16 +236,14 @@ const createStyles = (colors: ThemeColors) =>
 
     // Header
     headerContainer: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     headerSafeArea: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     header: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
-      paddingHorizontal: spacing[6],
-      paddingVertical: spacing[4],
+      paddingHorizontal: 24,
+      paddingVertical: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -258,17 +251,17 @@ const createStyles = (colors: ThemeColors) =>
     backButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: spacing[1],
+      padding: 4,
     },
     backText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
-      marginLeft: spacing[1],
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
     },
     headerTitle: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.normal as any,
-      color: colors.foreground,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
       position: 'absolute',
       left: 0,
       right: 0,
@@ -286,110 +279,110 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
     },
     scrollContent: {
-      padding: spacing[6],
-      gap: spacing[6],
+      padding: 24,
+      gap: 24,
     },
 
     // Avatar Section
     avatarSection: {
       alignItems: 'center',
-      gap: spacing[3],
+      gap: 12,
     },
     avatar: {
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: colors.primary.soft,
+      backgroundColor: colors.primary.bg,
       alignItems: 'center',
       justifyContent: 'center',
     },
     userTypeBadge: {
       backgroundColor: colors.muted.DEFAULT,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[1],
-      borderRadius: borderRadius.full,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 20,
     },
     userTypeBadgeText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+      fontSize: 12,
+      color: colors.text.secondary,
     },
 
     // Form Section
     formSection: {
-      gap: spacing[4],
+      gap: 16,
     },
     formGroup: {
-      gap: spacing[2],
+      gap: 8,
     },
     formLabel: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
     },
     input: {
       backgroundColor: colors.card.DEFAULT,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      fontSize: typography.fontSize.base,
-      color: colors.foreground,
+      borderColor: colors.border,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: colors.text.primary,
     },
     formHint: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      paddingLeft: spacing[1],
+      fontSize: 12,
+      color: colors.text.secondary,
+      paddingLeft: 4,
     },
     licensePlateRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 8,
     },
     readOnlyField: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 8,
       backgroundColor: colors.muted.DEFAULT,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
     readOnlyText: {
-      fontSize: typography.fontSize.base,
-      color: colors.muted.foreground,
+      fontSize: 16,
+      color: colors.text.secondary,
     },
     changePlateButton: {
       backgroundColor: colors.primary.DEFAULT,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[3],
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
     },
     changePlateButtonText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
+      fontSize: 14,
+      fontWeight: '500',
       color: colors.primary.foreground,
     },
 
     // Info Section
     infoSection: {
-      gap: spacing[2],
+      gap: 8,
     },
     infoSectionTitle: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.muted.foreground,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.text.secondary,
       textTransform: 'uppercase',
-      paddingLeft: spacing[1],
+      paddingLeft: 4,
     },
     infoCard: {
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      padding: spacing[4],
-      gap: spacing[3],
+      borderColor: colors.border,
+      padding: 16,
+      gap: 12,
     },
     infoRow: {
       flexDirection: 'row',
@@ -397,24 +390,24 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
     },
     infoLabel: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
+      fontSize: 14,
+      color: colors.text.secondary,
     },
     infoValue: {
-      fontSize: typography.fontSize.sm,
-      color: colors.foreground,
+      fontSize: 14,
+      color: colors.text.primary,
     },
 
     // Save Button
     saveButton: {
       backgroundColor: colors.primary.DEFAULT,
-      borderRadius: borderRadius.xl,
-      paddingVertical: spacing[3.5],
+      borderRadius: 16,
+      paddingVertical: 16,
       alignItems: 'center',
     },
     saveButtonText: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.medium as any,
+      fontSize: 16,
+      fontWeight: '500',
       color: colors.primary.foreground,
     },
     saveButtonDisabled: {

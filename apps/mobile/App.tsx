@@ -31,6 +31,10 @@ import { SendProvider } from './src/context/SendContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import CustomSplashScreen from './src/components/CustomSplashScreen';
 import { useAnalytics } from './src/hooks/useAnalytics';
+import { initializeApiClient } from './src/lib/api';
+
+// 初始化 API Client（同步執行，確保所有 Provider 的 useEffect 執行前已完成）
+initializeApiClient();
 
 // 防止 native splash screen 自動隱藏
 SplashScreen.preventAutoHideAsync();
@@ -51,7 +55,7 @@ function AppContent() {
           background: colors.background,
           card: colors.card.DEFAULT,
           text: colors.foreground,
-          border: colors.borderSolid,
+          border: colors.border,
         },
       }
     : {
@@ -62,7 +66,7 @@ function AppContent() {
           background: colors.background,
           card: colors.card.DEFAULT,
           text: colors.foreground,
-          border: colors.borderSolid,
+          border: colors.border,
         },
       };
 

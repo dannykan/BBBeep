@@ -58,7 +58,7 @@ export default function PlateInputScreen({ navigation }: Props) {
       <View style={styles.inputSection}>
         <Text style={[styles.inputLabel, { color: colors.foreground }]}>車牌號碼</Text>
         <TextInput
-          style={[styles.plateInput, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid, color: colors.foreground }]}
+          style={[styles.plateInput, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border, color: colors.foreground }]}
           value={plateInput}
           onChangeText={(text) => setPlateInput(formatPlateNumber(text))}
           placeholder={getPlatePlaceholder(vehicleType!)}

@@ -236,7 +236,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#4A6FA5',
+        lightColor: '#3B82F6',
       });
     }
   }, []);

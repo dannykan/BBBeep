@@ -30,17 +30,12 @@ import {
   displayLicensePlate,
 } from '@bbbeeep/shared';
 import VehicleIcon from '../../components/VehicleIcon';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
 
 export default function LicensePlateChangeScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   const [newLicensePlate, setNewLicensePlate] = useState('');
   const [email, setEmail] = useState('');
@@ -202,7 +197,7 @@ export default function LicensePlateChangeScreen() {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
@@ -232,7 +227,7 @@ export default function LicensePlateChangeScreen() {
                 userType="driver"
                 vehicleType={vehicleType}
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.currentPlateText}>
                 {displayLicensePlate(currentLicensePlate) || '尚未設定'}
@@ -248,7 +243,7 @@ export default function LicensePlateChangeScreen() {
               value={newLicensePlate}
               onChangeText={handleLicensePlateChange}
               placeholder={vehicleType === 'car' ? 'ABC1234' : 'ABC123'}
-              placeholderTextColor={colors.muted.foreground}
+              placeholderTextColor={colors.text.secondary}
               autoCapitalize="characters"
               maxLength={8}
             />
@@ -310,7 +305,7 @@ export default function LicensePlateChangeScreen() {
               value={email}
               onChangeText={setEmail}
               placeholder="用於接收審核結果通知"
-              placeholderTextColor={colors.muted.foreground}
+              placeholderTextColor={colors.text.secondary}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -318,7 +313,7 @@ export default function LicensePlateChangeScreen() {
 
           {/* Info Card */}
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={20} color={colors.muted.foreground} />
+            <Ionicons name="information-circle-outline" size={20} color={colors.text.secondary} />
             <View style={styles.infoContent}>
               <Text style={styles.infoText}>
                 申請審核通常需要 1-2 個工作天。審核通過後，您的車牌會自動更新。
@@ -348,7 +343,7 @@ export default function LicensePlateChangeScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -357,16 +352,14 @@ const createStyles = (colors: ThemeColors) =>
 
     // Header
     headerContainer: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     headerSafeArea: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     header: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
-      paddingHorizontal: spacing[6],
-      paddingVertical: spacing[4],
+      paddingHorizontal: 24,
+      paddingVertical: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -374,17 +367,17 @@ const createStyles = (colors: ThemeColors) =>
     backButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: spacing[1],
+      padding: 4,
     },
     backText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
-      marginLeft: spacing[1],
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
     },
     headerTitle: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.normal as any,
-      color: colors.foreground,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
       position: 'absolute',
       left: 0,
       right: 0,
@@ -402,102 +395,102 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
     },
     scrollContent: {
-      padding: spacing[6],
-      gap: spacing[5],
+      padding: 24,
+      gap: 20,
     },
 
     // Section
     section: {
-      gap: spacing[2],
+      gap: 8,
     },
     sectionTitle: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
     },
     sectionDescription: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
+      fontSize: 12,
+      color: colors.text.secondary,
+      lineHeight: 18,
     },
 
     // Current Plate
     currentPlateCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 8,
       backgroundColor: colors.muted.DEFAULT,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
     currentPlateText: {
-      fontSize: typography.fontSize.base,
-      color: colors.muted.foreground,
+      fontSize: 16,
+      color: colors.text.secondary,
     },
 
     // Input
     input: {
       backgroundColor: colors.card.DEFAULT,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      borderRadius: borderRadius.lg,
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      fontSize: typography.fontSize.base,
-      color: colors.foreground,
+      borderColor: colors.border,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: colors.text.primary,
     },
     inputHint: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      paddingLeft: spacing[1],
+      fontSize: 12,
+      color: colors.text.secondary,
+      paddingLeft: 4,
     },
 
     // Image Upload
     uploadButton: {
       backgroundColor: colors.card.DEFAULT,
       borderWidth: 2,
-      borderColor: colors.borderSolid,
+      borderColor: colors.border,
       borderStyle: 'dashed',
-      borderRadius: borderRadius.lg,
-      padding: spacing[6],
+      borderRadius: 16,
+      padding: 24,
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 8,
     },
     uploadButtonText: {
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.medium as any,
+      fontSize: 14,
+      fontWeight: '500',
       color: colors.primary.DEFAULT,
     },
     uploadButtonHint: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+      fontSize: 12,
+      color: colors.text.secondary,
     },
     imagePreviewContainer: {
       position: 'relative',
-      borderRadius: borderRadius.lg,
+      borderRadius: 16,
       overflow: 'hidden',
     },
     imagePreview: {
       width: '100%',
       height: 200,
-      borderRadius: borderRadius.lg,
+      borderRadius: 16,
     },
     uploadingOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing[2],
+      gap: 8,
     },
     uploadingText: {
-      fontSize: typography.fontSize.sm,
+      fontSize: 14,
       color: '#FFFFFF',
     },
     removeImageButton: {
       position: 'absolute',
-      top: spacing[2],
-      right: spacing[2],
+      top: 8,
+      right: 8,
       backgroundColor: colors.card.DEFAULT,
       borderRadius: 14,
     },
@@ -506,30 +499,30 @@ const createStyles = (colors: ThemeColors) =>
     infoCard: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: spacing[3],
+      gap: 12,
       backgroundColor: colors.muted.DEFAULT,
-      borderRadius: borderRadius.lg,
-      padding: spacing[4],
+      borderRadius: 16,
+      padding: 16,
     },
     infoContent: {
       flex: 1,
     },
     infoText: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
-      lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
+      fontSize: 12,
+      color: colors.text.secondary,
+      lineHeight: 18,
     },
 
     // Submit Button
     submitButton: {
       backgroundColor: colors.primary.DEFAULT,
-      borderRadius: borderRadius.xl,
-      paddingVertical: spacing[3.5],
+      borderRadius: 16,
+      paddingVertical: 16,
       alignItems: 'center',
     },
     submitButtonText: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.medium as any,
+      fontSize: 16,
+      fontWeight: '500',
       color: colors.primary.foreground,
     },
     submitButtonDisabled: {

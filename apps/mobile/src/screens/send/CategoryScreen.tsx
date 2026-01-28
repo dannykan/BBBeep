@@ -58,7 +58,7 @@ export default function CategoryScreen({ navigation }: Props) {
 
       <View style={styles.categoryGrid}>
         <TouchableOpacity
-          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('車況提醒')}
           activeOpacity={0.7}
         >
@@ -75,7 +75,7 @@ export default function CategoryScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('行車安全')}
           activeOpacity={0.7}
         >
@@ -88,7 +88,7 @@ export default function CategoryScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('讚美感謝')}
           activeOpacity={0.7}
         >
@@ -101,7 +101,7 @@ export default function CategoryScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.categoryCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('其他情況')}
           activeOpacity={0.7}
         >

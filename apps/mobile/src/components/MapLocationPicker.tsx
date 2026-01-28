@@ -426,7 +426,7 @@ export default function MapLocationPicker({
     >
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.card.DEFAULT, borderBottomColor: colors.borderSolid }]}>
+        <View style={[styles.header, { backgroundColor: colors.card.DEFAULT, borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.headerButton} onPress={onClose}>
             <Text style={[styles.headerButtonText, { color: colors.muted.foreground }]}>取消</Text>
           </TouchableOpacity>
@@ -482,7 +482,7 @@ export default function MapLocationPicker({
 
             {/* Autocomplete Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-              <View style={[styles.suggestionsContainer, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+              <View style={[styles.suggestionsContainer, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
                   nestedScrollEnabled
@@ -493,7 +493,7 @@ export default function MapLocationPicker({
                       key={`${suggestion.latitude}-${suggestion.longitude}-${index}`}
                       style={[
                         styles.suggestionItem,
-                        index < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderSolid },
+                        index < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
                       ]}
                       onPress={() => handleSelectSuggestion(suggestion)}
                       activeOpacity={0.7}
@@ -552,7 +552,7 @@ export default function MapLocationPicker({
           </View>
 
           {/* Selected Location */}
-          <View style={[styles.footer, { backgroundColor: colors.card.DEFAULT, borderTopColor: colors.borderSolid }]}>
+          <View style={[styles.footer, { backgroundColor: colors.card.DEFAULT, borderTopColor: colors.border }]}>
             {selectedLocation ? (
               <View style={styles.selectedLocationContainer}>
                 {/* 地址顯示 */}

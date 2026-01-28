@@ -51,7 +51,7 @@ export default function NicknameScreen({ navigation }: Props) {
         <View style={styles.inputSection}>
           <Text style={[styles.label, { color: colors.foreground }]}>暱稱</Text>
           <TextInput
-            style={[styles.input, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
             placeholder="例如：熱心駕駛、路過提醒一下"
             placeholderTextColor={colors.muted.foreground}
             value={nickname}

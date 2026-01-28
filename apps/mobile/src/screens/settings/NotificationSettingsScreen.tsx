@@ -19,16 +19,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
 
 export default function NotificationSettingsScreen() {
   const navigation = useNavigation<any>();
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
   // Local state for notification preferences
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -95,7 +90,7 @@ export default function NotificationSettingsScreen() {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
@@ -176,13 +171,13 @@ export default function NotificationSettingsScreen() {
                 </Text>
               </View>
             </View>
-            <Ionicons name="open-outline" size={18} color={colors.muted.foreground} />
+            <Ionicons name="open-outline" size={18} color={colors.text.secondary} />
           </TouchableOpacity>
         </View>
 
         {/* Info */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={colors.muted.foreground} />
+          <Ionicons name="information-circle-outline" size={20} color={colors.text.secondary} />
           <Text style={styles.infoText}>
             如果您在系統設定中關閉了 UBeep 的通知權限，即使在此處開啟也無法收到推播通知。
           </Text>
@@ -192,151 +187,149 @@ export default function NotificationSettingsScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) =>
+const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
 
-  // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[1],
-  },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 80,
-  },
+    // Header
+    headerContainer: {
+      backgroundColor: colors.background,
+    },
+    headerSafeArea: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 4,
+    },
+    backText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+    },
+    headerSpacer: {
+      width: 80,
+    },
 
-  // Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing[6],
-    gap: spacing[5],
-  },
+    // Content
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 24,
+      gap: 20,
+    },
 
-  // Section
-  section: {
-    gap: spacing[2],
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.muted.foreground,
-    textTransform: 'uppercase',
-    paddingLeft: spacing[1],
-  },
+    // Section
+    section: {
+      gap: 8,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.text.secondary,
+      textTransform: 'uppercase',
+      paddingLeft: 4,
+    },
 
-  // Setting Card
-  settingCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    overflow: 'hidden',
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[4],
-    gap: spacing[3],
-  },
-  settingRowDisabled: {
-    opacity: 0.5,
-  },
-  settingIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary.soft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingContent: {
-    flex: 1,
-    gap: spacing[0.5],
-  },
-  settingLabel: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-  },
-  settingLabelDisabled: {
-    color: colors.muted.foreground,
-  },
-  settingDescription: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
-  settingDivider: {
-    height: 1,
-    backgroundColor: colors.borderSolid,
-    marginLeft: spacing[4] + 32 + spacing[3],
-  },
+    // Setting Card
+    settingCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    settingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      gap: 12,
+    },
+    settingRowDisabled: {
+      opacity: 0.5,
+    },
+    settingIconContainer: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingContent: {
+      flex: 1,
+      gap: 2,
+    },
+    settingLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    settingLabelDisabled: {
+      color: colors.text.secondary,
+    },
+    settingDescription: {
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
+    settingDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginLeft: 60,
+    },
 
-  // Link Card
-  linkCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  linkCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    flex: 1,
-  },
+    // Link Card
+    linkCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    linkCardContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
 
-  // Info Card
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
-    backgroundColor: colors.muted.DEFAULT,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-  },
+    // Info Card
+    infoCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      backgroundColor: colors.muted.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+    },
+    infoText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.text.secondary,
+      lineHeight: 18,
+    },
   });

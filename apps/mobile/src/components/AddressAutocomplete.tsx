@@ -176,7 +176,7 @@ export default function AddressAutocomplete({
             styles.input,
             {
               backgroundColor: colors.card.DEFAULT,
-              borderColor: isFocused ? colors.primary.DEFAULT : colors.borderSolid,
+              borderColor: isFocused ? colors.primary.DEFAULT : colors.border,
               color: colors.foreground,
             },
           ]}
@@ -196,7 +196,7 @@ export default function AddressAutocomplete({
       </View>
 
       {showDropdown && predictions.length > 0 && (
-        <View style={[styles.dropdown, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+        <View style={[styles.dropdown, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
           <FlatList
             data={predictions}
             keyExtractor={(item) => item.place_id}

@@ -23,11 +23,6 @@ import { messagesApi, displayLicensePlate } from '@bbbeeep/shared';
 import type { SentMessage } from '@bbbeeep/shared';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
 
 type SentScreenRouteParams = {
   Sent: {
@@ -144,26 +139,32 @@ export default function SentScreen() {
   const getTagStyle = (type: string) => {
     switch (type) {
       case '車況提醒':
-        return { backgroundColor: '#7A8FA820', color: '#7A8FA8' };
+        return isDark
+          ? { backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60A5FA' }
+          : { backgroundColor: '#EFF6FF', color: '#1D4ED8' };
       case '行車安全提醒':
-        return { backgroundColor: '#E6A23C20', color: '#E6A23C' };
+        return isDark
+          ? { backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#FBBF24' }
+          : { backgroundColor: '#FEF3C7', color: '#D97706' };
       case '讚美感謝':
-        return { backgroundColor: '#8FA6BF20', color: '#8FA6BF' };
+        return isDark
+          ? { backgroundColor: 'rgba(236, 72, 153, 0.2)', color: '#F472B6' }
+          : { backgroundColor: '#FCE7F3', color: '#DB2777' };
       default:
-        return { backgroundColor: colors.muted.DEFAULT, color: colors.muted.foreground };
+        return { backgroundColor: colors.muted.DEFAULT, color: colors.text.secondary };
     }
   };
 
   const getAccentColor = (type: string) => {
     switch (type) {
       case '車況提醒':
-        return '#7A8FA8';
+        return colors.primary.DEFAULT;
       case '行車安全提醒':
-        return '#E6A23C';
+        return isDark ? '#FBBF24' : '#F59E0B';
       case '讚美感謝':
-        return '#8FA6BF';
+        return isDark ? '#F472B6' : '#EC4899';
       default:
-        return colors.borderSolid;
+        return colors.border;
     }
   };
 
@@ -201,7 +202,7 @@ export default function SentScreen() {
                 <Ionicons
                   name="chevron-back"
                   size={20}
-                  color={colors.muted.foreground}
+                  color={colors.text.secondary}
                 />
                 <Text style={styles.backText}>返回</Text>
               </TouchableOpacity>
@@ -247,7 +248,7 @@ export default function SentScreen() {
           <View style={styles.metaCard}>
             {selectedMsg.occurredAt && (
               <View style={styles.metaRow}>
-                <Ionicons name="alert-circle-outline" size={16} color={colors.muted.foreground} />
+                <Ionicons name="alert-circle-outline" size={16} color={colors.text.secondary} />
                 <View style={styles.metaTextColumn}>
                   <Text style={styles.metaText}>約 {formatOccurredAt(selectedMsg.occurredAt)} 發生</Text>
                   <Text style={styles.metaTextHint}>您回報的大約時間</Text>
@@ -266,11 +267,11 @@ export default function SentScreen() {
               </TouchableOpacity>
             )}
             <View style={styles.metaRow}>
-              <Ionicons name="send-outline" size={16} color={colors.muted.foreground} />
+              <Ionicons name="send-outline" size={16} color={colors.text.secondary} />
               <Text style={styles.metaText}>提醒發送於 {formatTime(selectedMsg.createdAt)}</Text>
             </View>
             <View style={styles.metaRow}>
-              <Ionicons name="car-outline" size={16} color={colors.muted.foreground} />
+              <Ionicons name="car-outline" size={16} color={colors.text.secondary} />
               <Text style={styles.metaText}>
                 發送給：{selectedMsg.receiver.licensePlate
                   ? displayLicensePlate(selectedMsg.receiver.licensePlate)
@@ -318,7 +319,7 @@ export default function SentScreen() {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
@@ -412,7 +413,7 @@ export default function SentScreen() {
                 <Ionicons
                   name="chevron-forward"
                   size={16}
-                  color={colors.muted.foreground}
+                  color={colors.text.secondary}
                 />
               </TouchableOpacity>
               );
@@ -431,297 +432,298 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       backgroundColor: colors.background,
     },
 
-  // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[1],
-  },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 80,
-  },
+    // Header
+    headerContainer: {
+      backgroundColor: colors.background,
+    },
+    headerSafeArea: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 4,
+    },
+    backText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text.primary,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+    },
+    headerSpacer: {
+      width: 80,
+    },
 
-  // Scroll Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing[6],
-    gap: spacing[4],
-  },
+    // Scroll Content
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 24,
+      gap: 16,
+    },
 
-  // Empty state
-  emptyCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[8],
-    alignItems: 'center',
-    gap: spacing[4],
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-  },
-  emptyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    textAlign: 'center',
-  },
+    // Empty state
+    emptyCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 32,
+      alignItems: 'center',
+      gap: 16,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
 
-  // Primary button
-  primaryButton: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[6],
-  },
-  primaryButtonText: {
-    color: colors.primary.foreground,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-  },
+    // Primary button
+    primaryButton: {
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+    },
+    primaryButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '600',
+    },
 
-  // Message list
-  messageList: {
-    gap: spacing[2],
-  },
-  messageItem: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    borderLeftWidth: 3,
-    padding: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  messageContent: {
-    flex: 1,
-    minWidth: 0,
-    gap: spacing[1.5],
-  },
-  messageBadgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing[2],
-  },
-  typeBadge: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[0.5],
-    borderRadius: borderRadius.sm,
-  },
-  typeBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as any,
-  },
-  readStatusText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
-  repliedBadge: {
-    backgroundColor: isDark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7',
-    paddingHorizontal: spacing[1.5],
-    paddingVertical: spacing[0.5],
-    borderRadius: borderRadius.sm,
-  },
-  repliedBadgeUnread: {
-    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
-  },
-  repliedBadgeText: {
-    fontSize: typography.fontSize.xs,
-    color: isDark ? '#4ADE80' : '#16A34A',
-  },
-  repliedBadgeTextUnread: {
-    color: isDark ? '#F87171' : '#DC2626',
-    fontWeight: typography.fontWeight.medium as any,
-  },
-  messageTime: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    marginLeft: 'auto',
-  },
-  messageTemplate: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-  },
-  messageCustomText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
-  messageReceiver: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
+    // Message list
+    messageList: {
+      gap: 12,
+    },
+    messageItem: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderLeftWidth: 4,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    messageContent: {
+      flex: 1,
+      minWidth: 0,
+      gap: 6,
+    },
+    messageBadgesRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    typeBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    typeBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    readStatusText: {
+      fontSize: 11,
+      color: colors.text.secondary,
+    },
+    repliedBadge: {
+      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    repliedBadgeUnread: {
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+    },
+    repliedBadgeText: {
+      fontSize: 11,
+      fontWeight: '500',
+      color: isDark ? '#4ADE80' : '#16A34A',
+    },
+    repliedBadgeTextUnread: {
+      color: isDark ? '#F87171' : '#DC2626',
+      fontWeight: '600',
+    },
+    messageTime: {
+      fontSize: 11,
+      color: colors.text.secondary,
+      marginLeft: 'auto',
+    },
+    messageTemplate: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    messageCustomText: {
+      fontSize: 13,
+      color: colors.text.secondary,
+    },
+    messageReceiver: {
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
 
-  // Detail view
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  timeText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
-  readBadge: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[0.5],
-    borderRadius: borderRadius.sm,
-  },
-  readBadgeRead: {
-    backgroundColor: isDark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7',
-  },
-  readBadgeUnread: {
-    backgroundColor: colors.muted.DEFAULT,
-  },
-  readBadgeText: {
-    fontSize: typography.fontSize.xs,
-  },
-  readBadgeTextRead: {
-    color: isDark ? '#4ADE80' : '#16A34A',
-  },
-  readBadgeTextUnread: {
-    color: colors.muted.foreground,
-  },
+    // Detail view
+    badgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    timeText: {
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
+    readBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    readBadgeRead: {
+      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7',
+    },
+    readBadgeUnread: {
+      backgroundColor: colors.muted.DEFAULT,
+    },
+    readBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    readBadgeTextRead: {
+      color: isDark ? '#4ADE80' : '#16A34A',
+    },
+    readBadgeTextUnread: {
+      color: colors.text.secondary,
+    },
 
-  // Message card in detail
-  messageCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[4],
-    gap: spacing[4],
-  },
-  templateText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-    lineHeight: typography.fontSize.lg * typography.lineHeight.relaxed,
-  },
-  customTextBox: {
-    backgroundColor: colors.primary.soft,
-    borderWidth: 1,
-    borderColor: `${colors.primary.DEFAULT}20`,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    gap: spacing[1],
-  },
-  customTextLabel: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
-  customTextContent: {
-    fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
-  },
+    // Message card in detail
+    messageCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 20,
+      gap: 16,
+    },
+    templateText: {
+      fontSize: 17,
+      fontWeight: '500',
+      color: colors.text.primary,
+      lineHeight: 26,
+    },
+    customTextBox: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+      borderRadius: 12,
+      padding: 16,
+      gap: 6,
+    },
+    customTextLabel: {
+      fontSize: 12,
+      color: colors.text.secondary,
+    },
+    customTextContent: {
+      fontSize: 14,
+      color: colors.text.primary,
+      lineHeight: 22,
+    },
 
-  // Meta card - 時間地點資訊
-  metaCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    gap: spacing[3],
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  metaTextColumn: {
-    flex: 1,
-    gap: spacing[0.5],
-  },
-  metaText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
-  metaTextHint: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    opacity: 0.7,
-  },
-  metaTextLink: {
-    flex: 1,
-    fontSize: typography.fontSize.sm,
-    color: colors.primary.DEFAULT,
-  },
+    // Meta card - 時間地點資訊
+    metaCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    metaTextColumn: {
+      flex: 1,
+      gap: 2,
+    },
+    metaText: {
+      fontSize: 13,
+      color: colors.text.secondary,
+    },
+    metaTextHint: {
+      fontSize: 11,
+      color: colors.text.secondary,
+      opacity: 0.7,
+    },
+    metaTextLink: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.primary.DEFAULT,
+    },
 
-  // Reply section
-  replyCard: {
-    backgroundColor: isDark ? 'rgba(74, 222, 128, 0.15)' : '#DCFCE7',
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(74, 222, 128, 0.3)' : '#BBF7D0',
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    gap: spacing[2],
-  },
-  replyLabel: {
-    fontSize: typography.fontSize.xs,
-    color: isDark ? '#4ADE80' : '#16A34A',
-  },
-  replyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
-  },
-  noReplyCard: {
-    backgroundColor: `${colors.muted.DEFAULT}30`,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-    alignItems: 'center',
-  },
-  noReplyText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-  },
+    // Reply section
+    replyCard: {
+      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : '#DCFCE7',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : '#BBF7D0',
+      borderRadius: 16,
+      padding: 16,
+      gap: 8,
+    },
+    replyLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: isDark ? '#4ADE80' : '#16A34A',
+    },
+    replyText: {
+      fontSize: 14,
+      color: colors.text.primary,
+      lineHeight: 22,
+    },
+    noReplyCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    noReplyText: {
+      fontSize: 13,
+      color: colors.text.secondary,
+    },
 
-  // Close button
-  closeButton: {
-    paddingVertical: spacing[3],
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
+    // Close button
+    closeButton: {
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    closeButtonText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+    },
   });

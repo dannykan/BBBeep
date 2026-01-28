@@ -111,7 +111,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
         <View style={styles.inputSection}>
           <Text style={[styles.label, { color: colors.foreground }]}>邀請碼</Text>
           <TextInput
-            style={[styles.inviteCodeInput, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.inviteCodeInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
             placeholder="輸入 6 位邀請碼"
             placeholderTextColor={colors.muted.foreground}
             value={inviteCode}
@@ -170,7 +170,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
             </>
           ) : (
             <TouchableOpacity
-              style={[styles.outlineButton, { borderColor: colors.borderSolid }]}
+              style={[styles.outlineButton, { borderColor: colors.border }]}
               onPress={handleSkip}
               activeOpacity={0.7}
             >

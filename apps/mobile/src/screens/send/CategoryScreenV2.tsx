@@ -24,7 +24,8 @@ interface CategoryOption {
   description: string;
   icon: string;
   iconFamily: 'ionicons' | 'fontawesome';
-  color: string;
+  iconColor: string;
+  iconBgColor: string;
 }
 
 export default function CategoryScreenV2({ navigation }: Props) {
@@ -45,34 +46,38 @@ export default function CategoryScreenV2({ navigation }: Props) {
     {
       id: '車況提醒',
       title: '車況提醒',
-      description: '車燈、輪胎、車門、物品掉落等',
-      icon: vehicleType === 'car' ? 'car' : 'motorcycle',
-      iconFamily: 'fontawesome',
-      color: colors.accent?.vehicle || colors.primary.DEFAULT,
+      description: '輪胎、車燈、車門等',
+      icon: 'alert-circle-outline',
+      iconFamily: 'ionicons',
+      iconColor: '#F59E0B',
+      iconBgColor: '#FEF3C7',
     },
     {
       id: '行車安全',
       title: '行車安全',
-      description: '危險駕駛、違規、需注意安全等',
-      icon: 'warning-outline',
+      description: '危險駕駛、違規提醒',
+      icon: 'shield-checkmark-outline',
       iconFamily: 'ionicons',
-      color: colors.accent?.safety || '#F59E0B',
+      iconColor: colors.primary.DEFAULT,
+      iconBgColor: '#DBEAFE',
     },
     {
       id: '讚美感謝',
       title: '讚美感謝',
-      description: '禮讓、幫助、感謝對方等',
-      icon: 'heart-outline',
+      description: '禮讓、好行為等',
+      icon: 'heart',
       iconFamily: 'ionicons',
-      color: colors.accent?.praise || '#EC4899',
+      iconColor: '#22C55E',
+      iconBgColor: '#DCFCE7',
     },
     {
       id: '其他情況',
-      title: '其他情況',
-      description: '上述以外的提醒',
+      title: '其他',
+      description: '一般善意提醒',
       icon: 'chatbubble-outline',
       iconFamily: 'ionicons',
-      color: colors.muted.foreground,
+      iconColor: '#A855F7',
+      iconBgColor: '#F3E8FF',
     },
   ];
 
@@ -112,38 +117,62 @@ export default function CategoryScreenV2({ navigation }: Props) {
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.categoryList}>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryCard,
-                {
-                  backgroundColor: colors.card.DEFAULT,
-                  borderColor: colors.borderSolid,
-                },
-              ]}
-              onPress={() => handleSelect(category.id)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: `${category.color}15` }]}>
-                {category.iconFamily === 'ionicons' ? (
-                  <Ionicons name={category.icon as any} size={28} color={category.color} />
-                ) : (
-                  <FontAwesome6 name={category.icon as any} size={24} color={category.color} />
-                )}
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+        <View style={styles.categoryGrid}>
+          {/* Row 1 */}
+          <View style={styles.categoryRow}>
+            {categories.slice(0, 2).map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  {
+                    backgroundColor: colors.card.DEFAULT,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => handleSelect(category.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: category.iconBgColor }]}>
+                  <Ionicons name={category.icon as any} size={28} color={category.iconColor} />
+                </View>
+                <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
                   {category.title}
                 </Text>
-                <Text style={[styles.cardDescription, { color: colors.muted.foreground }]}>
+                <Text style={[styles.cardDescription, { color: colors.text.secondary }]}>
                   {category.description}
                 </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Row 2 */}
+          <View style={styles.categoryRow}>
+            {categories.slice(2, 4).map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  {
+                    backgroundColor: colors.card.DEFAULT,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => handleSelect(category.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: category.iconBgColor }]}>
+                  <Ionicons name={category.icon as any} size={28} color={category.iconColor} />
+                </View>
+                <Text style={[styles.cardTitle, { color: colors.text.primary }]}>
+                  {category.title}
+                </Text>
+                <Text style={[styles.cardDescription, { color: colors.text.secondary }]}>
+                  {category.description}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SendLayout>
@@ -158,43 +187,44 @@ const styles = StyleSheet.create({
   plateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1.5],
-    borderRadius: borderRadius.lg,
+    gap: 8,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 12,
   },
   plateText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold as any,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  categoryList: {
-    gap: spacing[3],
+  categoryGrid: {
+    gap: 12,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   categoryCard: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    padding: spacing[4],
-    borderRadius: borderRadius.xl,
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    gap: spacing[4],
+    gap: 12,
   },
   iconContainer: {
     width: 56,
     height: 56,
-    borderRadius: borderRadius.xl,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardContent: {
-    flex: 1,
-  },
   cardTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold as any,
-    marginBottom: spacing[1],
+    fontSize: 15,
+    fontWeight: '600',
   },
   cardDescription: {
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.4,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

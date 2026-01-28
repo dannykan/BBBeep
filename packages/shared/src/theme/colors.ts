@@ -1,81 +1,102 @@
 /**
- * BBBeep Design System - Colors
+ * UBeep Design System - Colors (Warm Blue)
  * 共用顏色定義，供 Web 和 Mobile 使用
  */
 
 export const colors = {
-  // Primary - 主要品牌色
+  // Primary - 主要品牌色 (Warm Blue)
   primary: {
-    DEFAULT: '#4A6FA5',
-    dark: '#3C5E8C',
-    soft: '#EAF0F8',
+    DEFAULT: '#3B82F6',      // 主色
+    dark: '#2563EB',         // 深色 (CTA 按鈕)
+    light: '#93C5FD',        // 淺色
+    soft: '#DBEAFE',         // 柔和背景
+    bg: '#EFF6FF',           // 背景色
     foreground: '#FFFFFF',
   },
 
   // Secondary - 次要色
   secondary: {
-    DEFAULT: '#7A8FA8',
+    DEFAULT: '#64748B',
     foreground: '#FFFFFF',
   },
 
   // Background - 背景色
-  background: '#F6F6F4',
+  background: '#FFFFFF',
 
   // Foreground - 前景色（文字）
-  foreground: '#2A2A2A',
+  foreground: '#1E293B',
 
   // Card - 卡片
   card: {
-    DEFAULT: '#FFFFFF',
-    foreground: '#2A2A2A',
+    DEFAULT: '#F8FAFC',
+    foreground: '#1E293B',
   },
 
+  // Surface - 表面
+  surface: '#FFFFFF',
+
   // Border - 邊框
-  border: 'rgba(0,0,0,0.08)',
-  borderSolid: '#E5E5E5',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
 
   // Input - 輸入框
   input: {
-    background: '#ECEBE8',
-    border: '#DDDDDD',
-    placeholder: '#9CA3AF',
+    background: '#FFFFFF',
+    border: '#E2E8F0',
+    placeholder: '#94A3B8',
+    filled: '#F1F5F9',
   },
 
   // Muted - 淡化色
   muted: {
-    DEFAULT: '#ECEBE8',
-    foreground: '#6B6B6B',
+    DEFAULT: '#F1F5F9',
+    foreground: '#64748B',
   },
 
   // Accent - 強調色（依類型）
   accent: {
-    vehicle: '#7A8FA8',
-    safety: '#E6A23C',
-    praise: '#8FA6BF',
+    vehicle: '#64748B',      // 車況相關
+    safety: '#F59E0B',       // 安全警告
+    praise: '#3B82F6',       // 讚美
+    info: '#DBEAFE',         // 資訊背景
   },
 
   // Destructive - 警告/錯誤
   destructive: {
-    DEFAULT: '#C96A6A',
+    DEFAULT: '#EF4444',
+    light: '#FEE2E2',
     foreground: '#FFFFFF',
   },
 
   // Success - 成功
   success: {
-    DEFAULT: '#4CAF50',
+    DEFAULT: '#22C55E',
+    light: '#DCFCE7',
     foreground: '#FFFFFF',
   },
 
+  // Warning - 警告
+  warning: {
+    DEFAULT: '#F59E0B',
+    light: '#FEF3C7',
+    foreground: '#92400E',
+  },
+
   // Ring - Focus 狀態
-  ring: '#4A6FA5',
+  ring: '#3B82F6',
 
   // Text colors
   text: {
-    primary: '#2A2A2A',
-    secondary: '#6B6B6B',
-    muted: '#9CA3AF',
+    primary: '#1E293B',
+    secondary: '#64748B',
+    tertiary: '#94A3B8',
+    muted: '#CBD5E1',
     inverse: '#FFFFFF',
   },
+
+  // Fixed colors (不隨主題變化)
+  white: '#FFFFFF',
+  black: '#000000',
 } as const;
 
 export type Colors = typeof colors;

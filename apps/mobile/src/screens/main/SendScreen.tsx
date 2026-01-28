@@ -1151,7 +1151,7 @@ const styles = StyleSheet.create({
   },
   header: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
+    borderBottomColor: colors.border,
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],
     flexDirection: 'row',
@@ -1193,7 +1193,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.borderSolid,
+    backgroundColor: colors.border,
   },
   progressDotActive: {
     width: 32,
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: colors.card.DEFAULT,
     borderWidth: 2,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1274,7 +1274,7 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
@@ -1294,7 +1294,7 @@ const styles = StyleSheet.create({
   },
   plateInput: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
@@ -1322,7 +1322,7 @@ const styles = StyleSheet.create({
     height: CARD_SIZE,
     backgroundColor: colors.card.DEFAULT,
     borderWidth: 2,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.xl,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1346,7 +1346,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     borderRadius: borderRadius.xl,
     borderWidth: 2,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     backgroundColor: colors.card.DEFAULT,
     alignItems: 'center',
   },
@@ -1370,7 +1370,7 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[5],
   },
@@ -1383,7 +1383,7 @@ const styles = StyleSheet.create({
   messageCardMuted: {
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     gap: spacing[2],
@@ -1425,7 +1425,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
@@ -1481,7 +1481,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card.DEFAULT,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     gap: spacing[3],
@@ -1527,7 +1527,7 @@ const styles = StyleSheet.create({
   // Location input
   locationInput: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2.5],
@@ -1568,7 +1568,7 @@ const styles = StyleSheet.create({
   costCard: {
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
   },
@@ -1597,7 +1597,7 @@ const styles = StyleSheet.create({
   },
   costDivider: {
     height: 1,
-    backgroundColor: colors.borderSolid,
+    backgroundColor: colors.border,
     marginVertical: spacing[2],
   },
   costRemainingLabel: {
@@ -1654,7 +1654,7 @@ const styles = StyleSheet.create({
   infoCard: {
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     gap: spacing[2],
@@ -1696,7 +1696,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: colors.card.DEFAULT,
     borderWidth: 2,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[4],
     alignItems: 'center',
@@ -1749,7 +1749,7 @@ const styles = StyleSheet.create({
   remainingPointsCard: {
     backgroundColor: `${colors.muted.DEFAULT}30`,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
     alignItems: 'center',

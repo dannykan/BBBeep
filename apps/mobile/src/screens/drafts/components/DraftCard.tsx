@@ -109,7 +109,7 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
   const expiryInfo = getExpiryInfo();
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT }]}>
+    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -170,7 +170,7 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
       {/* 轉錄文字（如有） */}
       {draft.transcript && (
         <View style={[styles.transcriptBox, { backgroundColor: colors.muted.DEFAULT }]}>
-          <Text style={[styles.transcriptText, { color: colors.foreground }]} numberOfLines={3}>
+          <Text style={[styles.transcriptText, { color: colors.text.primary }]} numberOfLines={3}>
             「{draft.transcript}」
           </Text>
         </View>
@@ -179,7 +179,7 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
       {/* 地點（如有） */}
       {draft.address && (
         <View style={styles.locationRow}>
-          <Ionicons name="location-outline" size={14} color={colors.muted.foreground} />
+          <Ionicons name="location-outline" size={14} color={colors.text.secondary} />
           <Text style={[styles.locationText, { color: colors.muted.foreground }]} numberOfLines={1}>
             {draft.address}
           </Text>
@@ -192,7 +192,7 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
           style={[styles.deleteButton, { borderColor: colors.border }]}
           onPress={onDelete}
         >
-          <Ionicons name="trash-outline" size={18} color={colors.muted.foreground} />
+          <Ionicons name="trash-outline" size={18} color={colors.text.secondary} />
           <Text style={[styles.deleteButtonText, { color: colors.muted.foreground }]}>
             刪除
           </Text>
@@ -214,11 +214,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',

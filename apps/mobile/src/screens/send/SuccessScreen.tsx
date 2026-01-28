@@ -163,7 +163,7 @@ export default function SuccessScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+            style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
             onPress={handleSendAnother}
             activeOpacity={0.8}
           >

@@ -19,7 +19,7 @@ export default function VehicleIcon({
   userType,
   vehicleType,
   size = 24,
-  color = '#4A6FA5',
+  color = '#3B82F6',
 }: VehicleIconProps) {
   // 行人/腳踏車：左上右下對角配置
   if (userType === 'pedestrian') {

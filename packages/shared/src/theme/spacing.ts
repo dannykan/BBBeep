@@ -1,5 +1,5 @@
 /**
- * BBBeep Design System - Spacing
+ * UBeep Design System - Spacing (Warm Blue)
  * 共用間距定義
  */
 
@@ -39,6 +39,45 @@ export const borderRadius = {
   full: 9999,
 } as const;
 
+// Component-specific sizes
+export const componentSizes = {
+  // Button heights
+  buttonSm: 40,
+  buttonMd: 48,
+  buttonLg: 56,
+
+  // Input heights
+  inputSm: 40,
+  inputMd: 48,
+  inputLg: 56,
+
+  // Icon sizes
+  iconSm: 16,
+  iconMd: 20,
+  iconLg: 24,
+  iconXl: 32,
+
+  // Avatar sizes
+  avatarSm: 32,
+  avatarMd: 44,
+  avatarLg: 64,
+  avatarXl: 80,
+
+  // Card padding
+  cardPadding: 16,
+
+  // Screen padding
+  screenPaddingX: 20,
+  screenPaddingY: 24,
+
+  // Header
+  statusBarHeight: 44,
+  headerHeight: 56,
+
+  // Tab bar
+  tabBarHeight: 83,
+} as const;
+
 // Shadow definitions for React Native
 export const shadows = {
   none: {
@@ -58,14 +97,14 @@ export const shadows = {
   md: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
   lg: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -73,4 +112,5 @@ export const shadows = {
 
 export type Spacing = typeof spacing;
 export type BorderRadius = typeof borderRadius;
+export type ComponentSizes = typeof componentSizes;
 export type Shadows = typeof shadows;

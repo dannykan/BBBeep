@@ -1,5 +1,5 @@
 /**
- * Theme Context
+ * Theme Context - UBeep Warm Blue
  * 管理 App 的主題模式（淺色/深色/跟隨系統）
  */
 
@@ -26,7 +26,9 @@ export interface ThemeColors {
   primary: {
     DEFAULT: string;
     dark: string;
+    light: string;
     soft: string;
+    bg: string;
     foreground: string;
   };
   secondary: {
@@ -39,12 +41,14 @@ export interface ThemeColors {
     DEFAULT: string;
     foreground: string;
   };
+  surface: string;
   border: string;
-  borderSolid: string;
+  borderLight: string;
   input: {
     background: string;
     border: string;
     placeholder: string;
+    filled: string;
   };
   muted: {
     DEFAULT: string;
@@ -54,123 +58,158 @@ export interface ThemeColors {
     vehicle: string;
     safety: string;
     praise: string;
+    info: string;
   };
   destructive: {
     DEFAULT: string;
+    light: string;
     foreground: string;
   };
   success: {
     DEFAULT: string;
+    light: string;
+    foreground: string;
+  };
+  warning: {
+    DEFAULT: string;
+    light: string;
     foreground: string;
   };
   ring: string;
   text: {
     primary: string;
     secondary: string;
+    tertiary: string;
     muted: string;
     inverse: string;
   };
 }
 
-// Light theme colors
+// Light theme colors (Warm Blue)
 const lightColors: ThemeColors = {
   primary: {
-    DEFAULT: '#4A6FA5',
-    dark: '#3C5E8C',
-    soft: '#EAF0F8',
+    DEFAULT: '#3B82F6',
+    dark: '#2563EB',
+    light: '#93C5FD',
+    soft: '#DBEAFE',
+    bg: '#EFF6FF',
     foreground: '#FFFFFF',
   },
   secondary: {
-    DEFAULT: '#7A8FA8',
+    DEFAULT: '#64748B',
     foreground: '#FFFFFF',
   },
-  background: '#F6F6F4',
-  foreground: '#2A2A2A',
+  background: '#FFFFFF',
+  foreground: '#1E293B',
   card: {
-    DEFAULT: '#FFFFFF',
-    foreground: '#2A2A2A',
+    DEFAULT: '#F8FAFC',
+    foreground: '#1E293B',
   },
-  border: 'rgba(0,0,0,0.08)',
-  borderSolid: '#E5E5E5',
+  surface: '#FFFFFF',
+  border: '#E2E8F0',
+  borderLight: '#F1F5F9',
   input: {
-    background: '#ECEBE8',
-    border: '#DDDDDD',
-    placeholder: '#9CA3AF',
+    background: '#FFFFFF',
+    border: '#E2E8F0',
+    placeholder: '#94A3B8',
+    filled: '#F1F5F9',
   },
   muted: {
-    DEFAULT: '#ECEBE8',
-    foreground: '#6B6B6B',
+    DEFAULT: '#F1F5F9',
+    foreground: '#64748B',
   },
   accent: {
-    vehicle: '#7A8FA8',
-    safety: '#E6A23C',
-    praise: '#8FA6BF',
+    vehicle: '#64748B',
+    safety: '#F59E0B',
+    praise: '#3B82F6',
+    info: '#DBEAFE',
   },
   destructive: {
-    DEFAULT: '#C96A6A',
+    DEFAULT: '#EF4444',
+    light: '#FEE2E2',
     foreground: '#FFFFFF',
   },
   success: {
-    DEFAULT: '#4CAF50',
+    DEFAULT: '#22C55E',
+    light: '#DCFCE7',
     foreground: '#FFFFFF',
   },
-  ring: '#4A6FA5',
+  warning: {
+    DEFAULT: '#F59E0B',
+    light: '#FEF3C7',
+    foreground: '#92400E',
+  },
+  ring: '#3B82F6',
   text: {
-    primary: '#2A2A2A',
-    secondary: '#6B6B6B',
-    muted: '#9CA3AF',
+    primary: '#1E293B',
+    secondary: '#64748B',
+    tertiary: '#94A3B8',
+    muted: '#CBD5E1',
     inverse: '#FFFFFF',
   },
 };
 
-// Dark theme colors
+// Dark theme colors (Pure Black OLED)
 const darkColors: ThemeColors = {
   primary: {
-    DEFAULT: '#5A8FD4',
-    dark: '#4A7FC4',
-    soft: '#1E2A3A',
+    DEFAULT: '#60A5FA',
+    dark: '#3B82F6',
+    light: '#93C5FD',
+    soft: '#1C2D4D',
+    bg: '#0A1628',
     foreground: '#FFFFFF',
   },
   secondary: {
-    DEFAULT: '#8FA6BF',
+    DEFAULT: '#8E8E93',
     foreground: '#FFFFFF',
   },
-  background: '#121212',
-  foreground: '#E5E5E5',
+  background: '#000000',
+  foreground: '#FFFFFF',
   card: {
-    DEFAULT: '#1E1E1E',
-    foreground: '#E5E5E5',
+    DEFAULT: '#1C1C1E',
+    foreground: '#FFFFFF',
   },
-  border: 'rgba(255,255,255,0.1)',
-  borderSolid: '#2E2E2E',
+  surface: '#1C1C1E',
+  border: '#38383A',
+  borderLight: '#48484A',
   input: {
-    background: '#2A2A2A',
-    border: '#3A3A3A',
-    placeholder: '#6B6B6B',
+    background: '#1C1C1E',
+    border: '#38383A',
+    placeholder: '#636366',
+    filled: '#2C2C2E',
   },
   muted: {
-    DEFAULT: '#2A2A2A',
-    foreground: '#9CA3AF',
+    DEFAULT: '#2C2C2E',
+    foreground: '#8E8E93',
   },
   accent: {
-    vehicle: '#8FA6BF',
-    safety: '#F0B454',
-    praise: '#A0B6CF',
+    vehicle: '#8E8E93',
+    safety: '#FFD60A',
+    praise: '#60A5FA',
+    info: '#1C2D4D',
   },
   destructive: {
-    DEFAULT: '#E57373',
+    DEFAULT: '#FF453A',
+    light: '#3A1618',
     foreground: '#FFFFFF',
   },
   success: {
-    DEFAULT: '#66BB6A',
+    DEFAULT: '#30D158',
+    light: '#0D3318',
     foreground: '#FFFFFF',
   },
-  ring: '#5A8FD4',
+  warning: {
+    DEFAULT: '#FFD60A',
+    light: '#3D3005',
+    foreground: '#000000',
+  },
+  ring: '#60A5FA',
   text: {
-    primary: '#E5E5E5',
-    secondary: '#9CA3AF',
-    muted: '#6B6B6B',
-    inverse: '#121212',
+    primary: '#FFFFFF',
+    secondary: '#8E8E93',
+    tertiary: '#636366',
+    muted: '#48484A',
+    inverse: '#000000',
   },
 };
 
@@ -184,7 +223,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'bbbeeep_theme_mode';
+const STORAGE_KEY = 'ubeep_theme_mode';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();

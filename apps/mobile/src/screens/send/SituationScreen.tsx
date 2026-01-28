@@ -56,7 +56,7 @@ export default function SituationScreen({ navigation }: Props) {
         {situations.map((situation) => (
           <TouchableOpacity
             key={situation.id}
-            style={[styles.situationItem, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+            style={[styles.situationItem, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
             onPress={() => handleSelect(situation.id)}
             activeOpacity={0.7}
           >

@@ -3,7 +3,7 @@
  * 封鎖名單頁面
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,15 +18,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { usersApi, BlockedUser } from '@bbbeeep/shared';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
+import { useTheme, ThemeColors } from '../../context/ThemeContext';
 
 export default function BlockListScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -93,7 +90,7 @@ export default function BlockListScreen() {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
@@ -123,7 +120,7 @@ export default function BlockListScreen() {
         ) : blockedUsers.length === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconContainer}>
-              <Ionicons name="ban-outline" size={48} color={colors.muted.foreground} />
+              <Ionicons name="ban-outline" size={48} color={colors.text.secondary} />
             </View>
             <Text style={styles.emptyTitle}>沒有封鎖的用戶</Text>
             <Text style={styles.emptyText}>
@@ -142,7 +139,7 @@ export default function BlockListScreen() {
               >
                 <View style={styles.userInfo}>
                   <View style={styles.userAvatar}>
-                    <Ionicons name="person" size={20} color={colors.muted.foreground} />
+                    <Ionicons name="person" size={20} color={colors.text.secondary} />
                   </View>
                   <View style={styles.userDetails}>
                     <Text style={styles.userName}>
@@ -169,7 +166,7 @@ export default function BlockListScreen() {
 
         {/* Info Section */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={colors.muted.foreground} />
+          <Ionicons name="information-circle-outline" size={20} color={colors.text.secondary} />
           <Text style={styles.infoText}>
             封鎖後，您將無法發送提醒給對方，也不會收到對方的提醒。
           </Text>
@@ -179,173 +176,172 @@ export default function BlockListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
 
-  // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[1],
-  },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 80,
-  },
+    // Header
+    headerContainer: {
+      backgroundColor: colors.background,
+    },
+    headerSafeArea: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 4,
+    },
+    backText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+    },
+    headerSpacer: {
+      width: 80,
+    },
 
-  // Scroll Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing[6],
-    gap: spacing[4],
-  },
+    // Scroll Content
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 24,
+      gap: 16,
+    },
 
-  // Loading
-  loadingContainer: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[8],
-    alignItems: 'center',
-    gap: spacing[3],
-  },
-  loadingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-  },
+    // Loading
+    loadingContainer: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 32,
+      alignItems: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+    },
 
-  // Empty State
-  emptyCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[8],
-    alignItems: 'center',
-    gap: spacing[3],
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.muted.DEFAULT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing[2],
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-  },
-  emptyText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    textAlign: 'center',
-  },
+    // Empty State
+    emptyCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 32,
+      alignItems: 'center',
+      gap: 12,
+    },
+    emptyIconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.muted.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
 
-  // List Card
-  listCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    overflow: 'hidden',
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing[4],
-  },
-  userItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    flex: 1,
-  },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.muted.DEFAULT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userDetails: {
-    flex: 1,
-    gap: spacing[0.5],
-  },
-  userName: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
-  },
-  unblockButton: {
-    backgroundColor: `${colors.destructive.DEFAULT}10`,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.lg,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  unblockButtonText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as any,
-    color: colors.destructive.DEFAULT,
-  },
+    // List Card
+    listCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    userItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+    },
+    userItemBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
+    userAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.muted.DEFAULT,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    userDetails: {
+      flex: 1,
+      gap: 2,
+    },
+    userName: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+    unblockButton: {
+      backgroundColor: colors.destructive.light,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      minWidth: 80,
+      alignItems: 'center',
+    },
+    unblockButtonText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.destructive.DEFAULT,
+    },
 
-  // Info Card
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing[3],
-    backgroundColor: colors.muted.DEFAULT,
-    borderRadius: borderRadius.lg,
-    padding: spacing[4],
-  },
-  infoText: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
-    lineHeight: typography.fontSize.xs * typography.lineHeight.relaxed,
-  },
-});
+    // Info Card
+    infoCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      backgroundColor: colors.muted.DEFAULT,
+      borderRadius: 16,
+      padding: 16,
+    },
+    infoText: {
+      flex: 1,
+      fontSize: 12,
+      color: colors.text.secondary,
+      lineHeight: 18,
+    },
+  });

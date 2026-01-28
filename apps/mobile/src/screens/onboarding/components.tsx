@@ -42,9 +42,9 @@ export function OnboardingLayout({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.card.DEFAULT }]}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card.DEFAULT }}>
-          <View style={[styles.header, { borderBottomColor: colors.borderSolid }]}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
+          <View style={styles.header}>
             <View style={styles.headerLeft}>
               {showBackButton && navigation.canGoBack() ? (
                 <TouchableOpacity
@@ -56,13 +56,13 @@ export function OnboardingLayout({
                   <Ionicons
                     name="chevron-back"
                     size={20}
-                    color={colors.muted.foreground}
+                    color={colors.text.secondary}
                   />
-                  <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
+                  <Text style={[styles.backText, { color: colors.text.secondary }]}>返回</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
               註冊流程 ({currentStep}/{totalSteps})
             </Text>
             <View style={styles.headerRight} />
@@ -89,7 +89,7 @@ export function OnboardingLayout({
                 key={s}
                 style={[
                   styles.progressDot,
-                  { backgroundColor: colors.borderSolid },
+                  { backgroundColor: colors.border },
                   s === currentStep && [styles.progressDotActive, { backgroundColor: colors.primary.DEFAULT }],
                   s < currentStep && { backgroundColor: `${colors.primary.DEFAULT}40` },
                 ]}
@@ -107,7 +107,7 @@ export function OnboardingLayout({
 export function OnboardingCard({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+    <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
       {children}
     </View>
   );
@@ -143,9 +143,8 @@ const styles = StyleSheet.create({
   // Header
   headerContainer: {},
   header: {
-    borderBottomWidth: 1,
-    paddingHorizontal: spacing[6],
-    height: 52,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -162,16 +161,15 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing[2],
-    paddingRight: spacing[4],
+    padding: 4,
   },
   backText: {
-    fontSize: typography.fontSize.sm,
-    marginLeft: spacing[1],
+    fontSize: 14,
+    marginLeft: 4,
   },
   headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
+    fontSize: 16,
+    fontWeight: '600',
     position: 'absolute',
     left: 0,
     right: 0,

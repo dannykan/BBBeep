@@ -83,7 +83,7 @@ export function DraftsScreen() {
       <View style={[styles.emptyIcon, { backgroundColor: colors.primary.soft }]}>
         <Ionicons name="mic-outline" size={48} color={colors.primary.DEFAULT} />
       </View>
-      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+      <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
         沒有語音草稿
       </Text>
       <Text style={[styles.emptySubtitle, { color: colors.muted.foreground }]}>
@@ -103,14 +103,15 @@ export function DraftsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          <Ionicons name="chevron-back" size={20} color={colors.text.secondary} />
+          <Text style={[styles.backText, { color: colors.muted.foreground }]}>返回</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
           語音草稿
         </Text>
         <View style={styles.headerRight} />
@@ -157,19 +158,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 4,
   },
+  backText: {
+    fontSize: 14,
+    marginLeft: 4,
+  },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
   },
   headerRight: {
-    width: 32,
+    width: 80,
   },
   tipBanner: {
     flexDirection: 'row',

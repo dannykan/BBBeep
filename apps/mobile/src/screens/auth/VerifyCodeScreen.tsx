@@ -20,9 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { authApi, maskPhone } from '@bbbeeep/shared';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
@@ -33,6 +33,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'VerifyCode'>;
 export default function VerifyCodeScreen({ route, navigation }: Props) {
   const { phone } = route.params;
   const { login } = useAuth();
+  const { colors } = useTheme();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -68,10 +69,10 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with safe area */}
-      <View style={styles.headerContainer}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
           <View style={styles.header}>
             <TouchableOpacity
               style={styles.backButton}
@@ -80,11 +81,11 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
               <Ionicons
                 name="chevron-back"
                 size={20}
-                color={colors.muted.foreground}
+                color={colors.text.secondary}
               />
-              <Text style={styles.backText}>返回</Text>
+              <Text style={[styles.backText, { color: colors.text.secondary }]}>返回</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>驗證</Text>
+            <Text style={[styles.headerTitle, { color: colors.text.primary }]}>驗證</Text>
             <View style={styles.headerSpacer} />
           </View>
         </SafeAreaView>
@@ -95,14 +96,14 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
         style={styles.content}
       >
         {/* Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary.bg }]}>
               <Ionicons name="mail-outline" size={32} color={colors.primary.DEFAULT} />
             </View>
-            <Text style={styles.title}>輸入驗證碼</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.foreground }]}>輸入驗證碼</Text>
+            <Text style={[styles.subtitle, { color: colors.muted.foreground }]}>
               驗證碼已發送至 {maskPhone(phone)}
             </Text>
           </View>
@@ -111,7 +112,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
           <View style={styles.inputSection}>
             <TextInput
               ref={inputRef}
-              style={styles.codeInput}
+              style={[styles.codeInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.background }]}
               placeholder="000000"
               placeholderTextColor={colors.muted.foreground}
               keyboardType="number-pad"
@@ -121,13 +122,14 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
               autoFocus
               textAlign="center"
             />
-            <Text style={styles.inputHint}>請輸入 6 位數驗證碼</Text>
+            <Text style={[styles.inputHint, { color: colors.muted.foreground }]}>請輸入 6 位數驗證碼</Text>
           </View>
 
           {/* Verify Button */}
           <TouchableOpacity
             style={[
               styles.verifyButton,
+              { backgroundColor: colors.primary.DEFAULT },
               (isLoading || code.length !== 6) && styles.buttonDisabled,
             ]}
             onPress={handleVerify}
@@ -139,7 +141,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
             ) : (
               <>
                 <Ionicons name="checkmark" size={18} color={colors.primary.foreground} />
-                <Text style={styles.verifyButtonText}>確認</Text>
+                <Text style={[styles.verifyButtonText, { color: colors.primary.foreground }]}>確認</Text>
               </>
             )}
           </TouchableOpacity>
@@ -156,7 +158,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
             ) : (
               <>
                 <Ionicons name="refresh-outline" size={16} color={colors.primary.DEFAULT} />
-                <Text style={styles.resendText}>重新發送驗證碼</Text>
+                <Text style={[styles.resendText, { color: colors.primary.DEFAULT }]}>重新發送驗證碼</Text>
               </>
             )}
           </TouchableOpacity>
@@ -165,7 +167,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
         {/* Help Text */}
         <View style={styles.helpSection}>
           <Ionicons name="information-circle-outline" size={16} color={colors.muted.foreground} />
-          <Text style={styles.helpText}>
+          <Text style={[styles.helpText, { color: colors.muted.foreground }]}>
             如果沒有收到驗證碼，請檢查垃圾訊息或稍後再試
           </Text>
         </View>
@@ -177,21 +179,13 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
+  headerContainer: {},
   header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -199,17 +193,15 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[1],
+    padding: 4,
   },
   backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
+    fontSize: 14,
+    marginLeft: 4,
   },
   headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
+    fontSize: 16,
+    fontWeight: '600',
     position: 'absolute',
     left: 0,
     right: 0,
@@ -227,11 +219,9 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     padding: spacing[6],
     borderWidth: 1,
-    borderColor: colors.borderSolid,
   },
 
   // Title Section
@@ -243,7 +233,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.primary.soft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
@@ -251,12 +240,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold as any,
-    color: colors.foreground,
     marginBottom: spacing[1],
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
   },
 
   // Input Section
@@ -265,26 +252,21 @@ const styles = StyleSheet.create({
   },
   codeInput: {
     borderWidth: 1,
-    borderColor: colors.borderSolid,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.medium as any,
-    color: colors.foreground,
     letterSpacing: 8,
-    backgroundColor: colors.background,
   },
   inputHint: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
     marginTop: spacing[2],
   },
 
   // Verify Button
   verifyButton: {
-    backgroundColor: colors.primary.DEFAULT,
     borderRadius: borderRadius.xl,
     paddingVertical: spacing[3.5],
     flexDirection: 'row',
@@ -296,7 +278,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   verifyButtonText: {
-    color: colors.primary.foreground,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
@@ -311,7 +292,6 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
   },
   resendText: {
-    color: colors.primary.DEFAULT,
     fontSize: typography.fontSize.sm,
   },
 
@@ -326,7 +306,6 @@ const styles = StyleSheet.create({
   },
   helpText: {
     fontSize: typography.fontSize.xs,
-    color: colors.muted.foreground,
     textAlign: 'center',
     flex: 1,
   },

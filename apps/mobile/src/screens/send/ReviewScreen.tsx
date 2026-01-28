@@ -36,7 +36,7 @@ export default function ReviewScreen({ navigation }: Props) {
       />
 
       {/* Generated message card */}
-      <View style={[styles.messageCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+      <View style={[styles.messageCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
         <Text style={[styles.messageText, { color: colors.foreground }]}>{generatedMessage}</Text>
       </View>
 
@@ -66,7 +66,7 @@ export default function ReviewScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.secondaryButton, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={handleAddText}
           activeOpacity={0.8}
         >

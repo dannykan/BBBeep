@@ -129,7 +129,7 @@ export const componentStyles = StyleSheet.create({
     backgroundColor: colors.card.DEFAULT,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSolid,
+    borderColor: colors.border,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[6],
     alignItems: 'center' as const,
@@ -165,7 +165,7 @@ export const componentStyles = StyleSheet.create({
   header: {
     backgroundColor: colors.card.DEFAULT,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
+    borderBottomColor: colors.border,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
     flexDirection: 'row' as const,
@@ -183,7 +183,7 @@ export const componentStyles = StyleSheet.create({
   // Divider
   divider: {
     height: 1,
-    backgroundColor: colors.borderSolid,
+    backgroundColor: colors.border,
     marginVertical: spacing[4],
   },
 

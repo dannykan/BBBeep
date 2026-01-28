@@ -1,9 +1,9 @@
 /**
  * Legal Screen
- * 服務條款 / 隱私權政策頁面
+ * 相關條款頁面 - Warm Blue 設計
  */
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import {
-  typography,
-  spacing,
-  borderRadius,
-} from '../../theme';
 
-const TERMS_CONTENT = `
-服務條款
+const TERMS_CONTENT = `服務條款
 
 最後更新日期：2026 年 1 月
 
@@ -55,11 +49,9 @@ UBeep 是一個讓用戶透過車牌號碼，以匿名且禮貌的方式向其�
 我們保留隨時修改或終止服務的權利。
 
 8. 聯繫方式
-如有任何問題，請透過 App 內的客服功能聯繫我們。
-`;
+如有任何問題，請透過 App 內的客服功能聯繫我們。`;
 
-const PRIVACY_CONTENT = `
-隱私權政策
+const PRIVACY_CONTENT = `隱私權政策
 
 最後更新日期：2026 年 1 月
 
@@ -107,55 +99,121 @@ UBeep（以下簡稱「我們」）重視您的隱私。本政策說明我們如
 我們可能不時更新本政策，更新後會在 App 內通知。
 
 10. 聯繫我們
-如有隱私相關問題，請透過 App 內的客服功能聯繫我們。
-`;
+如有隱私相關問題，請透過 App 內的客服功能聯繫我們。`;
 
-type LegalType = 'terms' | 'privacy';
+type LegalType = 'terms' | 'privacy' | null;
+
+interface LegalItem {
+  type: 'terms' | 'privacy';
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}
+
+const legalItems: LegalItem[] = [
+  {
+    type: 'terms',
+    label: '服務條款',
+    icon: 'document-text',
+  },
+  {
+    type: 'privacy',
+    label: '隱私權政策',
+    icon: 'shield-checkmark',
+  },
+];
 
 export default function LegalScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [selectedType, setSelectedType] = useState<LegalType>(null);
 
-  const type: LegalType = route.params?.type || 'terms';
-  const isTerms = type === 'terms';
+  const handleBack = () => {
+    if (selectedType) {
+      setSelectedType(null);
+    } else {
+      navigation.goBack();
+    }
+  };
 
-  const title = isTerms ? '服務條款' : '隱私權政策';
-  const content = isTerms ? TERMS_CONTENT : PRIVACY_CONTENT;
+  const getTitle = () => {
+    if (selectedType === 'terms') return '服務條款';
+    if (selectedType === 'privacy') return '隱私權政策';
+    return '相關條款';
+  };
 
+  const getContent = () => {
+    if (selectedType === 'terms') return TERMS_CONTENT;
+    if (selectedType === 'privacy') return PRIVACY_CONTENT;
+    return '';
+  };
+
+  // Detail view
+  if (selectedType) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.headerContainer}>
+          <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                <Ionicons name="chevron-back" size={20} color={colors.text.secondary} />
+                <Text style={styles.backText}>返回</Text>
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{getTitle()}</Text>
+              <View style={styles.headerSpacer} />
+            </View>
+          </SafeAreaView>
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.detailContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.contentCard}>
+            <Text style={styles.contentText}>{getContent()}</Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // List view
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.headerContainer}>
         <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
           <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color={colors.muted.foreground}
-              />
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Ionicons name="chevron-back" size={20} color={colors.text.secondary} />
               <Text style={styles.backText}>返回</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{title}</Text>
+            <Text style={styles.headerTitle}>{getTitle()}</Text>
             <View style={styles.headerSpacer} />
           </View>
         </SafeAreaView>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.contentCard}>
-          <Text style={styles.contentText}>{content.trim()}</Text>
-        </View>
-      </ScrollView>
+      <View style={styles.content}>
+        {legalItems.map((item) => (
+          <TouchableOpacity
+            key={item.type}
+            style={styles.itemCard}
+            onPress={() => setSelectedType(item.type)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name={item.icon} size={22} color={colors.primary.DEFAULT} />
+            </View>
+            <Text style={styles.itemLabel}>{item.label}</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.text.secondary} />
+          </TouchableOpacity>
+        ))}
+
+        <View style={styles.spacer} />
+
+        <Text style={styles.versionText}>UBeep v1.0.0</Text>
+      </View>
     </View>
   );
 }
@@ -167,62 +225,105 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
 
-  // Header
-  headerContainer: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.card.DEFAULT,
-  },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSolid,
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[4],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[1],
-  },
-  backText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.muted.foreground,
-    marginLeft: spacing[1],
-  },
-  headerTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.normal as any,
-    color: colors.foreground,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 80,
-  },
+    // Header
+    headerContainer: {
+      backgroundColor: colors.background,
+    },
+    headerSafeArea: {
+      backgroundColor: colors.background,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 4,
+    },
+    backText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      marginLeft: 4,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text.primary,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      textAlign: 'center',
+    },
+    headerSpacer: {
+      width: 80,
+    },
 
-  // Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing[6],
-  },
-  contentCard: {
-    backgroundColor: colors.card.DEFAULT,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSolid,
-    padding: spacing[5],
-  },
-  contentText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.foreground,
-    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
-  },
+    // List Content
+    content: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingVertical: 24,
+      gap: 12,
+    },
+
+    // Item Card
+    itemCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 64,
+      paddingHorizontal: 16,
+      gap: 12,
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    iconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: colors.primary.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    itemLabel: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text.primary,
+    },
+
+    // Spacer and Version
+    spacer: {
+      flex: 1,
+    },
+    versionText: {
+      fontSize: 13,
+      color: colors.text.secondary,
+      textAlign: 'center',
+    },
+
+    // Detail Content
+    scrollView: {
+      flex: 1,
+    },
+    detailContent: {
+      padding: 24,
+    },
+    contentCard: {
+      backgroundColor: colors.card.DEFAULT,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 20,
+    },
+    contentText: {
+      fontSize: 14,
+      color: colors.text.primary,
+      lineHeight: 22,
+    },
   });

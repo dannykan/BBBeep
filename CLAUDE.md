@@ -202,6 +202,17 @@ Mobile dark mode: `apps/mobile/src/context/ThemeContext.tsx`
 - Mobile: EAS Build (Expo Application Services)
 - CI/CD: GitHub Actions (`.github/workflows/`)
 
+### Railway Database Migration (IMPORTANT)
+
+**Railway 部署後必須手動執行 migration！** 啟動腳本的自動 migration 可能會失敗。
+
+```bash
+# 使用 Railway 的 DATABASE_URL 執行 migration
+DATABASE_URL="postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway" npx prisma migrate deploy
+```
+
+每次修改 `schema.prisma` 後，push 到 GitHub 後都需要手動執行此命令。
+
 ## Working Conventions
 
 ### Session Continuity (IMPORTANT)
@@ -340,3 +351,84 @@ Voice drafts are saved locally for later editing. **No AI processing** is involv
 - DraftCard does NOT show AI analysis (no parsed plates, vehicle info, suggested messages)
 - Drafts expire after 24 hours (handled by backend cron job)
 - VoiceMemoPlayer appears at top of SendLayout when voiceMemo exists (except on SuccessScreen)
+
+## In-App Purchase (IAP)
+
+### react-native-iap v14+ API 格式 (IMPORTANT)
+
+```javascript
+// 正確格式 - 需要嵌套在 request.apple 裡
+import { requestPurchase } from 'react-native-iap';
+
+if (Platform.OS === 'ios') {
+  await requestPurchase({
+    request: {
+      apple: {
+        sku: productId,
+        quantity: 1,
+        andDangerouslyFinishTransactionAutomatically: false,
+      },
+    },
+  });
+} else {
+  await requestPurchase({
+    request: {
+      google: {
+        skus: [productId],
+      },
+    },
+  });
+}
+```
+
+**常見錯誤：** 直接傳 `{ sku: productId }` 會出現 "Missing purchase request configuration" 錯誤。
+
+### IAP 產品 ID
+```
+com.ubeep.mobile.points_15   # 15 點 NT$75
+com.ubeep.mobile.points_40   # 40 點 NT$150
+com.ubeep.mobile.points_120  # 120 點 NT$300
+com.ubeep.mobile.points_300  # 300 點 NT$600
+```
+
+### IAP 上架前置作業
+1. **App Store Connect 協議設定：**
+   - 付費 App 協議必須是「有效」狀態
+   - 需完成銀行帳戶設定
+   - 需完成稅務表格（台灣稅務表格 + 美國 W-8BEN）
+
+2. **W-8BEN 填寫重點（台灣個人開發者）：**
+   - Part II 第 9 項：勾選確認是台灣稅務居民
+   - Article and paragraph：填 `12 and 2(a)`
+   - Rate：填 `10`（台美稅務協定優惠稅率）
+   - 選擇 "Income from the sale of applications"
+
+3. **IAP 產品設定：**
+   - 每個產品需填寫：顯示名稱、說明、審查截圖
+   - 產品建立後需等待 30-60 分鐘讓 App Store Connect 同步
+   - TestFlight 測試需使用 Sandbox 帳號
+
+## iOS Build 注意事項
+
+### Firebase/CocoaPods 相容性
+`npx expo prebuild --clean` 後需要手動修改 Podfile：
+
+```ruby
+# ios/Podfile - 在 prepare_react_native_project! 後加入
+prepare_react_native_project!
+
+# Fix Firebase/GoogleUtilities Swift module compatibility
+use_modular_headers!
+
+target 'UBeep' do
+  # ...
+end
+```
+
+### Build Number 管理
+- `app.json` 的 `buildNumber` 和 `ios/UBeep/Info.plist` 的 `CFBundleVersion` 要同步
+- 每次上傳 TestFlight 都需要遞增 build number
+- 用 PlistBuddy 更新：`/usr/libexec/PlistBuddy -c "Set :CFBundleVersion X" ios/UBeep/Info.plist`
+
+### API Client 初始化
+`initializeApiClient()` 必須在 App.tsx 模組層級呼叫（不是在 useEffect 裡），確保所有 Provider 的 useEffect 執行前 API Client 已初始化。

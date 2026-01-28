@@ -9,7 +9,7 @@ import LineLogin, { LoginPermission } from '@xmartlabs/react-native-line';
 import type { User } from '@bbbeeep/shared';
 import { usersApi, authApi } from '@bbbeeep/shared';
 import { mobileStorageAdapter } from '../lib/storage-adapter';
-import { initializeApiClient, setOnTokenExpired } from '../lib/api';
+import { setOnTokenExpired } from '../lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -30,11 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 初始化 API Client 和 LINE SDK
+  // 初始化 LINE SDK
   useEffect(() => {
-    initializeApiClient();
-
-    // 初始化 LINE SDK
+    // 初始化 LINE SDK（API Client 已在 App.tsx 模組層級初始化）
     const lineChannelId = process.env.EXPO_PUBLIC_LINE_CHANNEL_ID || '2008933864';
     LineLogin.setup({ channelId: lineChannelId })
       .catch((error: any) => {

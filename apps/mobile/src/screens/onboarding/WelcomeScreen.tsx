@@ -112,7 +112,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
         </Text>
 
         {userType === 'pedestrian' && (
-          <View style={[styles.pedestrianInfoCard, { backgroundColor: colors.muted.DEFAULT, borderColor: colors.borderSolid }]}>
+          <View style={[styles.pedestrianInfoCard, { backgroundColor: colors.muted.DEFAULT, borderColor: colors.border }]}>
             <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 可以發送提醒</Text>
             <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 7 天試用期，50 點免費體驗</Text>
             <Text style={[styles.pedestrianInfoItemWarning, { color: colors.foreground }]}>

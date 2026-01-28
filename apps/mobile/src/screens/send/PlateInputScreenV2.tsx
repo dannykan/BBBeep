@@ -130,7 +130,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
               styles.plateInput,
               {
                 backgroundColor: colors.card.DEFAULT,
-                borderColor: isValidPlate ? colors.primary.DEFAULT : colors.borderSolid,
+                borderColor: isValidPlate ? colors.primary.DEFAULT : colors.border,
                 color: colors.foreground,
               },
             ]}
@@ -160,7 +160,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
                   backgroundColor:
                     selectedType === 'car' ? colors.primary.DEFAULT : colors.card.DEFAULT,
                   borderColor:
-                    selectedType === 'car' ? colors.primary.DEFAULT : colors.borderSolid,
+                    selectedType === 'car' ? colors.primary.DEFAULT : colors.border,
                 },
               ]}
               onPress={() => setSelectedType('car')}
@@ -190,7 +190,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
                   backgroundColor:
                     selectedType === 'scooter' ? colors.primary.DEFAULT : colors.card.DEFAULT,
                   borderColor:
-                    selectedType === 'scooter' ? colors.primary.DEFAULT : colors.borderSolid,
+                    selectedType === 'scooter' ? colors.primary.DEFAULT : colors.border,
                 },
               ]}
               onPress={() => setSelectedType('scooter')}
@@ -229,7 +229,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
                     styles.recentChip,
                     {
                       backgroundColor: colors.card.DEFAULT,
-                      borderColor: colors.borderSolid,
+                      borderColor: colors.border,
                     },
                   ]}
                   onPress={() => handleSelectRecent(item.plate, item.vehicleType)}

@@ -212,7 +212,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
             {vehicleType === 'car' ? '汽車車牌' : '機車車牌'}
           </Text>
           <TextInput
-            style={[styles.licensePlateInput, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.licensePlateInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
             placeholder={vehicleType === 'car' ? 'ABC1234' : 'ABC123'}
             placeholderTextColor={colors.muted.foreground}
             value={licensePlate}
@@ -324,7 +324,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={[styles.imageUploadButton, { borderColor: colors.borderSolid, backgroundColor: colors.muted.DEFAULT }]}
+                      style={[styles.imageUploadButton, { borderColor: colors.border, backgroundColor: colors.muted.DEFAULT }]}
                       onPress={handlePickImage}
                       activeOpacity={0.7}
                     >
@@ -337,7 +337,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
 
                 <Text style={[styles.label, { color: colors.foreground }]}>Email（用於接收審核通知）</Text>
                 <TextInput
-                  style={[styles.input, { borderColor: colors.borderSolid, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
+                  style={[styles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
                   placeholder="請輸入您的 Email"
                   placeholderTextColor={colors.muted.foreground}
                   value={applicationEmail}

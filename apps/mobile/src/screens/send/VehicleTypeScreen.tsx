@@ -37,7 +37,7 @@ export default function VehicleTypeScreen({ navigation }: Props) {
 
       <View style={styles.vehicleGrid}>
         <TouchableOpacity
-          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('car')}
           activeOpacity={0.7}
         >
@@ -46,7 +46,7 @@ export default function VehicleTypeScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}
+          style={[styles.vehicleCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
           onPress={() => handleSelect('scooter')}
           activeOpacity={0.7}
         >

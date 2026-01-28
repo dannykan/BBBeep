@@ -23,12 +23,6 @@ import type { Message } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import type { InboxStackParamList } from '../../navigation/types';
-import {
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from '../../theme';
 
 type InboxListNavigationProp = NativeStackNavigationProp<InboxStackParamList, 'InboxScreen'>;
 
@@ -158,7 +152,7 @@ export default function InboxListScreen() {
         <Ionicons
           name="chevron-forward"
           size={16}
-          color={colors.muted.foreground}
+          color={colors.text.secondary}
         />
       </TouchableOpacity>
     );
@@ -167,7 +161,7 @@ export default function InboxListScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="mail-open-outline" size={48} color={colors.muted.foreground} />
+        <Ionicons name="mail-open-outline" size={48} color={colors.text.secondary} />
       </View>
       <Text style={styles.emptyTitle}>尚無訊息</Text>
       <Text style={styles.emptySubtext}>當您收到提醒時，會顯示在這裡</Text>
@@ -201,7 +195,7 @@ export default function InboxListScreen() {
               onPress={handleRefresh}
               disabled={isRefreshing}
             >
-              <Ionicons name="refresh-outline" size={20} color={colors.muted.foreground} />
+              <Ionicons name="refresh-outline" size={20} color={colors.text.secondary} />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -242,16 +236,14 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
 
     // Header
     headerContainer: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     headerSafeArea: {
-      backgroundColor: colors.card.DEFAULT,
+      backgroundColor: colors.background,
     },
     header: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderSolid,
-      paddingHorizontal: spacing[6],
-      paddingVertical: spacing[4],
+      paddingHorizontal: 24,
+      paddingVertical: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -259,12 +251,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     headerLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
+      gap: 10,
     },
     headerTitle: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
+      fontSize: 22,
+      fontWeight: '700',
+      color: colors.text.primary,
     },
     badge: {
       backgroundColor: colors.primary.DEFAULT,
@@ -273,22 +265,22 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       height: 20,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: spacing[1.5],
+      paddingHorizontal: 6,
     },
     badgeText: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.primary.foreground,
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
     refreshButton: {
-      padding: spacing[2],
-      borderRadius: borderRadius.lg,
+      padding: 8,
+      borderRadius: 12,
     },
 
     // List
     listContent: {
-      padding: spacing[6],
-      gap: spacing[2],
+      padding: 24,
+      gap: 12,
     },
     emptyList: {
       flex: 1,
@@ -297,14 +289,13 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     // Message Card
     messageCard: {
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: borderRadius.lg,
-      padding: spacing[4],
+      borderRadius: 16,
+      padding: 16,
       borderWidth: 1,
-      borderColor: colors.borderSolid,
-      borderLeftWidth: 3,
+      borderColor: colors.border,
+      borderLeftWidth: 4,
       flexDirection: 'row',
       alignItems: 'center',
-      ...(isDark ? {} : shadows.sm),
     },
     messageCardContent: {
       flex: 1,
@@ -313,17 +304,17 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     messageHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing[2],
-      marginBottom: spacing[1.5],
+      gap: 8,
+      marginBottom: 8,
     },
     typeBadgeSmall: {
-      paddingHorizontal: spacing[2],
-      paddingVertical: spacing[0.5],
-      borderRadius: borderRadius.md,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
     },
     typeBadgeSmallText: {
-      fontSize: typography.fontSize.xs,
-      fontWeight: typography.fontWeight.medium as any,
+      fontSize: 12,
+      fontWeight: '600',
     },
     unreadDot: {
       width: 8,
@@ -332,19 +323,19 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       backgroundColor: colors.primary.DEFAULT,
     },
     messageTime: {
-      fontSize: typography.fontSize.xs,
-      color: colors.muted.foreground,
+      fontSize: 11,
+      color: colors.text.secondary,
       marginLeft: 'auto',
     },
     messageTemplate: {
-      fontSize: typography.fontSize.base,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
-      marginBottom: spacing[1],
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text.primary,
+      marginBottom: 4,
     },
     messageCustomText: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
+      fontSize: 13,
+      color: colors.text.secondary,
     },
 
     // Empty State
@@ -352,7 +343,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: spacing[8],
+      padding: 32,
     },
     emptyIconContainer: {
       width: 80,
@@ -361,19 +352,19 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       backgroundColor: colors.muted.DEFAULT,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing[4],
+      marginBottom: 16,
     },
     emptyTitle: {
-      fontSize: typography.fontSize.lg,
-      fontWeight: typography.fontWeight.medium as any,
-      color: colors.foreground,
-      marginBottom: spacing[2],
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text.primary,
+      marginBottom: 8,
     },
     emptySubtext: {
-      fontSize: typography.fontSize.sm,
-      color: colors.muted.foreground,
+      fontSize: 14,
+      color: colors.text.secondary,
       textAlign: 'center',
-      lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+      lineHeight: 22,
     },
 
     // Loading

@@ -91,7 +91,7 @@ export default function LocationDisplay({
     : undefined;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+    <View style={[styles.container, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
       {/* Mini Map (if coordinates available) */}
       {showMiniMap && hasCoordinates && (
         <TouchableOpacity

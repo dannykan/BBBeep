@@ -10,43 +10,107 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: 'rgba(0,0,0,0.08)',
-        input: '#ECEBE8',
-        ring: '#4A6FA5',
-        background: '#F6F6F4',
-        foreground: '#2A2A2A',
-        primary: {
-          DEFAULT: '#4A6FA5',
-          dark: '#3C5E8C',
-          soft: '#EAF0F8',
-          foreground: '#FFFFFF',
-        },
-        secondary: {
-          DEFAULT: '#7A8FA8',
-          foreground: '#FFFFFF',
-        },
-        muted: {
-          DEFAULT: '#ECEBE8',
-          foreground: '#6B6B6B',
-        },
-        accent: {
-          vehicle: '#7A8FA8',
-          safety: '#E6A23C',
-          praise: '#8FA6BF',
-        },
-        destructive: {
-          DEFAULT: '#C96A6A',
-          foreground: '#FFFFFF',
-        },
-        card: {
+        // Border
+        border: '#E2E8F0',
+        'border-light': '#F1F5F9',
+
+        // Input
+        input: {
           DEFAULT: '#FFFFFF',
-          foreground: '#2A2A2A',
+          border: '#E2E8F0',
+          placeholder: '#94A3B8',
+          filled: '#F1F5F9',
+        },
+
+        // Ring (focus state)
+        ring: '#3B82F6',
+
+        // Background & Foreground
+        background: '#FFFFFF',
+        foreground: '#1E293B',
+        surface: '#FFFFFF',
+
+        // Primary (Warm Blue)
+        primary: {
+          DEFAULT: '#3B82F6',
+          dark: '#2563EB',
+          light: '#93C5FD',
+          soft: '#DBEAFE',
+          bg: '#EFF6FF',
+          foreground: '#FFFFFF',
+        },
+
+        // Secondary
+        secondary: {
+          DEFAULT: '#64748B',
+          foreground: '#FFFFFF',
+        },
+
+        // Muted
+        muted: {
+          DEFAULT: '#F1F5F9',
+          foreground: '#64748B',
+        },
+
+        // Accent
+        accent: {
+          vehicle: '#64748B',
+          safety: '#F59E0B',
+          praise: '#3B82F6',
+          info: '#DBEAFE',
+        },
+
+        // Destructive
+        destructive: {
+          DEFAULT: '#EF4444',
+          light: '#FEE2E2',
+          foreground: '#FFFFFF',
+        },
+
+        // Success
+        success: {
+          DEFAULT: '#22C55E',
+          light: '#DCFCE7',
+          foreground: '#FFFFFF',
+        },
+
+        // Warning
+        warning: {
+          DEFAULT: '#F59E0B',
+          light: '#FEF3C7',
+          foreground: '#92400E',
+        },
+
+        // Card
+        card: {
+          DEFAULT: '#F8FAFC',
+          foreground: '#1E293B',
+        },
+
+        // Text
+        text: {
+          primary: '#1E293B',
+          secondary: '#64748B',
+          tertiary: '#94A3B8',
+          muted: '#CBD5E1',
+          inverse: '#FFFFFF',
         },
       },
       borderRadius: {
-        lg: '8px',
-        md: '4px',
+        lg: '12px',
+        md: '8px',
         sm: '4px',
+      },
+      fontSize: {
+        xs: '12px',
+        sm: '13px',
+        base: '14px',
+        md: '16px',
+        lg: '18px',
+        xl: '20px',
+        '2xl': '24px',
+        '3xl': '28px',
+        '4xl': '32px',
       },
       keyframes: {
         'accordion-down': {

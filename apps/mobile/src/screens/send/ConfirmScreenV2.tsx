@@ -82,18 +82,25 @@ export default function ConfirmScreenV2({ navigation }: Props) {
   const hourScrollRef = useRef<ScrollView>(null);
   const minuteScrollRef = useRef<ScrollView>(null);
 
+  // Helper: 取得某日期是「幾天前」（0 = 今天, 1 = 昨天, ...）
+  const getDaysAgo = useCallback((date: Date, now: Date) => {
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((nowOnly.getTime() - dateOnly.getTime()) / (24 * 60 * 60 * 1000));
+  }, []);
+
   // 滾動到指定位置的函數
   const scrollPickersToTime = useCallback((date: Date, animated: boolean = true) => {
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
-    const dayIndex = Math.min(Math.max(diffDays, 0), 6);
+    const daysAgo = getDaysAgo(date, now);
+    const dayIndex = Math.min(Math.max(daysAgo, 0), 6);
     const hour = date.getHours();
     const minuteIndex = Math.floor(date.getMinutes() / 5);
 
     dateScrollRef.current?.scrollTo({ y: dayIndex * 44, animated });
     hourScrollRef.current?.scrollTo({ y: hour * 44, animated });
     minuteScrollRef.current?.scrollTo({ y: minuteIndex * 44, animated });
-  }, []);
+  }, [getDaysAgo]);
 
   // 當 picker 開啟時，滾動到選中的位置
   useEffect(() => {
@@ -436,18 +443,21 @@ export default function ConfirmScreenV2({ navigation }: Props) {
     { id: '15min', label: '15 分鐘前' },
   ] as const;
 
-  const getCategoryIcon = () => {
+  // Get category display info (matching CategoryScreenV2 design)
+  const getCategoryInfo = () => {
     switch (selectedCategory) {
       case '車況提醒':
-        return vehicleType === 'car' ? 'car' : 'motorcycle';
+        return { icon: 'alert-circle-outline', iconColor: '#F59E0B', iconBgColor: '#FEF3C7', label: '車況提醒' };
       case '行車安全':
-        return 'warning-outline';
+        return { icon: 'shield-checkmark-outline', iconColor: colors.primary.DEFAULT, iconBgColor: '#DBEAFE', label: '行車安全' };
       case '讚美感謝':
-        return 'heart-outline';
+        return { icon: 'heart', iconColor: '#22C55E', iconBgColor: '#DCFCE7', label: '讚美感謝' };
       default:
-        return 'chatbubble-outline';
+        return { icon: 'chatbubble-outline', iconColor: '#A855F7', iconBgColor: '#F3E8FF', label: '其他' };
     }
   };
+
+  const categoryInfo = getCategoryInfo();
 
   return (
     <SendLayout currentStep={4} totalSteps={4}>
@@ -455,7 +465,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
         <CompactStepHeader title="確認發送" subtitle="請確認以下資訊" />
 
         {/* Main info card */}
-        <View style={[styles.mainCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+        <View style={[styles.mainCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
           {/* Target */}
           <View style={styles.cardRow}>
             <View style={styles.cardIconContainer}>
@@ -473,24 +483,20 @@ export default function ConfirmScreenV2({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: colors.borderSolid }]} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Category */}
           <View style={styles.cardRow}>
-            <View style={styles.cardIconContainer}>
-              {selectedCategory === '車況提醒' ? (
-                <FontAwesome6 name={getCategoryIcon()} size={16} color={colors.primary.DEFAULT} />
-              ) : (
-                <Ionicons name={getCategoryIcon() as any} size={18} color={colors.primary.DEFAULT} />
-              )}
+            <View style={[styles.cardIconContainer, { backgroundColor: categoryInfo.iconBgColor }]}>
+              <Ionicons name={categoryInfo.icon as any} size={18} color={categoryInfo.iconColor} />
             </View>
             <View style={styles.cardContent}>
               <Text style={[styles.cardLabel, { color: colors.muted.foreground }]}>提醒類型</Text>
-              <Text style={[styles.cardValue, { color: colors.foreground }]}>{selectedCategory}</Text>
+              <Text style={[styles.cardValue, { color: categoryInfo.iconColor }]}>{categoryInfo.label}</Text>
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: colors.borderSolid }]} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Message or Voice */}
           {sendMode === 'voice' && voiceRecording ? (
@@ -638,7 +644,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
                 key={option.id}
                 style={[
                   styles.timeOption,
-                  { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+                  { backgroundColor: colors.card.DEFAULT, borderColor: colors.border },
                   selectedTimeOption === option.id && {
                     backgroundColor: colors.primary.DEFAULT,
                     borderColor: colors.primary.DEFAULT,
@@ -664,7 +670,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
           <TouchableOpacity
             style={[
               styles.customTimeButton,
-              { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid },
+              { backgroundColor: colors.card.DEFAULT, borderColor: colors.border },
               selectedTimeOption === 'custom' && {
                 backgroundColor: colors.primary.soft,
                 borderColor: colors.primary.DEFAULT,
@@ -750,14 +756,14 @@ export default function ConfirmScreenV2({ navigation }: Props) {
                     <View style={styles.pickerSpacer} />
                     {Array.from({ length: 7 }, (_, i) => {
                       const now = new Date();
-                      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
-                      const selectedDay = Math.min(Math.max(diffDays, 0), 6);
-                      const isSelected = selectedDay === i;
+                      // 建立該天的日期（只保留年月日）
+                      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+                      const selectedDaysAgo = getDaysAgo(occurredAt, now);
+                      const isSelected = selectedDaysAgo === i;
 
                       // 格式化日期顯示
-                      const month = date.getMonth() + 1;
-                      const day = date.getDate();
+                      const month = targetDate.getMonth() + 1;
+                      const day = targetDate.getDate();
                       const label = i === 0 ? `${month}/${day} 今天` : `${month}/${day}`;
 
                       return (
@@ -765,10 +771,11 @@ export default function ConfirmScreenV2({ navigation }: Props) {
                           key={i}
                           style={styles.pickerItem}
                           onPress={() => {
-                            const newDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                            // 建立新日期：保留選中的年月日，時分從 occurredAt 繼承
+                            const newDate = new Date(targetDate);
                             newDate.setHours(occurredAt.getHours(), occurredAt.getMinutes(), 0, 0);
                             // 如果選擇今天且時間超過現在，調整到現在
-                            if (newDate > now) {
+                            if (i === 0 && newDate > now) {
                               newDate.setHours(now.getHours(), Math.floor(now.getMinutes() / 5) * 5, 0, 0);
                             }
                             setOccurredAt(newDate);
@@ -801,34 +808,28 @@ export default function ConfirmScreenV2({ navigation }: Props) {
                     <View style={styles.pickerSpacer} />
                     {(() => {
                       const now = new Date();
-                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
-                      const isToday = diffDays === 0;
-                      const currentHour = now.getHours();
 
                       return Array.from({ length: 24 }, (_, i) => {
                         const isSelected = occurredAt.getHours() === i;
-                        const isDisabled = isToday && i > currentHour;
                         return (
                           <TouchableOpacity
                             key={i}
-                            style={[styles.pickerItem, isDisabled && styles.pickerItemDisabled]}
+                            style={styles.pickerItem}
                             onPress={() => {
-                              if (isDisabled) return;
                               const newDate = new Date(occurredAt);
                               newDate.setHours(i);
-                              // 如果是今天且選擇的小時等於現在，調整分鐘不超過現在
-                              if (isToday && i === currentHour && newDate.getMinutes() > now.getMinutes()) {
-                                newDate.setMinutes(Math.floor(now.getMinutes() / 5) * 5);
+                              // 如果選擇的時間是未來，自動調整到前一天
+                              if (newDate > now) {
+                                newDate.setDate(newDate.getDate() - 1);
                               }
                               setOccurredAt(newDate);
                             }}
-                            disabled={isDisabled}
                           >
                             <Text
                               style={[
                                 styles.pickerItemText,
-                                { color: isDisabled ? colors.border : (isSelected ? colors.primary.DEFAULT : colors.muted.foreground) },
-                                isSelected && !isDisabled && styles.pickerItemTextSelected,
+                                { color: isSelected ? colors.primary.DEFAULT : colors.muted.foreground },
+                                isSelected && styles.pickerItemTextSelected,
                               ]}
                             >
                               {i.toString().padStart(2, '0')} 時
@@ -852,37 +853,34 @@ export default function ConfirmScreenV2({ navigation }: Props) {
                     <View style={styles.pickerSpacer} />
                     {(() => {
                       const now = new Date();
-                      const diffDays = Math.floor((now.getTime() - occurredAt.getTime()) / (24 * 60 * 60 * 1000));
-                      const isToday = diffDays === 0;
-                      const isSameHour = isToday && occurredAt.getHours() === now.getHours();
-                      const currentMinute = now.getMinutes();
 
                       return Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => {
                         const isSelected = Math.floor(occurredAt.getMinutes() / 5) * 5 === minute;
-                        const isDisabled = isSameHour && minute > currentMinute;
                         return (
                           <TouchableOpacity
                             key={minute}
-                            style={[styles.pickerItem, isDisabled && styles.pickerItemDisabled]}
+                            style={styles.pickerItem}
                             onPress={() => {
-                              if (isDisabled) return;
                               const newDate = new Date(occurredAt);
                               newDate.setMinutes(minute);
+                              // 如果選擇的時間是未來，自動調整到前一天
+                              if (newDate > now) {
+                                newDate.setDate(newDate.getDate() - 1);
+                              }
                               setOccurredAt(newDate);
                             }}
-                            disabled={isDisabled}
                           >
                             <Text
                               style={[
                                 styles.pickerItemText,
-                                { color: isDisabled ? colors.border : (isSelected ? colors.primary.DEFAULT : colors.muted.foreground) },
-                                isSelected && !isDisabled && styles.pickerItemTextSelected,
-                            ]}
-                          >
-                            {minute.toString().padStart(2, '0')} 分
-                          </Text>
-                        </TouchableOpacity>
-                      );
+                                { color: isSelected ? colors.primary.DEFAULT : colors.muted.foreground },
+                                isSelected && styles.pickerItemTextSelected,
+                              ]}
+                            >
+                              {minute.toString().padStart(2, '0')} 分
+                            </Text>
+                          </TouchableOpacity>
+                        );
                       });
                     })()}
                     <View style={styles.pickerSpacer} />
@@ -894,36 +892,34 @@ export default function ConfirmScreenV2({ navigation }: Props) {
         </Modal>
 
         {/* Point cost breakdown - ONLY SHOWN HERE */}
-        <View style={[styles.costCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.borderSolid }]}>
+        <View style={[styles.costCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
           <View style={styles.costHeader}>
-            <Ionicons name="wallet-outline" size={18} color={colors.foreground} />
-            <Text style={[styles.costTitle, { color: colors.foreground }]}>費用明細</Text>
+            <Ionicons name="wallet-outline" size={18} color={colors.text.primary} />
+            <Text style={[styles.costTitle, { color: colors.text.primary }]}>費用明細</Text>
           </View>
 
-          <View style={[styles.costDivider, { backgroundColor: colors.borderSolid }]} />
-
           <View style={styles.costRow}>
-            <Text style={[styles.costLabel, { color: colors.muted.foreground }]}>
+            <Text style={[styles.costLabel, { color: colors.text.secondary }]}>
               發送提醒
               {sendMode === 'template' && '（模板）'}
               {(useAiVersion || sendMode === 'ai') && '（AI 優化）'}
               {sendMode === 'voice' && '（語音）'}
               {sendMode === 'text' && '（自訂文字）'}
             </Text>
-            <Text style={[styles.costValue, { color: colors.foreground }]}>
+            <Text style={[styles.costValue, { color: colors.text.primary }]}>
               {pointCost === 0 ? '免費' : `${pointCost} 點`}
             </Text>
           </View>
 
-          <View style={[styles.costDivider, { backgroundColor: colors.borderSolid }]} />
+          <View style={[styles.costDivider, { backgroundColor: colors.border }]} />
 
           <View style={styles.costRow}>
-            <Text style={[styles.costLabel, { color: colors.muted.foreground }]}>目前餘額</Text>
-            <Text style={[styles.costValue, { color: colors.foreground }]}>{userPoints} 點</Text>
+            <Text style={[styles.costLabel, { color: colors.text.secondary }]}>目前餘額</Text>
+            <Text style={[styles.costValue, { color: colors.text.primary }]}>{userPoints} 點</Text>
           </View>
 
-          <View style={styles.costRow}>
-            <Text style={[styles.costLabel, { color: colors.foreground, fontWeight: '600' }]}>
+          <View style={[styles.costRow, { marginTop: 4 }]}>
+            <Text style={[styles.costLabel, { color: colors.text.primary, fontWeight: '600' }]}>
               發送後餘額
             </Text>
             <Text
@@ -994,8 +990,8 @@ const styles = StyleSheet.create({
   cardIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: borderRadius.lg,
-    backgroundColor: 'rgba(74, 111, 165, 0.1)',
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1208,35 +1204,37 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium as any,
   },
   costCard: {
-    borderRadius: borderRadius.xl,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: spacing[4],
-    marginBottom: spacing[4],
+    padding: 16,
+    marginBottom: 16,
   },
   costHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
+    gap: 8,
+    marginBottom: 12,
   },
   costTitle: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold as any,
+    fontSize: 15,
+    fontWeight: '600',
   },
   costDivider: {
     height: 1,
-    marginVertical: spacing[3],
+    marginVertical: 12,
   },
   costRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing[2],
+    paddingVertical: 4,
   },
   costLabel: {
-    fontSize: typography.fontSize.sm,
+    fontSize: 14,
   },
   costValue: {
-    fontSize: typography.fontSize.sm,
+    fontSize: 14,
+    textAlign: 'right',
   },
   warningCard: {
     flexDirection: 'row',
@@ -1353,8 +1351,5 @@ const styles = StyleSheet.create({
   },
   pickerItemTextSelected: {
     fontWeight: typography.fontWeight.semibold as any,
-  },
-  pickerItemDisabled: {
-    opacity: 0.4,
   },
 });

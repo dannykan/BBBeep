@@ -103,7 +103,7 @@ export function SendLayout({
                             {
                               backgroundColor: s <= currentStep
                                 ? colors.primary.DEFAULT
-                                : colors.borderSolid,
+                                : colors.border,
                             },
                           ]}
                         />
@@ -122,7 +122,7 @@ export function SendLayout({
                                 : colors.muted.DEFAULT,
                               borderColor: s <= currentStep
                                 ? colors.primary.DEFAULT
-                                : colors.borderSolid,
+                                : colors.border,
                             },
                           ]}
                         >
@@ -161,7 +161,7 @@ export function SendLayout({
                                 : colors.muted.DEFAULT,
                               borderColor: s <= currentStep
                                 ? colors.primary.DEFAULT
-                                : colors.borderSolid,
+                                : colors.border,
                             },
                           ]}
                         >
@@ -248,7 +248,7 @@ export function CompactStepHeader({
       <Text style={[styles.compactStepTitle, { color: colors.foreground }]}>{title}</Text>
       {subtitle && (
         <>
-          <View style={[styles.titleDivider, { backgroundColor: colors.borderSolid }]} />
+          <View style={[styles.titleDivider, { backgroundColor: colors.border }]} />
           <Text style={[styles.compactStepSubtitle, { color: colors.muted.foreground }]}>{subtitle}</Text>
         </>
       )}

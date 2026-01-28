@@ -56,7 +56,7 @@ export default function UserTypeScreen({ navigation }: Props) {
 
         <View style={styles.userTypeOptions}>
           <TouchableOpacity
-            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.userTypeOption, { borderColor: colors.border, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('driver', 'car')}
             activeOpacity={0.7}
           >
@@ -74,7 +74,7 @@ export default function UserTypeScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.userTypeOption, { borderColor: colors.border, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('driver', 'scooter')}
             activeOpacity={0.7}
           >
@@ -92,7 +92,7 @@ export default function UserTypeScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.userTypeOption, { borderColor: colors.borderSolid, backgroundColor: colors.card.DEFAULT }]}
+            style={[styles.userTypeOption, { borderColor: colors.border, backgroundColor: colors.card.DEFAULT }]}
             onPress={() => handleSelect('pedestrian')}
             activeOpacity={0.7}
           >
