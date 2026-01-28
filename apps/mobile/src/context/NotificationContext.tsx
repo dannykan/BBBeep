@@ -222,12 +222,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     checkPermissions();
   }, [checkPermissions]);
 
-  // Register push token when authenticated and has completed onboarding
+  // Register push token when authenticated, has completed onboarding, and permission is granted
   useEffect(() => {
-    if (isAuthenticated && user?.hasCompletedOnboarding) {
+    if (isAuthenticated && user?.hasCompletedOnboarding && permissionStatus === 'granted') {
       registerPushToken();
     }
-  }, [isAuthenticated, user?.hasCompletedOnboarding, registerPushToken]);
+  }, [isAuthenticated, user?.hasCompletedOnboarding, permissionStatus, registerPushToken]);
 
   // Setup Android notification channel
   useEffect(() => {
