@@ -29,3 +29,11 @@ export {
   type UserActivity,
 } from './activities';
 export { appContentApi, type AppContentResponse } from './app-content';
+export {
+  savedPlatesApi,
+  type SavedPlate,
+  type RecentSentPlate,
+  type CheckSavedPlateResponse,
+  type CreateSavedPlateRequest,
+  type UpdateSavedPlateRequest,
+} from './saved-plates';

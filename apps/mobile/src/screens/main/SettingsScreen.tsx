@@ -114,6 +114,14 @@ export default function SettingsScreen() {
       onPress: () => navigation.navigate('InviteFriends'),
     },
     {
+      id: 'savedplates',
+      icon: 'bookmark',
+      label: '車牌收藏',
+      iconColor: isDark ? '#FBBF24' : '#D97706',
+      iconBgColor: isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7',
+      onPress: () => navigation.navigate('SavedPlates'),
+    },
+    {
       id: 'blocklist',
       icon: 'ban',
       label: '封鎖名單',

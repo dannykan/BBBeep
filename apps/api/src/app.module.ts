@@ -17,6 +17,7 @@ import { InviteModule } from './invite/invite.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { DraftsModule } from './drafts/drafts.module';
+import { SavedPlatesModule } from './saved-plates/saved-plates.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -39,6 +40,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     InviteModule,
     ActivitiesModule,
     DraftsModule,
+    SavedPlatesModule,
   ],
   controllers: [AppController],
   providers: [

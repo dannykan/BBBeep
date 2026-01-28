@@ -28,6 +28,7 @@ export {
   activitiesApi,
   draftsApi,
   appContentApi,
+  savedPlatesApi,
 } from './services';
 
 export type {
@@ -43,4 +44,9 @@ export type {
   DraftStatus,
   CreateDraftRequest,
   AppContentResponse,
+  SavedPlate,
+  RecentSentPlate,
+  CheckSavedPlateResponse,
+  CreateSavedPlateRequest,
+  UpdateSavedPlateRequest,
 } from './services';

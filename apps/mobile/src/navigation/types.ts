@@ -31,6 +31,7 @@ export type RootStackParamList = {
     selectedPlate?: string;
     vehicleType?: 'car' | 'scooter';
   };
+  SavedPlates: undefined;
 };
 
 export type OnboardingStackParamList = {

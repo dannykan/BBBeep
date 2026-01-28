@@ -1,9 +1,10 @@
 /**
  * Plate Input Screen V2
  * 合併車牌輸入 + 車型選擇（優化版）
+ * 支援車牌收藏和最近發送功能
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,21 +13,28 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, CompactStepHeader } from './components';
-import { normalizeLicensePlate, displayLicensePlate } from '@bbbeeep/shared';
+import {
+  normalizeLicensePlate,
+  displayLicensePlate,
+  savedPlatesApi,
+  SavedPlate,
+  RecentSentPlate,
+} from '@bbbeeep/shared';
 import { formatPlateNumber } from '../../data/vehicleTemplates';
 import { typography, spacing, borderRadius } from '../../theme';
 import type { VehicleType } from '@bbbeeep/shared';
-
-const RECENT_PLATES_KEY = 'bbbeeep_recent_plates';
-const MAX_RECENT_PLATES = 5;
 
 type Props = NativeStackScreenProps<SendStackParamList, 'PlateInput'>;
 
@@ -51,15 +59,58 @@ export default function PlateInputScreenV2({ navigation }: Props) {
     setPlateInput,
     setTargetPlate,
   } = useSend();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
-  const [recentPlates, setRecentPlates] = useState<{ plate: string; vehicleType: VehicleType }[]>([]);
+  const [savedPlates, setSavedPlates] = useState<SavedPlate[]>([]);
+  const [recentPlates, setRecentPlates] = useState<RecentSentPlate[]>([]);
   const [selectedType, setSelectedType] = useState<VehicleType>(vehicleType || 'car');
+  const [isLoadingSaved, setIsLoadingSaved] = useState(true);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(true);
 
-  // 載入最近發送的車牌
-  useEffect(() => {
-    loadRecentPlates();
+  // Save modal state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveNickname, setSaveNickname] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCurrentPlateSaved, setIsCurrentPlateSaved] = useState(false);
+
+  // Load saved and recent plates
+  const loadData = useCallback(async () => {
+    setIsLoadingSaved(true);
+    setIsLoadingRecent(true);
+    try {
+      const [saved, recent] = await Promise.all([
+        savedPlatesApi.getAll(),
+        savedPlatesApi.getRecentSent(5),
+      ]);
+      setSavedPlates(saved);
+      setRecentPlates(recent);
+    } catch (err) {
+      console.error('Failed to load plates:', err);
+    } finally {
+      setIsLoadingSaved(false);
+      setIsLoadingRecent(false);
+    }
   }, []);
+
+  // Reload on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // Check if current plate is saved
+  useEffect(() => {
+    if (plateInput.length >= 6) {
+      const normalized = normalizeLicensePlate(plateInput);
+      if (normalized) {
+        const isSaved = savedPlates.some((p) => p.licensePlate === normalized);
+        setIsCurrentPlateSaved(isSaved);
+      }
+    } else {
+      setIsCurrentPlateSaved(false);
+    }
+  }, [plateInput, savedPlates]);
 
   // 當車牌輸入改變時，自動判斷車型
   useEffect(() => {
@@ -69,35 +120,43 @@ export default function PlateInputScreenV2({ navigation }: Props) {
     }
   }, [plateInput]);
 
-  const loadRecentPlates = async () => {
-    try {
-      const stored = await SecureStore.getItemAsync(RECENT_PLATES_KEY);
-      if (stored) {
-        setRecentPlates(JSON.parse(stored));
-      }
-    } catch (err) {
-      console.error('Failed to load recent plates:', err);
-    }
+  const handleSelectSaved = (plate: SavedPlate) => {
+    setPlateInput(displayLicensePlate(plate.licensePlate));
+    setSelectedType(plate.vehicleType as VehicleType);
   };
 
-  const saveRecentPlate = async (plate: string, type: VehicleType) => {
-    try {
-      const newEntry = { plate, vehicleType: type };
-      const updated = [
-        newEntry,
-        ...recentPlates.filter((p) => p.plate !== plate),
-      ].slice(0, MAX_RECENT_PLATES);
-
-      await SecureStore.setItemAsync(RECENT_PLATES_KEY, JSON.stringify(updated));
-      setRecentPlates(updated);
-    } catch (err) {
-      console.error('Failed to save recent plate:', err);
-    }
+  const handleSelectRecent = (plate: RecentSentPlate) => {
+    setPlateInput(displayLicensePlate(plate.licensePlate));
+    setSelectedType(plate.vehicleType as VehicleType);
   };
 
-  const handleSelectRecent = (plate: string, type: VehicleType) => {
-    setPlateInput(plate);
-    setSelectedType(type);
+  const handleSaveBookmark = async () => {
+    const normalized = normalizeLicensePlate(plateInput);
+    if (!normalized) {
+      Alert.alert('錯誤', '請輸入正確的車牌格式');
+      return;
+    }
+    if (!saveNickname.trim()) {
+      Alert.alert('錯誤', '請輸入暱稱');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const newPlate = await savedPlatesApi.create({
+        licensePlate: normalized,
+        nickname: saveNickname.trim(),
+        vehicleType: selectedType,
+      });
+      setSavedPlates((prev) => [newPlate, ...prev]);
+      setShowSaveModal(false);
+      setSaveNickname('');
+      setIsCurrentPlateSaved(true);
+    } catch (error: any) {
+      Alert.alert('錯誤', error.response?.data?.message || '收藏失敗');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -109,7 +168,6 @@ export default function PlateInputScreenV2({ navigation }: Props) {
 
     setVehicleType(selectedType);
     setTargetPlate(formatted);
-    saveRecentPlate(formatted, selectedType);
     navigation.navigate('Category');
   };
 
@@ -123,25 +181,56 @@ export default function PlateInputScreenV2({ navigation }: Props) {
           subtitle="發送提醒給對方"
         />
 
-        {/* 車牌輸入 */}
+        {/* 車牌輸入區域 */}
         <View style={styles.inputSection}>
-          <TextInput
-            style={[
-              styles.plateInput,
-              {
-                backgroundColor: colors.card.DEFAULT,
-                borderColor: isValidPlate ? colors.primary.DEFAULT : colors.border,
-                color: colors.foreground,
-              },
-            ]}
-            value={plateInput}
-            onChangeText={(text) => setPlateInput(formatPlateNumber(text))}
-            placeholder="ABC-1234"
-            placeholderTextColor={colors.muted.foreground}
-            autoCapitalize="characters"
-            maxLength={10}
-            autoFocus
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[
+                styles.plateInput,
+                {
+                  backgroundColor: colors.card.DEFAULT,
+                  borderColor: isValidPlate ? colors.primary.DEFAULT : colors.border,
+                  color: colors.foreground,
+                },
+              ]}
+              value={plateInput}
+              onChangeText={(text) => setPlateInput(formatPlateNumber(text))}
+              placeholder="ABC-1234"
+              placeholderTextColor={colors.muted.foreground}
+              autoCapitalize="characters"
+              maxLength={10}
+              autoFocus
+            />
+            {/* 收藏按鈕 */}
+            {isValidPlate && (
+              <TouchableOpacity
+                style={[
+                  styles.bookmarkButton,
+                  {
+                    backgroundColor: isCurrentPlateSaved
+                      ? isDark ? 'rgba(217, 119, 6, 0.15)' : '#FEF3C7'
+                      : colors.card.DEFAULT,
+                    borderColor: isCurrentPlateSaved
+                      ? isDark ? '#FBBF24' : '#D97706'
+                      : colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  if (!isCurrentPlateSaved) {
+                    setShowSaveModal(true);
+                  }
+                }}
+                disabled={isCurrentPlateSaved}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isCurrentPlateSaved ? 'bookmark' : 'bookmark-outline'}
+                  size={20}
+                  color={isCurrentPlateSaved ? (isDark ? '#FBBF24' : '#D97706') : colors.text.secondary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={[styles.inputHint, { color: colors.muted.foreground }]}>
             僅用於投遞提醒，不會公開顯示
           </Text>
@@ -215,16 +304,71 @@ export default function PlateInputScreenV2({ navigation }: Props) {
           </View>
         </View>
 
+        {/* 收藏車牌 */}
+        {savedPlates.length > 0 && (
+          <View style={styles.savedSection}>
+            <View style={styles.savedHeader}>
+              <View style={styles.savedTitleRow}>
+                <Ionicons name="bookmark" size={16} color={isDark ? '#FBBF24' : '#D97706'} />
+                <Text style={[styles.sectionLabel, { color: colors.foreground, marginBottom: 0 }]}>
+                  收藏車牌
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => (navigation as any).navigate('SavedPlates')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.manageLink, { color: colors.primary.DEFAULT }]}>
+                  管理
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.savedList}>
+              {savedPlates.slice(0, 4).map((plate) => (
+                <TouchableOpacity
+                  key={plate.id}
+                  style={[
+                    styles.savedCard,
+                    {
+                      backgroundColor: colors.card.DEFAULT,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  onPress={() => handleSelectSaved(plate)}
+                  activeOpacity={0.7}
+                >
+                  <FontAwesome6
+                    name={plate.vehicleType === 'car' ? 'car' : 'motorcycle'}
+                    size={14}
+                    color={colors.primary.DEFAULT}
+                  />
+                  <View style={styles.savedCardText}>
+                    <Text style={[styles.savedNickname, { color: colors.foreground }]} numberOfLines={1}>
+                      {plate.nickname}
+                    </Text>
+                    <Text style={[styles.savedPlate, { color: colors.muted.foreground }]}>
+                      {displayLicensePlate(plate.licensePlate)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* 最近發送 */}
         {recentPlates.length > 0 && (
           <View style={styles.recentSection}>
-            <Text style={[styles.sectionLabel, { color: colors.muted.foreground }]}>
-              最近發送
-            </Text>
+            <View style={styles.recentHeader}>
+              <Ionicons name="time-outline" size={16} color={colors.muted.foreground} />
+              <Text style={[styles.sectionLabel, { color: colors.muted.foreground, marginBottom: 0 }]}>
+                最近發送
+              </Text>
+            </View>
             <View style={styles.recentList}>
               {recentPlates.map((item, index) => (
                 <TouchableOpacity
-                  key={`${item.plate}-${index}`}
+                  key={`${item.licensePlate}-${index}`}
                   style={[
                     styles.recentChip,
                     {
@@ -232,7 +376,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
                       borderColor: colors.border,
                     },
                   ]}
-                  onPress={() => handleSelectRecent(item.plate, item.vehicleType)}
+                  onPress={() => handleSelectRecent(item)}
                   activeOpacity={0.7}
                 >
                   <FontAwesome6
@@ -241,7 +385,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
                     color={colors.muted.foreground}
                   />
                   <Text style={[styles.recentChipText, { color: colors.foreground }]}>
-                    {displayLicensePlate(item.plate)}
+                    {displayLicensePlate(item.licensePlate)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -266,6 +410,81 @@ export default function PlateInputScreenV2({ navigation }: Props) {
           <Ionicons name="arrow-forward" size={20} color={colors.primary.foreground} />
         </TouchableOpacity>
       </ScrollView>
+
+      {/* 收藏 Modal */}
+      <Modal
+        visible={showSaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.card.DEFAULT }]}>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>收藏車牌</Text>
+
+            <View style={[styles.modalPlateDisplay, { backgroundColor: colors.muted.DEFAULT }]}>
+              <FontAwesome6
+                name={selectedType === 'car' ? 'car' : 'motorcycle'}
+                size={16}
+                color={colors.primary.DEFAULT}
+              />
+              <Text style={[styles.modalPlateText, { color: colors.text.primary }]}>
+                {plateInput}
+              </Text>
+            </View>
+
+            <Text style={[styles.modalLabel, { color: colors.text.secondary }]}>暱稱</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                },
+              ]}
+              value={saveNickname}
+              onChangeText={setSaveNickname}
+              placeholder="例：老婆的車"
+              placeholderTextColor={colors.muted.foreground}
+              maxLength={20}
+              autoFocus
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalCancelButton, { borderColor: colors.border }]}
+                onPress={() => {
+                  setShowSaveModal(false);
+                  setSaveNickname('');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalCancelButtonText, { color: colors.text.secondary }]}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalConfirmButton,
+                  { backgroundColor: colors.primary.DEFAULT },
+                  !saveNickname.trim() && styles.buttonDisabled,
+                ]}
+                onPress={handleSaveBookmark}
+                disabled={isSaving || !saveNickname.trim()}
+                activeOpacity={0.7}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={colors.primary.foreground} />
+                ) : (
+                  <Text style={[styles.modalConfirmButtonText, { color: colors.primary.foreground }]}>收藏</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SendLayout>
   );
 }
@@ -274,7 +493,13 @@ const styles = StyleSheet.create({
   inputSection: {
     marginBottom: spacing[6],
   },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
   plateInput: {
+    flex: 1,
     borderWidth: 2,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing[6],
@@ -283,6 +508,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: 2,
+  },
+  bookmarkButton: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputHint: {
     fontSize: typography.fontSize.xs,
@@ -315,8 +548,60 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
   },
+  // Saved plates section
+  savedSection: {
+    marginBottom: spacing[6],
+  },
+  savedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[3],
+  },
+  savedTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  manageLink: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  savedList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  savedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    minWidth: '48%',
+  },
+  savedCardText: {
+    flex: 1,
+  },
+  savedNickname: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  savedPlate: {
+    fontSize: typography.fontSize.xs,
+    marginTop: 1,
+  },
+  // Recent plates section
   recentSection: {
     marginBottom: spacing[6],
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
   },
   recentList: {
     flexDirection: 'row',
@@ -351,5 +636,78 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[6],
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: spacing[6],
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing[5],
+  },
+  modalPlateDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    marginBottom: spacing[4],
+  },
+  modalPlateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: spacing[2],
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    fontSize: 16,
+    marginBottom: spacing[5],
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing[3],
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  modalConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

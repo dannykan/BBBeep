@@ -24,6 +24,7 @@ import LegalScreen from '../screens/settings/LegalScreen';
 import QuickRecordScreen from '../screens/send/QuickRecordScreen';
 import QuickVoiceSendScreen from '../screens/send/QuickVoiceSendScreen';
 import { DraftsScreen } from '../screens/drafts/DraftsScreen';
+import SavedPlatesScreen from '../screens/settings/SavedPlatesScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -70,6 +71,7 @@ export default function RootNavigator() {
           />
           <Stack.Screen name="Drafts" component={DraftsScreen} />
           <Stack.Screen name="QuickVoiceSend" component={QuickVoiceSendScreen} />
+          <Stack.Screen name="SavedPlates" component={SavedPlatesScreen} />
         </>
       )}
     </Stack.Navigator>

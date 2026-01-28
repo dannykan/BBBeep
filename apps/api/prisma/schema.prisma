@@ -115,6 +115,7 @@ model User {
   deviceTokens             DeviceToken[]
   voiceDrafts              VoiceDraft[]
   activities               UserActivity[]
+  savedPlates              SavedPlate[]
 
   @@index([phone])
   @@index([licensePlate])
@@ -462,4 +463,20 @@ model UserActivity {
   @@index([type])
   @@index([createdAt])
   @@index([isSent])
+}
+
+// ============ 車牌收藏功能 ============
+
+model SavedPlate {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licensePlate String
+  nickname     String
+  vehicleType  VehicleType @default(car)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([userId, licensePlate])
+  @@index([userId])
 }
