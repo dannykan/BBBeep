@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { R2Service } from '../common/storage/r2.service';
 import { POINTS_CONFIG } from '../config/points.config';
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 
 // 允許的圖片類型
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -200,8 +200,8 @@ export class UploadController {
     }
 
     try {
-      // 將 buffer 轉換為 File 物件供 OpenAI API 使用
-      const audioFile = new File([file.buffer], file.originalname, {
+      // 使用 OpenAI SDK 的 toFile 將 buffer 轉換為可上傳的檔案格式
+      const audioFile = await toFile(file.buffer, file.originalname, {
         type: file.mimetype,
       });
 
