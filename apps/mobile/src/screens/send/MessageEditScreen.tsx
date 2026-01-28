@@ -862,16 +862,16 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                 </View>
 
                 <View style={styles.messageFooter}>
-                  <View style={styles.messageFooterLeft}>
-                    <Text style={[styles.micHint, { color: colors.muted.foreground }]}>
-                      <Ionicons name="mic-outline" size={12} /> 錄音或
+                  <TouchableOpacity
+                    style={[styles.draftChip, { backgroundColor: colors.muted.DEFAULT }]}
+                    onPress={openDraftPicker}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="mic-outline" size={14} color={colors.primary.DEFAULT} />
+                    <Text style={[styles.draftChipText, { color: colors.primary.DEFAULT }]}>
+                      從語音草稿選擇
                     </Text>
-                    <TouchableOpacity onPress={openDraftPicker}>
-                      <Text style={[styles.draftLink, { color: colors.primary.DEFAULT }]}>
-                        從草稿選擇
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
                   <Text style={[styles.charCount, { color: colors.muted.foreground }]}>
                     {trimmedLength} / {MAX_CHARS}
                   </Text>
@@ -1004,7 +1004,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                       onPress={handleConfirmAiVersion}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.aiPreviewButtonText, { color: colors.primary.foreground }]}>使用此版本</Text>
+                      <Text style={[styles.aiPreviewButtonText, { color: colors.primary.foreground }]}>使用此版本送出</Text>
                       <View style={styles.pointBadge}>
                         <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
                       </View>
@@ -1027,7 +1027,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         <View style={styles.optionMain}>
                           <Ionicons name="document-text" size={20} color={colors.primary.foreground} />
                           <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
-                            使用模板
+                            使用模板送出
                           </Text>
                         </View>
                         <View style={styles.pointBadge}>
@@ -1056,7 +1056,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                           <View style={styles.optionMain}>
                             <Ionicons name="volume-high" size={20} color="#FFFFFF" />
                             <Text style={[styles.optionText, { color: '#FFFFFF' }]}>
-                              使用語音
+                              使用語音送出
                             </Text>
                           </View>
                           <View style={styles.pointBadge}>
@@ -1075,7 +1075,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                           <View style={styles.optionMain}>
                             <Ionicons name="document-text" size={20} color={colors.primary.foreground} />
                             <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
-                              使用文字
+                              使用文字送出
                             </Text>
                           </View>
                           <View style={styles.pointBadge}>
@@ -1125,7 +1125,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                               <View style={styles.optionMain}>
                                 <Ionicons name="volume-high" size={20} color={colors.muted.foreground} />
                                 <Text style={[styles.optionText, { color: colors.foreground }]}>
-                                  堅持使用語音
+                                  堅持使用語音送出
                                 </Text>
                               </View>
                               <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
@@ -1144,7 +1144,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                               <View style={styles.optionMain}>
                                 <Ionicons name="document-text-outline" size={20} color={colors.muted.foreground} />
                                 <Text style={[styles.optionText, { color: colors.foreground }]}>
-                                  堅持原內容
+                                  堅持原內容送出
                                 </Text>
                               </View>
                               <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
@@ -1175,61 +1175,78 @@ export default function MessageEditScreen({ navigation, route }: Props) {
         onRequestClose={() => setShowDraftPicker(false)}
       >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          {/* Header */}
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>選擇語音草稿</Text>
-            <TouchableOpacity onPress={() => setShowDraftPicker(false)}>
-              <Ionicons name="close" size={24} color={colors.foreground} />
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowDraftPicker(false)}
+            >
+              <Ionicons name="chevron-down" size={24} color={colors.muted.foreground} />
             </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>語音草稿</Text>
+            <View style={styles.modalHeaderSpacer} />
           </View>
 
           {isLoadingDrafts ? (
             <View style={styles.modalLoading}>
               <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-              <Text style={[styles.modalLoadingText, { color: colors.muted.foreground }]}>
-                載入中...
-              </Text>
             </View>
           ) : drafts.length === 0 ? (
             <View style={styles.modalEmpty}>
-              <Ionicons name="document-outline" size={48} color={colors.muted.foreground} />
-              <Text style={[styles.modalEmptyText, { color: colors.muted.foreground }]}>
-                沒有可用的語音草稿
+              <View style={[styles.modalEmptyIcon, { backgroundColor: colors.muted.DEFAULT }]}>
+                <Ionicons name="mic-outline" size={40} color={colors.muted.foreground} />
+              </View>
+              <Text style={[styles.modalEmptyText, { color: colors.foreground }]}>
+                沒有語音草稿
               </Text>
               <Text style={[styles.modalEmptyHint, { color: colors.muted.foreground }]}>
-                使用首頁的「一鍵語音」功能錄製語音並儲存為草稿
+                使用首頁「一鍵語音」錄製並儲存草稿
               </Text>
             </View>
           ) : (
-            <ScrollView style={styles.modalContent}>
-              {drafts.map((draft) => (
+            <ScrollView
+              style={styles.modalContent}
+              contentContainerStyle={styles.modalContentContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              {drafts.map((draft, index) => (
                 <TouchableOpacity
                   key={draft.id}
-                  style={[styles.draftItem, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
+                  style={[
+                    styles.draftItem,
+                    { backgroundColor: colors.card.DEFAULT },
+                    index === 0 && styles.draftItemFirst,
+                    index === drafts.length - 1 && styles.draftItemLast,
+                  ]}
                   onPress={() => selectDraft(draft)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.draftIcon, { backgroundColor: colors.primary.soft }]}>
-                    <Ionicons name="mic" size={20} color={colors.primary.DEFAULT} />
+                  <View style={[styles.draftIconSmall, { backgroundColor: colors.primary.soft }]}>
+                    <Ionicons name="mic" size={16} color={colors.primary.DEFAULT} />
                   </View>
                   <View style={styles.draftInfo}>
-                    <Text style={[styles.draftDuration, { color: colors.foreground }]}>
-                      {formatDuration(draft.voiceDuration)} 語音
-                    </Text>
+                    <View style={styles.draftInfoTop}>
+                      <Text style={[styles.draftDuration, { color: colors.foreground }]}>
+                        {formatDuration(draft.voiceDuration)}
+                      </Text>
+                      <Text style={[styles.draftDate, { color: colors.muted.foreground }]}>
+                        {new Date(draft.createdAt).toLocaleDateString('zh-TW', {
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
                     {draft.transcript && (
-                      <Text style={[styles.draftTranscript, { color: colors.muted.foreground }]} numberOfLines={2}>
-                        「{draft.transcript}」
+                      <Text style={[styles.draftTranscript, { color: colors.muted.foreground }]} numberOfLines={1}>
+                        {draft.transcript}
                       </Text>
                     )}
-                    <Text style={[styles.draftDate, { color: colors.muted.foreground }]}>
-                      {new Date(draft.createdAt).toLocaleDateString('zh-TW', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+                  <View style={[styles.draftSelectButton, { backgroundColor: colors.primary.soft }]}>
+                    <Text style={[styles.draftSelectText, { color: colors.primary.DEFAULT }]}>選擇</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1332,8 +1349,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing[2],
   },
-  micHint: {
+  draftChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1.5],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    borderRadius: borderRadius.full,
+  },
+  draftChipText: {
     fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium as any,
   },
   charCount: {
     fontSize: typography.fontSize.xs,
@@ -1596,17 +1622,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium as any,
   },
 
-  // Message footer
-  messageFooterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1],
-  },
-  draftLink: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as any,
-    textDecorationLine: 'underline',
-  },
 
   // Draft picker modal
   modalContainer: {
@@ -1616,21 +1631,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing[4],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
     borderBottomWidth: 1,
   },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalTitle: {
-    fontSize: typography.fontSize.lg,
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold as any,
+  },
+  modalHeaderSpacer: {
+    width: 40,
   },
   modalLoading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[3],
-  },
-  modalLoadingText: {
-    fontSize: typography.fontSize.sm,
   },
   modalEmpty: {
     flex: 1,
@@ -1639,47 +1660,81 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     padding: spacing[6],
   },
+  modalEmptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[2],
+  },
   modalEmptyText: {
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
+    fontWeight: typography.fontWeight.semibold as any,
   },
   modalEmptyHint: {
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
+    lineHeight: typography.fontSize.sm * 1.5,
   },
   modalContent: {
     flex: 1,
+  },
+  modalContentContainer: {
     padding: spacing[4],
   },
   draftItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing[3],
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    marginBottom: spacing[3],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
     gap: spacing[3],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  draftIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  draftItemFirst: {
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+  },
+  draftItemLast: {
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+    borderBottomWidth: 0,
+  },
+  draftIconSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   draftInfo: {
     flex: 1,
-    gap: spacing[1],
+    gap: spacing[0.5],
+  },
+  draftInfoTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   draftDuration: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold as any,
   },
   draftTranscript: {
-    fontSize: typography.fontSize.sm,
+    fontSize: typography.fontSize.xs,
   },
   draftDate: {
     fontSize: typography.fontSize.xs,
+  },
+  draftSelectButton: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    borderRadius: borderRadius.full,
+  },
+  draftSelectText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold as any,
   },
 
 });
