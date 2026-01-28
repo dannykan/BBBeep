@@ -15,8 +15,8 @@ export const POINTS_CONFIG = {
      * 讚美類提醒（鼓勵正向互動）
      */
     praise: {
-      template: 0,        // 使用系統模板
-      customWithAi: 2,    // 自訂文字 + AI 優化
+      template: 0, // 使用系統模板
+      customWithAi: 2, // 自訂文字 + AI 優化
       customWithoutAi: 4, // 自訂文字（無 AI）
     },
 
@@ -24,8 +24,8 @@ export const POINTS_CONFIG = {
      * 其他提醒（車況提醒、行車安全提醒）
      */
     other: {
-      template: 1,        // 使用系統模板
-      customWithAi: 2,    // 自訂文字 + AI 優化
+      template: 1, // 使用系統模板
+      customWithAi: 2, // 自訂文字 + AI 優化
       customWithoutAi: 4, // 自訂文字（無 AI）
     },
 
@@ -33,8 +33,8 @@ export const POINTS_CONFIG = {
      * 回覆訊息成本
      */
     reply: {
-      quickReply: 0,      // 快速回覆（預設文字）
-      customWithAi: 2,    // 自訂回覆 + AI 優化
+      quickReply: 0, // 快速回覆（預設文字）
+      customWithAi: 2, // 自訂回覆 + AI 優化
       customWithoutAi: 4, // 自訂回覆（無 AI）
     },
   },
@@ -44,10 +44,10 @@ export const POINTS_CONFIG = {
   // ============================================
 
   voice: {
-    enabled: true,        // 是否啟用語音功能
-    maxDuration: 15,      // 最大秒數
-    cost: 8,              // 發送成本
-    trialMaxUsage: 2,     // 試用期最多使用次數
+    enabled: true, // 是否啟用語音功能
+    maxDuration: 15, // 最大秒數
+    cost: 8, // 發送成本
+    trialMaxUsage: 2, // 試用期最多使用次數
   },
 
   // ============================================
@@ -61,15 +61,15 @@ export const POINTS_CONFIG = {
      */
     positiveFeedback: {
       enabled: true,
-      amount: 1,          // 獎勵點數
+      amount: 1, // 獎勵點數
     },
 
     /**
      * 邀請獎勵（由 invite 模組管理，這裡僅供參考）
      */
     invite: {
-      inviterBonus: 5,    // 邀請人獲得
-      inviteeBonus: 5,    // 被邀請人獲得
+      inviterBonus: 5, // 邀請人獲得
+      inviteeBonus: 5, // 被邀請人獲得
     },
   },
 
@@ -78,9 +78,9 @@ export const POINTS_CONFIG = {
   // ============================================
 
   trial: {
-    enabled: true,        // 是否啟用試用期機制
-    durationDays: 7,      // 試用天數
-    initialPoints: 50,    // 試用起始點數
+    enabled: true, // 是否啟用試用期機制
+    durationDays: 7, // 試用天數
+    initialPoints: 50, // 試用起始點數
     carryOverPoints: false, // 試用結束後是否保留剩餘點數
   },
 
@@ -101,7 +101,7 @@ export const POINTS_CONFIG = {
      * 每日免費點數
      */
     dailyFreePoints: {
-      enabled: false,     // 規則：試用結束後不提供每日免費
+      enabled: false, // 規則：試用結束後不提供每日免費
       amount: 0,
     },
 
@@ -120,9 +120,9 @@ export const POINTS_CONFIG = {
   legacy: {
     /**
      * 每日免費點數（舊版）
-     * 設為 0 以符合新規則
+     * 已停用 - 設為 0
      */
-    dailyFreePoints: 2,
+    dailyFreePoints: 0,
 
     /**
      * 是否使用舊版點數計算
@@ -147,7 +147,7 @@ export type ReplyMode = 'quickReply' | 'customWithAi' | 'customWithoutAi';
 export function getMessageCost(
   category: MessageCategory,
   hasCustomText: boolean,
-  useAiRewrite: boolean
+  useAiRewrite: boolean,
 ): number {
   const config = POINTS_CONFIG.message[category];
 
@@ -161,10 +161,7 @@ export function getMessageCost(
 /**
  * 計算回覆成本
  */
-export function getReplyCost(
-  isQuickReply: boolean,
-  useAiRewrite: boolean
-): number {
+export function getReplyCost(isQuickReply: boolean, useAiRewrite: boolean): number {
   const config = POINTS_CONFIG.message.reply;
 
   if (isQuickReply) {

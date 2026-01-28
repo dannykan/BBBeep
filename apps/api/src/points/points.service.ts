@@ -1,7 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointHistoryType } from '@prisma/client';
-import { POINTS_CONFIG } from '../config/points.config';
 import { VerifyIAPDto, VerifyIAPResponseDto, IAPPlatformDto } from './dto/verify-iap.dto';
 
 interface AddPointHistoryParams {
@@ -9,14 +8,7 @@ interface AddPointHistoryParams {
   description: string;
 }
 
-// 從設定檔讀取每日免費點數
-// 注意：根據規則，試用結束後不提供每日免費點數
-// 這裡保留 legacy 設定供過渡期使用
-const DAILY_FREE_POINTS = POINTS_CONFIG.basic.dailyFreePoints.enabled
-  ? POINTS_CONFIG.basic.dailyFreePoints.amount
-  : POINTS_CONFIG.legacy.dailyFreePoints;
-
-const TAIPEI_TIMEZONE = 'Asia/Taipei';
+// 每日免費點數功能已停用
 
 // 產品 ID 對應的點數
 const PRODUCT_POINTS_MAP: Record<string, number> = {
@@ -26,10 +18,10 @@ const PRODUCT_POINTS_MAP: Record<string, number> = {
   'com.ubeep.mobile.points_120': 120,
   'com.ubeep.mobile.points_300': 300,
   // Android
-  'points_15': 15,
-  'points_40': 40,
-  'points_120': 120,
-  'points_300': 300,
+  points_15: 15,
+  points_40: 40,
+  points_120: 120,
+  points_300: 300,
 };
 
 @Injectable()
@@ -38,50 +30,8 @@ export class PointsService {
 
   constructor(private prisma: PrismaService) {}
 
-  // 取得台北時間的今天日期字串 (YYYY-MM-DD)
-  private getTaipeiDateString(): string {
-    const now = new Date();
-    const taipeiTime = new Date(now.toLocaleString('en-US', { timeZone: TAIPEI_TIMEZONE }));
-    return taipeiTime.toISOString().split('T')[0];
-  }
-
-  // 檢查並重置免費點數（如果是新的一天）
-  async checkAndResetFreePoints(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { freePoints: true, lastFreePointsReset: true },
-    });
-
-    if (!user) return;
-
-    const todayStr = this.getTaipeiDateString();
-
-    // 如果從未重置過，或者上次重置不是今天，則重置
-    let shouldReset = false;
-    if (!user.lastFreePointsReset) {
-      shouldReset = true;
-    } else {
-      const lastResetDate = new Date(user.lastFreePointsReset.toLocaleString('en-US', { timeZone: TAIPEI_TIMEZONE }));
-      const lastResetStr = lastResetDate.toISOString().split('T')[0];
-      shouldReset = lastResetStr !== todayStr;
-    }
-
-    if (shouldReset) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          freePoints: DAILY_FREE_POINTS,
-          lastFreePointsReset: new Date(),
-        },
-      });
-    }
-  }
-
   // 取得總點數（試用點數 + 免費點數 + 購買點數）
   async getPoints(userId: string): Promise<number> {
-    // 先檢查並重置免費點數
-    await this.checkAndResetFreePoints(userId);
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { points: true, freePoints: true, trialPoints: true },
@@ -90,10 +40,9 @@ export class PointsService {
   }
 
   // 取得詳細點數資訊
-  async getPointsDetail(userId: string): Promise<{ total: number; trial: number; free: number; purchased: number }> {
-    // 先檢查並重置免費點數
-    await this.checkAndResetFreePoints(userId);
-
+  async getPointsDetail(
+    userId: string,
+  ): Promise<{ total: number; trial: number; free: number; purchased: number }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { points: true, freePoints: true, trialPoints: true },
@@ -112,11 +61,7 @@ export class PointsService {
   }
 
   // 新增購買點數
-  async addPoints(
-    userId: string,
-    amount: number,
-    history: AddPointHistoryParams,
-  ) {
+  async addPoints(userId: string, amount: number, history: AddPointHistoryParams) {
     await this.prisma.$transaction(async (tx) => {
       // 更新購買點數
       await tx.user.update({
@@ -141,14 +86,7 @@ export class PointsService {
   }
 
   // 扣除點數（先扣試用點數，再扣免費點數，最後扣購買點數）
-  async deductPoints(
-    userId: string,
-    amount: number,
-    history: AddPointHistoryParams,
-  ) {
-    // 先檢查並重置免費點數
-    await this.checkAndResetFreePoints(userId);
-
+  async deductPoints(userId: string, amount: number, history: AddPointHistoryParams) {
     await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
@@ -231,13 +169,12 @@ export class PointsService {
   /**
    * 驗證 IAP 購買並發放點數
    */
-  async verifyIAPPurchase(
-    userId: string,
-    dto: VerifyIAPDto,
-  ): Promise<VerifyIAPResponseDto> {
+  async verifyIAPPurchase(userId: string, dto: VerifyIAPDto): Promise<VerifyIAPResponseDto> {
     const { transactionId, productId, platform, receiptData } = dto;
 
-    this.logger.log(`[IAP] Verifying purchase: userId=${userId}, productId=${productId}, transactionId=${transactionId}`);
+    this.logger.log(
+      `[IAP] Verifying purchase: userId=${userId}, productId=${productId}, transactionId=${transactionId}`,
+    );
 
     // 1. 檢查產品 ID 是否有效
     const pointsToAward = PRODUCT_POINTS_MAP[productId];
@@ -319,7 +256,9 @@ export class PointsService {
 
     const newBalance = await this.getPoints(userId);
 
-    this.logger.log(`[IAP] Purchase verified: userId=${userId}, points=${pointsToAward}, newBalance=${newBalance}`);
+    this.logger.log(
+      `[IAP] Purchase verified: userId=${userId}, points=${pointsToAward}, newBalance=${newBalance}`,
+    );
 
     return {
       success: true,
@@ -363,9 +302,7 @@ export class PointsService {
         // 驗證成功，檢查是否包含對應的交易
         const inApp = result.receipt?.in_app || [];
         const matchingTransaction = inApp.find(
-          (item: any) =>
-            item.transaction_id === transactionId ||
-            item.product_id === productId
+          (item: any) => item.transaction_id === transactionId || item.product_id === productId,
         );
 
         if (matchingTransaction) {
@@ -396,10 +333,7 @@ export class PointsService {
   /**
    * 呼叫 Apple verifyReceipt API
    */
-  private async callAppleVerifyReceipt(
-    receiptData: string,
-    useSandbox: boolean,
-  ): Promise<any> {
+  private async callAppleVerifyReceipt(receiptData: string, useSandbox: boolean): Promise<any> {
     const url = useSandbox
       ? 'https://sandbox.itunes.apple.com/verifyReceipt'
       : 'https://buy.itunes.apple.com/verifyReceipt';
@@ -414,7 +348,7 @@ export class PointsService {
       },
       body: JSON.stringify({
         'receipt-data': receiptData,
-        'password': password,
+        password: password,
         'exclude-old-transactions': true,
       }),
     });
