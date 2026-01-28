@@ -40,6 +40,17 @@ import AddressAutocomplete from '../../components/AddressAutocomplete';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickVoiceSend'>;
 
+type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
+
+interface CategoryOption {
+  id: ReminderCategory;
+  title: string;
+  icon: string;
+  iconColor: string;
+  iconBgColor: string;
+  apiType: 'VEHICLE_REMINDER' | 'SAFETY_REMINDER' | 'PRAISE' | 'OTHER';
+}
+
 export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
@@ -58,6 +69,43 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   // Form state
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleType, setVehicleType] = useState<'car' | 'scooter'>('car');
+  const [selectedCategory, setSelectedCategory] = useState<ReminderCategory>('車況提醒');
+
+  // Category options
+  const categories: CategoryOption[] = [
+    {
+      id: '車況提醒',
+      title: '車況提醒',
+      icon: 'alert-circle-outline',
+      iconColor: '#F59E0B',
+      iconBgColor: '#FEF3C7',
+      apiType: 'VEHICLE_REMINDER',
+    },
+    {
+      id: '行車安全',
+      title: '行車安全',
+      icon: 'shield-checkmark-outline',
+      iconColor: '#3B82F6',
+      iconBgColor: '#DBEAFE',
+      apiType: 'SAFETY_REMINDER',
+    },
+    {
+      id: '讚美感謝',
+      title: '讚美感謝',
+      icon: 'heart',
+      iconColor: '#22C55E',
+      iconBgColor: '#DCFCE7',
+      apiType: 'PRAISE',
+    },
+    {
+      id: '其他情況',
+      title: '其他情況',
+      icon: 'chatbubble-ellipses-outline',
+      iconColor: '#8B5CF6',
+      iconBgColor: '#EDE9FE',
+      apiType: 'OTHER',
+    },
+  ];
 
   // Location state
   const [location, setLocation] = useState(initialAddress || '');
@@ -398,9 +446,12 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
     setIsSending(true);
     try {
+      // 取得選中類別的 API 類型
+      const categoryApiType = categories.find(c => c.id === selectedCategory)?.apiType || 'VEHICLE_REMINDER';
+
       await messagesApi.create({
         licensePlate: normalizedPlate,
-        type: 'VEHICLE_REMINDER', // 語音訊息預設為車況提醒
+        type: categoryApiType,
         template: transcript || '語音訊息',
         voiceUrl: uploadedVoiceUrl,
         voiceDuration: voiceDuration,
@@ -583,6 +634,49 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                 機車
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 提醒類型 */}
+        <View style={styles.fieldSection}>
+          <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+            提醒類型
+          </Text>
+          <View style={styles.categoryGrid}>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryButton,
+                  {
+                    backgroundColor: selectedCategory === category.id
+                      ? colors.primary.soft
+                      : colors.card.DEFAULT,
+                    borderColor: selectedCategory === category.id
+                      ? colors.primary.DEFAULT
+                      : colors.border,
+                  },
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.categoryIcon, { backgroundColor: category.iconBgColor }]}>
+                  <Ionicons name={category.icon as any} size={16} color={category.iconColor} />
+                </View>
+                <Text
+                  style={[
+                    styles.categoryButtonText,
+                    {
+                      color: selectedCategory === category.id
+                        ? colors.primary.DEFAULT
+                        : colors.foreground,
+                    },
+                  ]}
+                >
+                  {category.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -881,6 +975,33 @@ const styles = StyleSheet.create({
   },
   typeButtonText: {
     fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+
+  // Category
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+  },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing[2.5],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    gap: spacing[2],
+  },
+  categoryIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryButtonText: {
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
   },
 
