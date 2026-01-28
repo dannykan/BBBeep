@@ -795,7 +795,8 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                     onPress={startRecording}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="mic" size={24} color={colors.primary.foreground} />
+                    <Ionicons name="mic" size={18} color={colors.primary.foreground} />
+                    <Text style={styles.micButtonText}>語音訊息</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1165,7 +1166,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: borderRadius.xl,
     padding: spacing[4],
-    paddingRight: spacing[14],
+    paddingRight: 120,
     fontSize: typography.fontSize.base,
     minHeight: 120,
     lineHeight: typography.fontSize.base * 1.5,
@@ -1174,11 +1175,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing[2],
     bottom: spacing[2],
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+    height: 36,
+    paddingHorizontal: spacing[3],
+    borderRadius: 18,
+  },
+  micButtonText: {
+    color: '#FFFFFF',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
   },
   messageFooter: {
     flexDirection: 'row',
