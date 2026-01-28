@@ -84,7 +84,9 @@ Each feature follows NestJS conventions:
 - `dto/` - Request/response validation with class-validator
 - `entities/` - Prisma model types
 
-Key modules: `auth/`, `users/`, `messages/`, `points/`, `ai/`, `admin/`
+Key modules: `auth/`, `users/`, `messages/`, `points/`, `ai/`, `admin/`, `drafts/`, `activities/`
+
+**IMPORTANT:** 新增模組後，必須在 `app.module.ts` 的 `imports` 陣列中加入該模組，否則 API 路由會返回 404。
 
 ### Shared Package (`@bbbeeep/shared`)
 Cross-platform utilities used by web, mobile, and API:
@@ -138,6 +140,8 @@ Key models:
 - `BlockedUser`/`RejectedUser` - blocking relationships
 - `PointHistory` - transaction tracking
 - `AIUsageLog` - daily AI usage limits
+- `IAPTransaction` - IAP 收據驗證記錄（防止重複加點）
+- `VoiceDraft` - 語音草稿
 
 ## Environment Variables
 
@@ -149,6 +153,7 @@ JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=7d
 OPENAI_API_KEY=your-key  # or GOOGLE_AI_API_KEY
 PORT=3001
+APPLE_IAP_SHARED_SECRET=your-shared-secret  # App Store Connect → App 內購買項目 → App 專用共享密鑰
 ```
 
 ### Web (.env.local in apps/web/)
@@ -408,22 +413,51 @@ com.ubeep.mobile.points_300  # 300 點 NT$600
    - 產品建立後需等待 30-60 分鐘讓 App Store Connect 同步
    - TestFlight 測試需使用 Sandbox 帳號
 
+### IAP 收據驗證 API
+
+後端實作了完整的 IAP 收據驗證：
+
+```
+POST /points/verify-iap
+{
+  "transactionId": "string",
+  "productId": "com.ubeep.mobile.points_15",
+  "platform": "ios" | "android",
+  "receiptData": "string (optional)"
+}
+```
+
+**驗證流程：**
+1. 檢查 `transactionId` 是否已處理過（防止重複加點）
+2. 呼叫 Apple verifyReceipt API 驗證收據
+3. 自動區分 Sandbox/Production 環境
+4. 驗證成功後記錄到 `IAPTransaction` 並發放點數
+
+**Key Files:**
+- `apps/api/src/points/points.service.ts` → `verifyIAPPurchase()`
+- `apps/mobile/src/screens/settings/WalletScreen.tsx` → `purchaseUpdatedListener`
+- `packages/shared/src/api/services/points.ts` → `pointsApi.verifyIAP()`
+
+### Sandbox 測試帳號設定
+
+1. **App Store Connect** → 使用者和存取權限 → 沙盒 → 測試人員
+2. 建立新帳號時選擇**台灣**地區（才會顯示台幣價格）
+3. 可用 Gmail 的 `+` 標籤：`yourname+sandbox@gmail.com`
+4. iPhone 設定：**設定 → Developer → Sandbox Apple Account** 登入
+
 ## iOS Build 注意事項
 
 ### Firebase/CocoaPods 相容性
-`npx expo prebuild --clean` 後需要手動修改 Podfile：
 
-```ruby
-# ios/Podfile - 在 prepare_react_native_project! 後加入
-prepare_react_native_project!
+Firebase 與 React Native New Architecture 有 Swift module 衝突問題。
 
-# Fix Firebase/GoogleUtilities Swift module compatibility
-use_modular_headers!
+**解決方案：** 使用 Expo Config Plugin 自動修改 Podfile：
+- Plugin 位置：`apps/mobile/plugins/withModularHeaders.js`
+- 已在 `app.config.js` 中引用
 
-target 'UBeep' do
-  # ...
-end
-```
+如果 EAS Build 失敗並顯示 `FirebaseCoreInternal depends upon GoogleUtilities, which does not define modules`，確認 plugin 已正確設定。
+
+**本地開發時**，`ios/Podfile` 已有 `use_modular_headers!`，但 EAS Build 會重新生成，所以需要 plugin。
 
 ### Build Number 管理
 - `app.json` 的 `buildNumber` 和 `ios/UBeep/Info.plist` 的 `CFBundleVersion` 要同步
