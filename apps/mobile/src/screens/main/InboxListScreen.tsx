@@ -91,10 +91,16 @@ export default function InboxListScreen() {
     return unsubscribe;
   }, [navigation, loadMessages, refreshUnreadCount]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    loadMessages();
-  };
+    try {
+      await loadMessages();
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadMessages]);
 
   const handleMessageClick = (message: Message) => {
     navigation.navigate('MessageDetail', { messageId: message.id });

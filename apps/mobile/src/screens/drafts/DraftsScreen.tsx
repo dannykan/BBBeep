@@ -33,8 +33,13 @@ export function DraftsScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchDrafts();
-    setRefreshing(false);
+    try {
+      await fetchDrafts();
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
   }, [fetchDrafts]);
 
   const handleDelete = useCallback(

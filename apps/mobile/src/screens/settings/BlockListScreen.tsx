@@ -45,10 +45,16 @@ export default function BlockListScreen() {
     loadBlockedUsers();
   }, [loadBlockedUsers]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    loadBlockedUsers();
-  };
+    try {
+      await loadBlockedUsers();
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadBlockedUsers]);
 
   const handleUnblock = (item: BlockedUser) => {
     const displayName = item.blocked.nickname || '此用戶';

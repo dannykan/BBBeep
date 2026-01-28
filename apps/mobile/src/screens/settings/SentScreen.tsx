@@ -92,10 +92,16 @@ export default function SentScreen() {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    loadSentMessages();
-  };
+    try {
+      await loadSentMessages();
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   const formatTime = (timestamp: string) => {
     try {

@@ -103,8 +103,20 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadInviteData(), refreshUnreadCount(), refreshUnreadReplyCount(), loadTrialStatus(), fetchPendingCount()]);
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        refreshUser(),
+        loadInviteData(),
+        refreshUnreadCount(),
+        refreshUnreadReplyCount(),
+        loadTrialStatus(),
+        fetchPendingCount(),
+      ]);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refreshUser, loadInviteData, refreshUnreadCount, refreshUnreadReplyCount, loadTrialStatus, fetchPendingCount]);
 
   const handleShareInviteCode = async () => {

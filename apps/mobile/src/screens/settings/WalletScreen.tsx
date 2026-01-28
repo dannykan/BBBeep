@@ -220,12 +220,20 @@ export default function WalletScreen() {
     loadPointHistory();
   }, [loadPointHistory]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    refreshUser();
-    loadPointHistory();
-    loadTrialStatus();
-  };
+    try {
+      await Promise.all([
+        refreshUser(),
+        loadPointHistory(),
+        loadTrialStatus(),
+      ]);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshUser, loadPointHistory, loadTrialStatus]);
 
   const handleRecharge = async (option: typeof RECHARGE_OPTIONS[0]) => {
     if (!iapConnected) {
