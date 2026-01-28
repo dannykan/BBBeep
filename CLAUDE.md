@@ -593,3 +593,55 @@ const handleRefresh = useCallback(async () => {
 - **不顯示**：訊息內容（需點擊進入詳情才能看到）
 
 這確保平台可以確認用戶確實打開並閱讀了訊息。
+
+### Stale Closure 問題（useEffect + beforeRemove）
+
+在 `beforeRemove` navigation listener 中使用的函數會被捕獲成 stale closure，導致函數執行時使用的是舊的 state 值。
+
+```javascript
+// ❌ 錯誤 - beforeRemove 捕獲的函數會是舊的
+useEffect(() => {
+  const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+    saveDraft(); // 這個 saveDraft 可能是舊的
+  });
+  return unsubscribe;
+}, [navigation]); // 依賴項不包含 saveDraft
+
+// ✅ 正確 - 使用 useRef 保持最新函數引用
+const saveDraftRef = useRef<() => Promise<boolean>>();
+
+// 每次 render 更新 ref
+useEffect(() => {
+  saveDraftRef.current = saveDraft;
+});
+
+// beforeRemove 使用 ref
+useEffect(() => {
+  const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+    saveDraftRef.current?.(); // 永遠是最新的函數
+  });
+  return unsubscribe;
+}, [navigation]);
+```
+
+**適用場景：** 任何需要在 navigation listener 中呼叫的函數（beforeRemove, focus, blur 等）
+
+### useFocusEffect 重新載入資料
+
+當從其他頁面返回時需要重新載入資料，使用 `useFocusEffect`：
+
+```javascript
+import { useFocusEffect } from '@react-navigation/native';
+
+// 每次畫面獲得焦點時重新載入
+useFocusEffect(
+  useCallback(() => {
+    fetchData();
+  }, [fetchData])
+);
+```
+
+**使用場景：**
+- DraftsScreen：從編輯頁返回後更新草稿列表
+- InboxListScreen：返回時更新未讀狀態
+- WalletScreen：購買完成後更新點數
