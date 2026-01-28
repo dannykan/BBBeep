@@ -26,6 +26,27 @@ import type { InboxStackParamList } from '../../navigation/types';
 
 type InboxListNavigationProp = NativeStackNavigationProp<InboxStackParamList, 'InboxScreen'>;
 
+// 可愛動物頭像列表（使用 emoji）
+const ANIMAL_AVATARS = [
+  { emoji: '🐰', bg: '#FEE2E2' }, // 兔子 - 粉紅
+  { emoji: '🐻', bg: '#FEF3C7' }, // 熊 - 黃
+  { emoji: '🐱', bg: '#DBEAFE' }, // 貓 - 藍
+  { emoji: '🐶', bg: '#D1FAE5' }, // 狗 - 綠
+  { emoji: '🦊', bg: '#FFEDD5' }, // 狐狸 - 橘
+  { emoji: '🐼', bg: '#E5E7EB' }, // 熊貓 - 灰
+  { emoji: '🐨', bg: '#E0E7FF' }, // 無尾熊 - 紫藍
+  { emoji: '🦁', bg: '#FEF9C3' }, // 獅子 - 淺黃
+  { emoji: '🐯', bg: '#FFEDD5' }, // 老虎 - 橘
+  { emoji: '🐸', bg: '#D1FAE5' }, // 青蛙 - 綠
+  { emoji: '🐧', bg: '#DBEAFE' }, // 企鵝 - 藍
+  { emoji: '🐮', bg: '#FEE2E2' }, // 牛 - 粉
+];
+
+// 隨機取得動物頭像
+const getRandomAvatar = () => {
+  return ANIMAL_AVATARS[Math.floor(Math.random() * ANIMAL_AVATARS.length)];
+};
+
 export default function InboxListScreen() {
   const navigation = useNavigation<InboxListNavigationProp>();
   const { refreshUnreadCount } = useUnread();
@@ -33,6 +54,15 @@ export default function InboxListScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  // 為每則訊息隨機生成頭像（在訊息列表變化時重新生成）
+  const messageAvatars = useMemo(() => {
+    const avatarMap: Record<string, typeof ANIMAL_AVATARS[0]> = {};
+    messages.forEach((msg) => {
+      avatarMap[msg.id] = getRandomAvatar();
+    });
+    return avatarMap;
+  }, [messages]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -123,48 +153,50 @@ export default function InboxListScreen() {
 
   const renderItem = ({ item }: { item: Message }) => {
     const tagColors = getTagColor(item.type);
+    const senderName = item.sender?.nickname || '匿名用戶';
+    const isVoice = !!item.voiceUrl;
+    const avatar = messageAvatars[item.id] || getRandomAvatar();
 
     return (
       <TouchableOpacity
-        style={[styles.messageCard, { borderLeftColor: getAccentColor(item.type) }]}
+        style={[styles.messageCard, !item.read && styles.messageCardUnread]}
         onPress={() => handleMessageClick(item)}
         activeOpacity={0.7}
       >
+        {/* 動物頭像 */}
+        <View style={[styles.avatarContainer, { backgroundColor: avatar.bg }]}>
+          <Text style={styles.avatarEmoji}>{avatar.emoji}</Text>
+        </View>
+
+        {/* 內容區域 */}
         <View style={styles.messageCardContent}>
-          <View style={styles.messageHeader}>
+          {/* 上排：暱稱 */}
+          <Text style={styles.senderName} numberOfLines={1}>
+            {senderName}
+          </Text>
+
+          {/* 下排：類型標籤 + 訊息提示 */}
+          <View style={styles.messagePreview}>
             <View style={[styles.typeBadgeSmall, { backgroundColor: tagColors.bg }]}>
+              {isVoice && (
+                <Ionicons name="mic" size={10} color={tagColors.text} style={{ marginRight: 3 }} />
+              )}
               <Text style={[styles.typeBadgeSmallText, { color: tagColors.text }]}>
                 {item.type}
               </Text>
             </View>
-            {!item.read && <View style={styles.unreadDot} />}
-            <Text style={styles.messageTime}>{formatDate(item.createdAt)}</Text>
+            <Text style={styles.messageHint}>
+              {isVoice ? '語音訊息' : '訊息'}
+            </Text>
           </View>
-          {item.voiceUrl ? (
-            <View style={styles.voiceIndicator}>
-              <Ionicons name="mic" size={14} color={colors.primary.DEFAULT} />
-              <Text style={[styles.messageTemplate, { color: colors.primary.DEFAULT }]} numberOfLines={1}>
-                語音訊息
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.messageTemplate} numberOfLines={1}>
-                {item.template}
-              </Text>
-              {item.customText && (
-                <Text style={styles.messageCustomText} numberOfLines={1}>
-                  {item.customText}
-                </Text>
-              )}
-            </>
-          )}
         </View>
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={colors.text.secondary}
-        />
+
+        {/* 右側：未讀點 + 時間 + 箭頭 */}
+        <View style={styles.rightSection}>
+          {!item.read && <View style={styles.unreadDot} />}
+          <Text style={styles.messageTime}>{formatDate(item.createdAt)}</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -300,57 +332,71 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     // Message Card
     messageCard: {
       backgroundColor: colors.card.DEFAULT,
-      borderRadius: 16,
-      padding: 16,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      borderLeftWidth: 4,
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 12,
+    },
+    messageCardUnread: {
+      backgroundColor: isDark ? 'rgba(249, 115, 22, 0.08)' : 'rgba(249, 115, 22, 0.05)',
+      borderColor: isDark ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.2)',
+    },
+    avatarContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarEmoji: {
+      fontSize: 20,
     },
     messageCardContent: {
       flex: 1,
       minWidth: 0,
+      gap: 4,
     },
-    messageHeader: {
+    senderName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    rightSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 8,
-    },
-    typeBadgeSmall: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 8,
-    },
-    typeBadgeSmallText: {
-      fontSize: 12,
-      fontWeight: '600',
+      gap: 6,
     },
     unreadDot: {
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: colors.primary.DEFAULT,
+      backgroundColor: '#F97316', // 橘色
     },
     messageTime: {
       fontSize: 11,
       color: colors.text.secondary,
-      marginLeft: 'auto',
     },
-    messageTemplate: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.text.primary,
-      marginBottom: 4,
-    },
-    voiceIndicator: {
+    messagePreview: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginBottom: 4,
     },
-    messageCustomText: {
+    typeBadgeSmall: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    typeBadgeSmallText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    messageHint: {
       fontSize: 13,
       color: colors.text.secondary,
     },
