@@ -31,6 +31,7 @@ import { SendProvider } from './src/context/SendContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import CustomSplashScreen from './src/components/CustomSplashScreen';
 import { useAnalytics } from './src/hooks/useAnalytics';
+import { analytics } from './src/lib/analytics';
 import { initializeApiClient } from './src/lib/api';
 
 // 初始化 API Client（同步執行，確保所有 Provider 的 useEffect 執行前已完成）
@@ -115,10 +116,12 @@ export default function App() {
     prepare();
   }, []);
 
-  // 當 app ready 時隱藏 native splash
+  // 當 app ready 時隱藏 native splash 並追踪 app 開啟
   useEffect(() => {
     if (appReady) {
       SplashScreen.hideAsync();
+      // Analytics 追踪 app 開啟
+      analytics.trackAppOpen();
     }
   }, [appReady]);
 

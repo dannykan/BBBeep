@@ -28,7 +28,7 @@ const PrivacyPage = React.memo(() => {
         <Card className="p-6 space-y-6 bg-card border-border shadow-none">
           {/* 最後更新日期 */}
           <div className="text-sm text-muted-foreground">
-            最後更新：2026 年 1 月 20 日
+            最後更新：2026 年 1 月 29 日
           </div>
 
           {/* 前言 */}
@@ -55,6 +55,12 @@ const PrivacyPage = React.memo(() => {
               <p>• 使用紀錄（發送與接收的提醒）</p>
               <p>• 點數交易紀錄</p>
               <p>• 封鎖/拒收名單</p>
+
+              <p className="font-medium text-foreground mt-3">分析資料（用於改善服務）：</p>
+              <p>• 裝置資訊（型號、作業系統版本）</p>
+              <p>• App 使用情況（頁面瀏覽、功能使用頻率）</p>
+              <p>• 匿名效能數據</p>
+              <p className="text-xs mt-1">註：這些資料透過 Firebase Analytics 收集，不包含可識別個人身分的資訊</p>
             </div>
           </section>
 
@@ -123,10 +129,17 @@ const PrivacyPage = React.memo(() => {
 
           {/* Cookie 與追蹤技術 */}
           <section className="space-y-3">
-            <h2 className="text-base text-foreground font-medium">7. Cookie 與追蹤技術</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              我們可能使用 Cookie 或類似技術來改善服務體驗，但不會用於追蹤您的個人瀏覽行為。
-            </p>
+            <h2 className="text-base text-foreground font-medium">7. 分析工具與追蹤技術</h2>
+            <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+              <p>我們使用 Firebase Analytics（由 Google 提供）來改善服務品質：</p>
+              <p>• 了解 App 使用情況與熱門功能</p>
+              <p>• 發現並修復技術問題</p>
+              <p>• 優化用戶體驗</p>
+              <p className="mt-2">
+                Firebase Analytics 收集的是匿名彙整資料，不會追蹤您的個人瀏覽行為或與廣告商分享。
+                您可以在裝置設定中限制廣告追蹤來減少資料收集。
+              </p>
+            </div>
           </section>
 
           {/* 兒童隱私 */}

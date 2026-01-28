@@ -38,6 +38,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapLocationPicker from '../../components/MapLocationPicker';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
+import { analytics } from '../../lib/analytics';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'Confirm'>;
 
@@ -424,6 +425,14 @@ export default function ConfirmScreenV2({ navigation }: Props) {
         location: location || undefined,
       }).catch((err) => {
         console.log('[Activity] Failed to log MESSAGE_SENT:', err);
+      });
+
+      // Analytics 追踪发送成功
+      analytics.trackSendMessage({
+        messageType: selectedCategory || '行車安全提醒',
+        sendMode: sendMode as 'template' | 'text' | 'voice' | 'ai_optimized',
+        pointCost: getPointCost(),
+        category: selectedCategory || undefined,
       });
 
       try {

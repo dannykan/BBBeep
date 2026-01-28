@@ -386,7 +386,17 @@ const UserDetailClient: React.FC<UserDetailClientProps> = ({ userId }) => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <Tabs defaultValue="info" className="w-full">
+        <Tabs
+          defaultValue="info"
+          className="w-full"
+          onValueChange={(value) => {
+            if (value === 'messages') {
+              setMessageType('received');
+            } else if (value === 'sent') {
+              setMessageType('sent');
+            }
+          }}
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">用戶資料</TabsTrigger>
             <TabsTrigger value="messages">收件夾</TabsTrigger>

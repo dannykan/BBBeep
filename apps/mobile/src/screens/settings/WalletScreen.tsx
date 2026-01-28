@@ -33,6 +33,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { getTotalPoints, pointsApi, usersApi } from '@bbbeeep/shared';
+import { analytics } from '../../lib/analytics';
 import type { PointHistory, TrialStatusResponse } from '@bbbeeep/shared';
 import GradientBackground from '../../components/GradientBackground';
 
@@ -179,6 +180,8 @@ export default function WalletScreen() {
             loadPointHistory();
 
             if (result.pointsAwarded > 0) {
+              // Analytics 追踪购买成功
+              analytics.trackIapComplete(purchase.productId, result.pointsAwarded);
               Alert.alert('購買成功', `已加入 ${result.pointsAwarded} 點到您的帳戶！`);
             } else if (result.error) {
               // 已處理過的交易
@@ -189,6 +192,8 @@ export default function WalletScreen() {
           }
         } catch (error: any) {
           console.error('[IAP] Purchase verification error:', error);
+          // Analytics 追踪验证失败
+          analytics.trackIapFailed(purchase.productId, error.message || 'verification_failed');
           Alert.alert('加點失敗', error.message || '購買成功但點數加值失敗，請聯繫客服');
         }
 
@@ -251,6 +256,9 @@ export default function WalletScreen() {
 
     setIsRecharging(true);
     setSelectedOption(option.points);
+
+    // Analytics 追踪购买开始
+    analytics.trackIapInitiated(option.productId);
 
     try {
       console.log('[IAP] Requesting purchase for:', option.productId);

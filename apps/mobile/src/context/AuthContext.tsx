@@ -10,6 +10,7 @@ import type { User } from '@bbbeeep/shared';
 import { usersApi, authApi } from '@bbbeeep/shared';
 import { mobileStorageAdapter } from '../lib/storage-adapter';
 import { setOnTokenExpired } from '../lib/api';
+import { analytics } from '../lib/analytics';
 
 interface AuthContextType {
   user: User | null;
@@ -80,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fullUserData = await usersApi.getMe();
     await mobileStorageAdapter.setUser(fullUserData);
     setUser(fullUserData);
+    // Analytics 追踪
+    analytics.trackLogin('phone');
+    analytics.setUserId(fullUserData.id);
   };
 
   // 密碼登入
@@ -90,6 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fullUserData = await usersApi.getMe();
     await mobileStorageAdapter.setUser(fullUserData);
     setUser(fullUserData);
+    // Analytics 追踪
+    analytics.trackLogin('password');
+    analytics.setUserId(fullUserData.id);
   };
 
   // 車牌 + 密碼登入
@@ -100,6 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fullUserData = await usersApi.getMe();
     await mobileStorageAdapter.setUser(fullUserData);
     setUser(fullUserData);
+    // Analytics 追踪
+    analytics.trackLogin('license_plate');
+    analytics.setUserId(fullUserData.id);
   };
 
   // Apple Sign-In
@@ -137,6 +147,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fullUserData = await usersApi.getMe();
       await mobileStorageAdapter.setUser(fullUserData);
       setUser(fullUserData);
+      // Analytics 追踪
+      analytics.trackLogin('apple');
+      analytics.setUserId(fullUserData.id);
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         // 用戶取消登入，不需要顯示錯誤
@@ -167,6 +180,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fullUserData = await usersApi.getMe();
       await mobileStorageAdapter.setUser(fullUserData);
       setUser(fullUserData);
+      // Analytics 追踪
+      analytics.trackLogin('line');
+      analytics.setUserId(fullUserData.id);
     } catch (error: any) {
       console.error('[LINE_LOGIN] Error:', error);
       // LINE SDK 取消登入的錯誤碼

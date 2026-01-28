@@ -11,7 +11,7 @@
  * - 直接送出或堅持送出
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ import { typography, spacing, borderRadius } from '../../theme';
 import MapLocationPicker from '../../components/MapLocationPicker';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
+import { analytics } from '../../lib/analytics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickVoiceSend'>;
 
@@ -643,6 +644,14 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         voiceDuration: voiceDuration,
         location: location,
         occurredAt: recordedAt,
+      });
+
+      // Analytics 追踪发送成功
+      analytics.trackSendMessage({
+        messageType: categoryApiType,
+        sendMode: 'voice',
+        pointCost: 8,
+        category: selectedCategory,
       });
 
       // 成功後導航到成功頁面或返回首頁
