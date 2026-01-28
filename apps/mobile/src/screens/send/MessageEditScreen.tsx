@@ -17,6 +17,7 @@ import {
   Alert,
   Animated,
   Linking,
+  Modal,
 } from 'react-native';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -25,7 +26,7 @@ import type { SendStackParamList } from '../../navigation/types';
 import { useSend } from '../../context/SendContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, CompactStepHeader } from './components';
-import { displayLicensePlate, uploadApi, activitiesApi } from '@bbbeeep/shared';
+import { displayLicensePlate, uploadApi, activitiesApi, draftsApi, VoiceDraft } from '@bbbeeep/shared';
 import {
   getSituationsByVehicleType,
   getMessageByVehicleType,
@@ -86,6 +87,11 @@ export default function MessageEditScreen({ navigation, route }: Props) {
   const [showAiPreview, setShowAiPreview] = useState(false);
   const [aiOptimizedText, setAiOptimizedText] = useState('');
   const [originalTextBeforeAi, setOriginalTextBeforeAi] = useState('');
+
+  // Draft picker state
+  const [showDraftPicker, setShowDraftPicker] = useState(false);
+  const [drafts, setDrafts] = useState<VoiceDraft[]>([]);
+  const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
 
   // Track original voice transcript for comparison
   const voiceTranscriptRef = useRef<string>('');
@@ -505,6 +511,49 @@ export default function MessageEditScreen({ navigation, route }: Props) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // 載入語音草稿
+  const loadDrafts = useCallback(async () => {
+    setIsLoadingDrafts(true);
+    try {
+      const response = await draftsApi.getAll();
+      // 只顯示 READY 狀態的草稿
+      const readyDrafts = response.drafts.filter(d => d.status === 'READY');
+      setDrafts(readyDrafts);
+    } catch (error) {
+      console.error('Failed to load drafts:', error);
+    } finally {
+      setIsLoadingDrafts(false);
+    }
+  }, []);
+
+  // 打開草稿選擇器
+  const openDraftPicker = useCallback(async () => {
+    setShowDraftPicker(true);
+    await loadDrafts();
+  }, [loadDrafts]);
+
+  // 選擇草稿中的語音
+  const selectDraft = useCallback((draft: VoiceDraft) => {
+    // 設定語音錄音
+    setVoiceRecording({
+      uri: draft.voiceUrl,
+      duration: draft.voiceDuration,
+      transcript: draft.transcript,
+    });
+
+    // 如果草稿有轉錄文字，設定為訊息
+    if (draft.transcript) {
+      setMessage(draft.transcript);
+      setCustomText(draft.transcript);
+      setIsUsingTemplate(false);
+      voiceTranscriptRef.current = draft.transcript;
+      // 審核語音轉文字內容
+      checkVoiceModeration(draft.transcript);
+    }
+
+    setShowDraftPicker(false);
+  }, [setVoiceRecording, setCustomText, checkVoiceModeration]);
+
   // 背景記錄活動（不阻塞用戶流程）
   const logActivity = useCallback(async (
     type: 'TEXT_EDIT' | 'AI_OPTIMIZE',
@@ -813,9 +862,16 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                 </View>
 
                 <View style={styles.messageFooter}>
-                  <Text style={[styles.micHint, { color: colors.muted.foreground }]}>
-                    <Ionicons name="mic-outline" size={12} /> 點擊錄音，AI 自動轉文字
-                  </Text>
+                  <View style={styles.messageFooterLeft}>
+                    <Text style={[styles.micHint, { color: colors.muted.foreground }]}>
+                      <Ionicons name="mic-outline" size={12} /> 錄音或
+                    </Text>
+                    <TouchableOpacity onPress={openDraftPicker}>
+                      <Text style={[styles.draftLink, { color: colors.primary.DEFAULT }]}>
+                        從草稿選擇
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                   <Text style={[styles.charCount, { color: colors.muted.foreground }]}>
                     {trimmedLength} / {MAX_CHARS}
                   </Text>
@@ -1110,6 +1166,76 @@ export default function MessageEditScreen({ navigation, route }: Props) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Draft Picker Modal */}
+      <Modal
+        visible={showDraftPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDraftPicker(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>選擇語音草稿</Text>
+            <TouchableOpacity onPress={() => setShowDraftPicker(false)}>
+              <Ionicons name="close" size={24} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          {isLoadingDrafts ? (
+            <View style={styles.modalLoading}>
+              <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+              <Text style={[styles.modalLoadingText, { color: colors.muted.foreground }]}>
+                載入中...
+              </Text>
+            </View>
+          ) : drafts.length === 0 ? (
+            <View style={styles.modalEmpty}>
+              <Ionicons name="document-outline" size={48} color={colors.muted.foreground} />
+              <Text style={[styles.modalEmptyText, { color: colors.muted.foreground }]}>
+                沒有可用的語音草稿
+              </Text>
+              <Text style={[styles.modalEmptyHint, { color: colors.muted.foreground }]}>
+                使用首頁的「一鍵語音」功能錄製語音並儲存為草稿
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.modalContent}>
+              {drafts.map((draft) => (
+                <TouchableOpacity
+                  key={draft.id}
+                  style={[styles.draftItem, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}
+                  onPress={() => selectDraft(draft)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.draftIcon, { backgroundColor: colors.primary.soft }]}>
+                    <Ionicons name="mic" size={20} color={colors.primary.DEFAULT} />
+                  </View>
+                  <View style={styles.draftInfo}>
+                    <Text style={[styles.draftDuration, { color: colors.foreground }]}>
+                      {formatDuration(draft.voiceDuration)} 語音
+                    </Text>
+                    {draft.transcript && (
+                      <Text style={[styles.draftTranscript, { color: colors.muted.foreground }]} numberOfLines={2}>
+                        「{draft.transcript}」
+                      </Text>
+                    )}
+                    <Text style={[styles.draftDate, { color: colors.muted.foreground }]}>
+                      {new Date(draft.createdAt).toLocaleDateString('zh-TW', {
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
     </SendLayout>
   );
 }
@@ -1468,6 +1594,92 @@ const styles = StyleSheet.create({
   aiPreviewButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
+  },
+
+  // Message footer
+  messageFooterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  draftLink: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium as any,
+    textDecorationLine: 'underline',
+  },
+
+  // Draft picker modal
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing[4],
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  modalLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
+  modalLoadingText: {
+    fontSize: typography.fontSize.sm,
+  },
+  modalEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+    padding: spacing[6],
+  },
+  modalEmptyText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  modalEmptyHint: {
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing[4],
+  },
+  draftItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing[3],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    marginBottom: spacing[3],
+    gap: spacing[3],
+  },
+  draftIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftInfo: {
+    flex: 1,
+    gap: spacing[1],
+  },
+  draftDuration: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium as any,
+  },
+  draftTranscript: {
+    fontSize: typography.fontSize.sm,
+  },
+  draftDate: {
+    fontSize: typography.fontSize.xs,
   },
 
 });
