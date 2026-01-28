@@ -54,9 +54,18 @@ interface QuickRecordModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onNavigateToVoiceSend?: (params: {
+    voiceUri: string;
+    voiceDuration: number;
+    transcript: string;
+    recordedAt: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  }) => void;
 }
 
-type Step = 'recording' | 'analyzing' | 'confirm' | 'success';
+type Step = 'recording' | 'analyzing' | 'choice' | 'confirm' | 'success';
 type VehicleType = 'car' | 'scooter';
 type Category = '車況提醒' | '行車安全提醒' | '讚美感謝';
 type TimeOption = 'now' | '5min' | '10min' | '15min';
@@ -87,8 +96,12 @@ export function QuickRecordModal({
   visible,
   onClose,
   onSuccess,
+  onNavigateToVoiceSend,
 }: QuickRecordModalProps) {
   const { colors } = useTheme();
+
+  // 記錄錄製完成時間
+  const [recordedAt, setRecordedAt] = useState<string>(new Date().toISOString());
 
   // 步驟狀態
   const [step, setStep] = useState<Step>('recording');
@@ -569,12 +582,17 @@ export function QuickRecordModal({
         }
       }
 
-      // 進入確認階段
-      setStep('confirm');
+      // 記錄錄製完成時間
+      setRecordedAt(new Date().toISOString());
+
+      // 進入選擇階段（存草稿或繼續編輯）
+      setStep('choice');
     } catch (err: any) {
       console.error('Analysis error:', err);
-      // 即使分析失敗，也進入確認頁面讓用戶手動填寫
-      setStep('confirm');
+      // 記錄錄製完成時間
+      setRecordedAt(new Date().toISOString());
+      // 即使分析失敗，也進入選擇頁面
+      setStep('choice');
     }
   };
 
@@ -797,6 +815,114 @@ export function QuickRecordModal({
       </View>
       <Text style={styles.analyzingTitleLarge}>AI 分析中...</Text>
       <Text style={styles.analyzingSubtitleLarge}>正在識別車牌和內容</Text>
+    </View>
+  );
+
+  // 處理繼續編輯（導航到語音送出頁面）
+  const handleContinueEdit = () => {
+    if (onNavigateToVoiceSend && voiceUri) {
+      onNavigateToVoiceSend({
+        voiceUri,
+        voiceDuration,
+        transcript,
+        recordedAt,
+        latitude: latitude || undefined,
+        longitude: longitude || undefined,
+        address: location || undefined,
+      });
+      onClose();
+    } else {
+      // 如果沒有傳入導航函數，退回到舊的確認頁面
+      setStep('confirm');
+    }
+  };
+
+  // 選擇頁面（存草稿或繼續編輯）
+  const renderChoice = () => (
+    <View style={[styles.choiceContainer, { backgroundColor: colors.card.DEFAULT }]}>
+      {/* 關閉按鈕 */}
+      <TouchableOpacity
+        style={styles.choiceCloseButton}
+        onPress={onClose}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="close" size={28} color={colors.muted.foreground} />
+      </TouchableOpacity>
+
+      {/* 標題 */}
+      <View style={styles.choiceHeader}>
+        <View style={[styles.choiceIconCircle, { backgroundColor: colors.primary.soft }]}>
+          <Ionicons name="mic" size={32} color={colors.primary.DEFAULT} />
+        </View>
+        <Text style={[styles.choiceTitle, { color: colors.foreground }]}>
+          錄音完成！
+        </Text>
+        <Text style={[styles.choiceSubtitle, { color: colors.muted.foreground }]}>
+          {voiceDuration} 秒語音已錄製完成
+        </Text>
+      </View>
+
+      {/* 語音播放預覽 */}
+      <View style={[styles.choiceVoicePlayer, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.choicePlayButton, { backgroundColor: colors.primary.DEFAULT }]}
+          onPress={togglePlayback}
+        >
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.choiceVoiceInfo}>
+          <Text style={[styles.choiceVoiceLabel, { color: colors.muted.foreground }]}>
+            語音錄音
+          </Text>
+          <Text style={[styles.choiceVoiceDuration, { color: colors.foreground }]}>
+            {Math.floor(voiceDuration / 60)}:{(voiceDuration % 60).toString().padStart(2, '0')}
+          </Text>
+        </View>
+        {transcript && (
+          <Text
+            style={[styles.choiceTranscriptPreview, { color: colors.text.muted }]}
+            numberOfLines={1}
+          >
+            「{transcript}」
+          </Text>
+        )}
+      </View>
+
+      {/* 選項按鈕 */}
+      <View style={styles.choiceButtons}>
+        <TouchableOpacity
+          style={[styles.choiceButton, styles.choiceButtonSecondary, { borderColor: colors.border }]}
+          onPress={handleSaveDraft}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color={colors.muted.foreground} />
+          ) : (
+            <>
+              <Ionicons name="bookmark-outline" size={22} color={colors.muted.foreground} />
+              <Text style={[styles.choiceButtonText, { color: colors.foreground }]}>
+                存為草稿
+              </Text>
+              <Text style={[styles.choiceButtonHint, { color: colors.muted.foreground }]}>
+                稍後再處理
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.choiceButton, styles.choiceButtonPrimary, { backgroundColor: colors.primary.DEFAULT }]}
+          onPress={handleContinueEdit}
+        >
+          <Ionicons name="send" size={22} color="#fff" />
+          <Text style={[styles.choiceButtonText, { color: '#fff' }]}>
+            繼續編輯
+          </Text>
+          <Text style={[styles.choiceButtonHint, { color: 'rgba(255,255,255,0.7)' }]}>
+            填寫車牌並送出
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -1248,6 +1374,7 @@ export function QuickRecordModal({
       <View style={styles.container}>
         {step === 'recording' && renderRecording()}
         {step === 'analyzing' && renderAnalyzing()}
+        {step === 'choice' && renderChoice()}
         {step === 'confirm' && renderConfirm()}
         {step === 'success' && renderSuccess()}
       </View>
@@ -1402,6 +1529,98 @@ const styles = StyleSheet.create({
   analyzingSubtitleLarge: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.6)',
+  },
+  // ========== 選擇畫面 ==========
+  choiceContainer: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+  },
+  choiceCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  choiceHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  choiceIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  choiceTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  choiceSubtitle: {
+    fontSize: 15,
+  },
+  choiceVoicePlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    gap: 12,
+  },
+  choicePlayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceVoiceInfo: {
+    gap: 2,
+  },
+  choiceVoiceLabel: {
+    fontSize: 12,
+  },
+  choiceVoiceDuration: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  choiceTranscriptPreview: {
+    flex: 1,
+    fontSize: 13,
+    textAlign: 'right',
+  },
+  choiceButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  choiceButton: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  choiceButtonSecondary: {
+    borderWidth: 1,
+  },
+  choiceButtonPrimary: {},
+  choiceButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  choiceButtonHint: {
+    fontSize: 13,
   },
   // ========== 成功畫面 ==========
   successCard: {

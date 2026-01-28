@@ -22,6 +22,7 @@ import NotificationSettingsScreen from '../screens/settings/NotificationSettings
 import AppearanceScreen from '../screens/settings/AppearanceScreen';
 import LegalScreen from '../screens/settings/LegalScreen';
 import QuickRecordScreen from '../screens/send/QuickRecordScreen';
+import QuickVoiceSendScreen from '../screens/send/QuickVoiceSendScreen';
 import { DraftsScreen } from '../screens/drafts/DraftsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +69,7 @@ export default function RootNavigator() {
             }}
           />
           <Stack.Screen name="Drafts" component={DraftsScreen} />
+          <Stack.Screen name="QuickVoiceSend" component={QuickVoiceSendScreen} />
         </>
       )}
     </Stack.Navigator>

@@ -335,26 +335,20 @@ export default function QuickRecordScreen() {
     }
   };
 
-  // 繼續編輯（進入手動發送流程）
+  // 繼續編輯（進入一鍵語音送出頁面）
   const handleContinueEdit = () => {
     if (!voiceUri) return;
 
-    // 重置現有發送資料
-    resetSend();
-
-    // 設定語音備忘
-    setVoiceMemo({
-      uri: voiceUri,
-      duration: voiceDuration,
-      transcript: transcript || undefined,
+    // 導航到一鍵語音送出頁面
+    navigation.replace('QuickVoiceSend', {
+      voiceUri,
+      voiceDuration,
+      transcript: transcript || '',
+      recordedAt: new Date().toISOString(),
       latitude: latitude || undefined,
       longitude: longitude || undefined,
       address: address || undefined,
-      recordedAt: new Date(),
     });
-
-    // 導航到發送流程
-    navigation.replace('Send');
   };
 
   // 播放/暫停語音

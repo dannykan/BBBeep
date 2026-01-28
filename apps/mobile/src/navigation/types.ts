@@ -18,6 +18,15 @@ export type RootStackParamList = {
   QuickRecord: undefined;
   Drafts: undefined;
   DraftDetail: { draftId: string };
+  QuickVoiceSend: {
+    voiceUri: string;
+    voiceDuration: number;
+    transcript: string;
+    recordedAt: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  };
 };
 
 export type OnboardingStackParamList = {
