@@ -312,7 +312,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
     setIsModeratingVoice(true);
     try {
-      const result = await aiApi.moderateContent(transcript);
+      const result = await aiApi.moderate(transcript);
       setVoiceModeration({
         isAppropriate: result.isAppropriate,
         category: result.category,
