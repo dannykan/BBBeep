@@ -16,6 +16,7 @@ import { UploadModule } from './upload/upload.module';
 import { InviteModule } from './invite/invite.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { DraftsModule } from './drafts/drafts.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     UploadModule,
     InviteModule,
     ActivitiesModule,
+    DraftsModule,
   ],
   controllers: [AppController],
   providers: [
