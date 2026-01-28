@@ -641,21 +641,25 @@ export default function CustomScreen({ navigation }: Props) {
 
           {/* AI 審核中指示器 */}
           {isAiModerating && trimmedLength >= MIN_CHARS && (
-            <View style={[styles.moderatingBox, { backgroundColor: colors.muted.DEFAULT }]}>
-              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-              <Text style={[styles.moderatingText, { color: colors.muted.foreground }]}>
-                🤖 AI 審核中...
-              </Text>
+            <View style={styles.statusBadgeContainer}>
+              <View style={[styles.statusBadge, { backgroundColor: colors.muted.DEFAULT }]}>
+                <ActivityIndicator size={12} color={colors.primary.DEFAULT} />
+                <Text style={[styles.statusBadgeText, { color: colors.muted.foreground }]}>
+                  AI 審核中...
+                </Text>
+              </View>
             </View>
           )}
 
           {/* AI 審核通過指示器 */}
           {!isAiModerating && aiModeration?.category === 'ok' && trimmedLength >= MIN_CHARS && (
-            <View style={[styles.moderatingBox, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-              <Text style={[styles.moderatingText, { color: isDark ? '#6EE7B7' : '#047857' }]}>
-                🤖 AI 審核通過
-              </Text>
+            <View style={styles.statusBadgeContainer}>
+              <View style={[styles.statusBadge, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                <Text style={[styles.statusBadgeText, { color: isDark ? '#6EE7B7' : '#047857' }]}>
+                  AI 審核通過
+                </Text>
+              </View>
             </View>
           )}
 
@@ -959,17 +963,22 @@ const styles = StyleSheet.create({
   transcribingText: {
     fontSize: typography.fontSize.base,
   },
-  moderatingBox: {
+  statusBadgeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-    padding: spacing[3],
-    borderRadius: borderRadius.lg,
+    justifyContent: 'flex-start',
     marginBottom: spacing[4],
   },
-  moderatingText: {
-    fontSize: typography.fontSize.sm,
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1.5],
+    paddingVertical: spacing[1.5],
+    paddingHorizontal: spacing[2.5],
+    borderRadius: borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium as any,
   },
   emotionalWarning: {
     borderWidth: 1,

@@ -931,20 +931,24 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
         {/* AI 審核狀態 */}
         {isModeratingVoice && (
-          <View style={[styles.moderationBox, { backgroundColor: colors.muted.DEFAULT }]}>
-            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-            <Text style={[styles.moderationText, { color: colors.muted.foreground }]}>
-              AI 審核中...
-            </Text>
+          <View style={styles.statusBadgeContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: colors.muted.DEFAULT }]}>
+              <ActivityIndicator size={12} color={colors.primary.DEFAULT} />
+              <Text style={[styles.statusBadgeText, { color: colors.muted.foreground }]}>
+                AI 審核中...
+              </Text>
+            </View>
           </View>
         )}
 
         {!isModeratingVoice && moderationPassed && (
-          <View style={[styles.moderationBox, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-            <Text style={[styles.moderationText, { color: isDark ? '#6EE7B7' : '#047857' }]}>
-              AI 審核通過
-            </Text>
+          <View style={styles.statusBadgeContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text style={[styles.statusBadgeText, { color: isDark ? '#6EE7B7' : '#047857' }]}>
+                AI 審核通過
+              </Text>
+            </View>
           </View>
         )}
 
@@ -964,11 +968,13 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
         {/* 上傳狀態 */}
         {isUploading && (
-          <View style={[styles.moderationBox, { backgroundColor: colors.muted.DEFAULT }]}>
-            <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-            <Text style={[styles.moderationText, { color: colors.muted.foreground }]}>
-              語音上傳中...
-            </Text>
+          <View style={styles.statusBadgeContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: colors.muted.DEFAULT }]}>
+              <ActivityIndicator size={12} color={colors.primary.DEFAULT} />
+              <Text style={[styles.statusBadgeText, { color: colors.muted.foreground }]}>
+                語音上傳中...
+              </Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1183,17 +1189,22 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
   },
 
-  // Moderation
-  moderationBox: {
+  // Status badge (審核狀態)
+  statusBadgeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-    padding: spacing[3],
-    borderRadius: borderRadius.lg,
+    gap: spacing[1.5],
+    paddingVertical: spacing[1.5],
+    paddingHorizontal: spacing[2.5],
+    borderRadius: borderRadius.full,
   },
-  moderationText: {
-    fontSize: typography.fontSize.sm,
+  statusBadgeText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium as any,
   },
   warningCard: {
     flexDirection: 'row',
