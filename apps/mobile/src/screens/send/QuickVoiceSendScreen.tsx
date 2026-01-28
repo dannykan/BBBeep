@@ -32,7 +32,7 @@ import Constants from 'expo-constants';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { messagesApi, uploadApi, aiApi, normalizeLicensePlate, displayLicensePlate } from '@bbbeeep/shared';
+import { messagesApi, uploadApi, aiApi, draftsApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints } from '@bbbeeep/shared';
 import type { RootStackParamList } from '../../navigation/types';
 import { typography, spacing, borderRadius } from '../../theme';
 import MapLocationPicker from '../../components/MapLocationPicker';
@@ -339,6 +339,35 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     }
   };
 
+  // 儲存草稿並導航到錢包
+  const saveAndGoToWallet = async () => {
+    try {
+      // 儲存草稿
+      await draftsApi.create({
+        voiceUrl: uploadedVoiceUrl!,
+        voiceDuration: voiceDuration,
+        transcript: transcript,
+        latitude: latitude || undefined,
+        longitude: longitude || undefined,
+        address: location || undefined,
+      });
+
+      Alert.alert(
+        '點數不足',
+        '您的語音已儲存至草稿，儲值後可繼續發送。',
+        [
+          {
+            text: '前往儲值',
+            onPress: () => navigation.replace('Wallet'),
+          },
+        ]
+      );
+    } catch (err) {
+      console.error('Save draft error:', err);
+      Alert.alert('儲存失敗', '無法儲存草稿，請稍後再試');
+    }
+  };
+
   // 發送語音訊息
   const handleSend = async (insist: boolean = false) => {
     // 驗證車牌
@@ -360,6 +389,13 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       return;
     }
 
+    // 檢查點數是否足夠（語音訊息需要 8 點）
+    const totalPoints = getTotalPoints(user);
+    if (totalPoints < 8) {
+      await saveAndGoToWallet();
+      return;
+    }
+
     setIsSending(true);
     try {
       await messagesApi.create({
@@ -377,7 +413,14 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       navigation.replace('Main');
       Alert.alert('發送成功', '語音提醒已成功送出');
     } catch (err: any) {
-      Alert.alert('發送失敗', err.response?.data?.message || '請稍後再試');
+      const errorMessage = err.response?.data?.message || '請稍後再試';
+
+      // 如果是點數不足錯誤，儲存草稿
+      if (errorMessage.includes('點數不足') || err.response?.status === 400) {
+        await saveAndGoToWallet();
+      } else {
+        Alert.alert('發送失敗', errorMessage);
+      }
     } finally {
       setIsSending(false);
     }
@@ -669,10 +712,12 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="send" size={20} color="#fff" />
-                    <Text style={styles.sendButtonText}>立即送出語音提醒</Text>
-                    <View style={styles.sendPointBadge}>
-                      <Text style={styles.sendPointBadgeText}>扣 8 點</Text>
+                    <View style={styles.buttonContentCenter}>
+                      <Ionicons name="send" size={20} color="#fff" />
+                      <Text style={styles.sendButtonText}>立即送出語音提醒</Text>
+                    </View>
+                    <View style={styles.pointBadgeRight}>
+                      <Text style={styles.pointBadgeRightText}>8 點</Text>
                     </View>
                   </>
                 )}
@@ -688,12 +733,14 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                   <ActivityIndicator size="small" color={colors.foreground} />
                 ) : (
                   <>
-                    <Ionicons name="volume-high" size={20} color={colors.foreground} />
-                    <Text style={[styles.insistButtonText, { color: colors.foreground }]}>
-                      堅持使用語音送出
-                    </Text>
-                    <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                      <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>8 點</Text>
+                    <View style={styles.buttonContentCenter}>
+                      <Ionicons name="volume-high" size={20} color={colors.foreground} />
+                      <Text style={[styles.insistButtonText, { color: colors.foreground }]}>
+                        堅持使用語音送出
+                      </Text>
+                    </View>
+                    <View style={[styles.pointBadgeRight, { backgroundColor: colors.muted.DEFAULT }]}>
+                      <Text style={[styles.pointBadgeRightText, { color: colors.foreground }]}>8 點</Text>
                     </View>
                   </>
                 )}
@@ -914,23 +961,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[2],
     padding: spacing[4],
     borderRadius: borderRadius.xl,
+    position: 'relative',
+  },
+  buttonContentCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
   },
   sendButtonText: {
     color: '#fff',
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold as any,
   },
-  sendPointBadge: {
+  pointBadgeRight: {
+    position: 'absolute',
+    right: spacing[4],
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: spacing[2.5],
     paddingVertical: spacing[1],
     borderRadius: borderRadius.full,
-    marginLeft: spacing[1],
   },
-  sendPointBadgeText: {
+  pointBadgeRightText: {
     color: '#fff',
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
@@ -939,22 +993,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[2],
     padding: spacing[4],
     borderRadius: borderRadius.xl,
     borderWidth: 1,
+    position: 'relative',
   },
   insistButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium as any,
-  },
-  pointBadge: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.full,
-  },
-  pointBadgeText: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold as any,
   },
 });
