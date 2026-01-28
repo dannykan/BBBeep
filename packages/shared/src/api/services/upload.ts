@@ -82,7 +82,7 @@ export const uploadApi = {
     formData.append('file', file as unknown as Blob);
 
     return getApiClient()
-      .post<{ text: string }>('/upload/transcribe', formData, {
+      .post<{ text: string; error?: string }>('/upload/transcribe', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

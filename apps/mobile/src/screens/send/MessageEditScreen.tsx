@@ -393,6 +393,18 @@ export default function MessageEditScreen({ navigation, route }: Props) {
     setIsTranscribing(true);
     try {
       const result = await uploadApi.transcribeVoice(uri);
+
+      // 檢查是否有錯誤訊息（AI 無法辨識）
+      if (result.error) {
+        Alert.alert('語音辨識失敗', result.error);
+        // 保留錄音但不設定文字，讓用戶可以手動輸入
+        setVoiceRecording({
+          ...recording,
+          transcript: '',
+        });
+        return;
+      }
+
       if (result.text) {
         setMessage(result.text);
         setCustomText(result.text);

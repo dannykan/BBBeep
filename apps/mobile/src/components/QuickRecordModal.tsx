@@ -502,6 +502,15 @@ export function QuickRecordModal({
     try {
       // 語音轉文字
       const transcribeResult = await uploadApi.transcribeVoice(uri);
+
+      // 檢查是否有 API 回傳的錯誤訊息
+      if (transcribeResult?.error) {
+        console.log('[AI] Transcription error from API:', transcribeResult.error);
+        setTranscript('');
+        showUnrecognizableDialog(uri, '');
+        return;
+      }
+
       const transcriptText = transcribeResult?.text || '';
       setTranscript(transcriptText);
 
