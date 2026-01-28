@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useDraft } from '../../context/DraftContext';
 import { DraftCard } from './components/DraftCard';
@@ -27,9 +27,12 @@ export function DraftsScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchDrafts();
-  }, [fetchDrafts]);
+  // 每次畫面獲得焦點時重新載入草稿（包含更新後返回時）
+  useFocusEffect(
+    useCallback(() => {
+      fetchDrafts();
+    }, [fetchDrafts])
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

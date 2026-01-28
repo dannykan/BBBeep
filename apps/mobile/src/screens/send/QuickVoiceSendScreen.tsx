@@ -157,6 +157,10 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   // 追蹤是否有編輯過（用於從草稿進入時判斷是否需要更新）
   const [hasEdits, setHasEdits] = useState(false);
 
+  // Refs for functions used in beforeRemove (to avoid stale closures)
+  const updateDraftRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
+  const saveDraftRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
+
   // 格式化錄製時間
   const formatRecordedTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -215,7 +219,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
             {
               text: '更新草稿',
               onPress: async () => {
-                const updated = await updateDraft();
+                const updated = await updateDraftRef.current();
                 if (updated) {
                   Alert.alert('已更新', '草稿已更新', [
                     { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
@@ -256,7 +260,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
           {
             text: '儲存草稿',
             onPress: async () => {
-              const saved = await saveDraft();
+              const saved = await saveDraftRef.current();
               if (saved) {
                 Alert.alert('已儲存', '語音已儲存至草稿', [
                   { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
@@ -273,7 +277,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     });
 
     return unsubscribe;
-  }, [navigation, draftSaved, isSending, isUploading, uploadedVoiceUrl, isFromDraft, hasEdits]);
+  }, [navigation, isSending, isUploading, uploadedVoiceUrl, isFromDraft, hasEdits]);
 
   // 設定位置資料的 helper function
   const setLocationData = useCallback((address: string, lat?: number, lng?: number) => {
@@ -495,6 +499,12 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       return false;
     }
   };
+
+  // 更新 refs（讓 beforeRemove callback 能存取最新的函數）
+  useEffect(() => {
+    updateDraftRef.current = updateDraft;
+    saveDraftRef.current = saveDraft;
+  });
 
   // 儲存草稿並導航到錢包
   const saveAndGoToWallet = async () => {
