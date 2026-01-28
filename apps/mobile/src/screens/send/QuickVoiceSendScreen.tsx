@@ -547,10 +547,13 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         {transcript && (
           <View style={[styles.transcriptCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
             <Text style={[styles.transcriptLabel, { color: colors.muted.foreground }]}>
-              AI 轉錄內容
+              AI 轉錄內容（僅供預覽）
             </Text>
             <Text style={[styles.transcriptText, { color: colors.foreground }]}>
               「{transcript}」
+            </Text>
+            <Text style={[styles.transcriptHint, { color: colors.muted.foreground }]}>
+              實際發送的是語音訊息，不會送出文字內容
             </Text>
           </View>
         )}
@@ -947,6 +950,10 @@ const styles = StyleSheet.create({
   transcriptText: {
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
+  },
+  transcriptHint: {
+    fontSize: typography.fontSize.xs,
+    marginTop: spacing[1],
   },
 
   // Fields
