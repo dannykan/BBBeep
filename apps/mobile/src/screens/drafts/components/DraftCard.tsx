@@ -3,17 +3,16 @@
  * 簡化版：只顯示語音播放器，不顯示 AI 分析結果
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
 } from 'react-native';
-import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
+import { VoiceMessagePlayer } from '../../../components/VoiceMessagePlayer';
 import type { VoiceDraft } from '@bbbeeep/shared';
 
 interface DraftCardProps {
@@ -24,63 +23,6 @@ interface DraftCardProps {
 
 export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
   const { colors } = useTheme();
-
-  // 語音播放狀態
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackPosition, setPlaybackPosition] = useState(0);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
-  // 清理音訊
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [sound]);
-
-  const handlePlayPause = async () => {
-    try {
-      if (isPlaying && sound) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-      } else if (sound) {
-        await sound.playAsync();
-        setIsPlaying(true);
-      } else {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: draft.voiceUrl },
-          { shouldPlay: true },
-          onPlaybackStatusUpdate,
-        );
-        setSound(newSound);
-        setIsPlaying(true);
-      }
-    } catch (err) {
-      console.error('Playback error:', err);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      const progress = status.positionMillis / status.durationMillis;
-      setPlaybackPosition(status.positionMillis / 1000);
-      progressAnim.setValue(progress);
-
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPlaybackPosition(0);
-        progressAnim.setValue(0);
-      }
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -128,43 +70,14 @@ export function DraftCard({ draft, onDelete, onSend }: DraftCardProps) {
         </Text>
       </View>
 
-      {/* 語音播放器 */}
+      {/* 語音播放器 - 使用統一組件 */}
       <View style={styles.playerSection}>
-        <TouchableOpacity
-          style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
-          onPress={handlePlayPause}
-        >
-          <Ionicons
-            name={isPlaying ? 'pause' : 'play'}
-            size={20}
-            color="#fff"
-          />
-        </TouchableOpacity>
-
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-            <Animated.View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: colors.primary.DEFAULT,
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.timeRow}>
-            <Text style={[styles.timeSmall, { color: colors.muted.foreground }]}>
-              {formatTime(playbackPosition)}
-            </Text>
-            <Text style={[styles.timeSmall, { color: colors.muted.foreground }]}>
-              {formatTime(draft.voiceDuration)}
-            </Text>
-          </View>
-        </View>
+        <VoiceMessagePlayer
+          voiceUrl={draft.voiceUrl}
+          duration={draft.voiceDuration}
+          showLabel={false}
+          compact
+        />
       </View>
 
       {/* 轉錄文字（如有） */}
@@ -239,38 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   playerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     marginBottom: 12,
-    paddingVertical: 8,
-  },
-  playButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressContainer: {
-    flex: 1,
-  },
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  timeSmall: {
-    fontSize: 11,
   },
   transcriptBox: {
     padding: 12,

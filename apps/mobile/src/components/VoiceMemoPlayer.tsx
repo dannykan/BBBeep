@@ -2,9 +2,13 @@
  * VoiceMemoPlayer - 語音備忘播放器
  *
  * 顯示在發送流程畫面最上方，讓用戶可以隨時播放錄音
+ *
+ * 特點：
+ * - 流暢的進度條動畫（50ms 更新間隔）
+ * - 與 VoiceMessagePlayer 設計一致
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,12 +30,17 @@ export function VoiceMemoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const lastProgress = useRef(0);
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // 清理音訊
   useEffect(() => {
     return () => {
       if (sound) {
         sound.unloadAsync();
+      }
+      if (animationRef.current) {
+        animationRef.current.stop();
       }
     };
   }, [sound]);
@@ -51,13 +60,23 @@ export function VoiceMemoPlayer() {
       if (isPlaying && sound) {
         await sound.pauseAsync();
         setIsPlaying(false);
+        if (animationRef.current) {
+          animationRef.current.stop();
+        }
       } else if (sound) {
         await sound.playAsync();
         setIsPlaying(true);
       } else {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: voiceMemo.uri },
-          { shouldPlay: true },
+          {
+            shouldPlay: true,
+            progressUpdateIntervalMillis: 50, // 流暢更新
+          },
           onPlaybackStatusUpdate,
         );
         setSound(newSound);
@@ -74,12 +93,26 @@ export function VoiceMemoPlayer() {
         ? status.positionMillis / status.durationMillis
         : 0;
       setPosition(status.positionMillis / 1000);
-      progressAnim.setValue(progress);
+
+      // 使用 timing 動畫讓進度條平滑過渡
+      if (Math.abs(progress - lastProgress.current) > 0.001) {
+        if (animationRef.current) {
+          animationRef.current.stop();
+        }
+        animationRef.current = Animated.timing(progressAnim, {
+          toValue: progress,
+          duration: 60,
+          useNativeDriver: false,
+        });
+        animationRef.current.start();
+        lastProgress.current = progress;
+      }
 
       if (status.didJustFinish) {
         setIsPlaying(false);
         setPosition(0);
         progressAnim.setValue(0);
+        lastProgress.current = 0;
       }
     }
   };

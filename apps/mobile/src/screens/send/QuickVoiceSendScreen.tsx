@@ -11,7 +11,7 @@
  * - 直接送出或堅持送出
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -37,6 +36,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { typography, spacing, borderRadius } from '../../theme';
 import MapLocationPicker from '../../components/MapLocationPicker';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
+import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickVoiceSend'>;
 
@@ -118,10 +118,6 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   // Google Maps API Key
   const googleMapsApiKey = Constants.expoConfig?.extra?.googleMapsApiKey || '';
 
-  // Playback state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackPosition, setPlaybackPosition] = useState(0);
-  const soundRef = useRef<Audio.Sound | null>(null);
 
   // AI moderation state
   const [isModeratingVoice, setIsModeratingVoice] = useState(false);
@@ -148,24 +144,12 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     return `${month}/${day} ${hours}:${minutes}`;
   };
 
-  // 格式化播放時間
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // 初始化：取得位置和上傳語音
   useEffect(() => {
     getLocationOnInit();
     uploadVoice();
     moderateVoiceContent();
-
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
   }, []);
 
   // 設定位置資料的 helper function
@@ -330,53 +314,6 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     }
   };
 
-  // 播放/暫停語音
-  const togglePlayback = async () => {
-    if (!voiceUri) return;
-
-    try {
-      if (isPlaying && soundRef.current) {
-        await soundRef.current.pauseAsync();
-        setIsPlaying(false);
-        return;
-      }
-
-      if (soundRef.current) {
-        await soundRef.current.playAsync();
-        setIsPlaying(true);
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: voiceUri },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
-      );
-      soundRef.current = sound;
-      setIsPlaying(true);
-    } catch (err) {
-      console.error('Playback error:', err);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      setPlaybackPosition(Math.floor(status.positionMillis / 1000));
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPlaybackPosition(0);
-        if (soundRef.current) {
-          soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-      }
-    }
-  };
 
   // 前往設定開啟位置權限
   const openSettings = async () => {
@@ -503,45 +440,13 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* 語音播放器 */}
-        <View style={[styles.voiceCard, { backgroundColor: colors.primary.soft, borderColor: colors.primary.DEFAULT + '30' }]}>
-          <TouchableOpacity
-            style={[styles.playButton, { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={togglePlayback}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'play'}
-              size={24}
-              color="#fff"
-            />
-          </TouchableOpacity>
-          <View style={styles.voiceInfo}>
-            <View style={styles.voiceLabelRow}>
-              <Ionicons name="mic" size={16} color={colors.primary.DEFAULT} />
-              <Text style={[styles.voiceLabel, { color: colors.primary.DEFAULT }]}>
-                語音訊息
-              </Text>
-            </View>
-            <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: colors.primary.DEFAULT },
-                  { width: `${voiceDuration > 0 ? (playbackPosition / voiceDuration) * 100 : 0}%` },
-                ]}
-              />
-            </View>
-            <View style={styles.timeRow}>
-              <Text style={[styles.timeText, { color: colors.muted.foreground }]}>
-                {formatDuration(playbackPosition)}
-              </Text>
-              <Text style={[styles.timeText, { color: colors.muted.foreground }]}>
-                {formatDuration(voiceDuration)}
-              </Text>
-            </View>
-          </View>
-        </View>
+        {/* 語音播放器 - 使用統一組件 */}
+        <VoiceMessagePlayer
+          voiceUrl={voiceUri}
+          duration={voiceDuration}
+          showLabel={true}
+          label="語音訊息"
+        />
 
         {/* 轉錄文字預覽（緊湊版） */}
         {transcript && (
@@ -885,53 +790,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing[5],
     gap: spacing[5],
-  },
-
-  // Voice player
-  voiceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing[4],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    gap: spacing[4],
-  },
-  playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voiceInfo: {
-    flex: 1,
-    gap: spacing[2],
-  },
-  voiceLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[1.5],
-  },
-  voiceLabel: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold as any,
-  },
-  progressBar: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timeText: {
-    fontSize: typography.fontSize.xs,
-    fontFamily: 'monospace',
   },
 
   // Transcript (compact banner)
