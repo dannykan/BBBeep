@@ -1,13 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNumber,
-  IsOptional,
-  IsEnum,
-  IsBoolean,
-  Min,
-  Max,
-} from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, IsBoolean, Min, Max } from 'class-validator';
 
 export enum DraftStatus {
   PENDING = 'PENDING',
@@ -34,6 +26,21 @@ export class CreateDraftDto {
   @IsOptional()
   transcript?: string;
 
+  @ApiPropertyOptional({ description: '用戶輸入的車牌' })
+  @IsString()
+  @IsOptional()
+  selectedPlate?: string;
+
+  @ApiPropertyOptional({ description: '車輛類型', enum: ['car', 'scooter'] })
+  @IsString()
+  @IsOptional()
+  vehicleType?: string;
+
+  @ApiPropertyOptional({ description: '錄製/事發時間' })
+  @IsString()
+  @IsOptional()
+  occurredAt?: string;
+
   @ApiPropertyOptional({ description: '緯度' })
   @IsNumber()
   @IsOptional()
@@ -55,6 +62,11 @@ export class UpdateDraftDto {
   @IsString()
   @IsOptional()
   selectedPlate?: string;
+
+  @ApiPropertyOptional({ description: '車輛類型', enum: ['car', 'scooter'] })
+  @IsString()
+  @IsOptional()
+  vehicleType?: string;
 
   @ApiPropertyOptional({ description: '狀態' })
   @IsEnum(DraftStatus)
@@ -170,6 +182,15 @@ export class DraftResponseDto {
 
   @ApiPropertyOptional()
   suggestedMessage?: string;
+
+  @ApiPropertyOptional({ description: '用戶輸入的車牌' })
+  selectedPlate?: string;
+
+  @ApiPropertyOptional({ description: '車輛類型' })
+  vehicleType?: string;
+
+  @ApiPropertyOptional({ description: '錄製/事發時間' })
+  occurredAt?: Date;
 
   @ApiPropertyOptional()
   latitude?: number;

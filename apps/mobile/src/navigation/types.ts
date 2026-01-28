@@ -26,6 +26,10 @@ export type RootStackParamList = {
     latitude?: number;
     longitude?: number;
     address?: string;
+    // 從草稿進入時帶入
+    draftId?: string;
+    selectedPlate?: string;
+    vehicleType?: 'car' | 'scooter';
   };
 };
 

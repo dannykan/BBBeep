@@ -268,6 +268,22 @@ AI moderation returns one of these categories:
 - For `inappropriate`/`dangerous`: show "請修改為與行車相關的內容"
 - For `emotional`: show "建議使用 AI 優化，或修改後再發送"
 
+### Messages API 格式要求 (CRITICAL)
+
+發送訊息時，必須遵守後端 DTO 的格式要求：
+
+| 參數 | 格式要求 | 錯誤範例 | 正確範例 |
+|------|----------|----------|----------|
+| `type` | **必須使用中文值** | `'VEHICLE_REMINDER'` ❌ | `'車況提醒'` ✅ |
+| `insistOriginal` | **不存在於 DTO** | `insistOriginal: true` ❌ | 不要傳送此參數 ✅ |
+
+**允許的 `type` 值（只有三種）：**
+- `'車況提醒'`
+- `'行車安全提醒'`
+- `'讚美感謝'`
+
+**注意：** 後端使用 class-validator，任何不在 DTO 中的參數都會導致 400 錯誤。新增 API 呼叫時，務必先查看 `apps/api/src/messages/dto/create-message.dto.ts` 確認參數格式。
+
 ## Mobile Send Flow (4 Steps)
 
 The send flow uses a step indicator showing progress: `1 → 2 → 3 → 最後確認`

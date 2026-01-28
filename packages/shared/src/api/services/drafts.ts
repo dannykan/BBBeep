@@ -44,6 +44,11 @@ export interface VoiceDraft {
   parsedVehicle?: ParsedVehicle;
   parsedEvent?: ParsedEvent;
   suggestedMessage?: string;
+  // 用戶輸入資料
+  selectedPlate?: string;
+  vehicleType?: string;
+  occurredAt?: string;
+  // 位置
   latitude?: number;
   longitude?: number;
   address?: string;
@@ -56,9 +61,19 @@ export interface CreateDraftRequest {
   voiceUrl: string;
   voiceDuration: number;
   transcript?: string;
+  // 用戶輸入資料
+  selectedPlate?: string;
+  vehicleType?: string;
+  occurredAt?: string;
+  // 位置
   latitude?: number;
   longitude?: number;
   address?: string;
+}
+
+export interface UpdateDraftRequest {
+  selectedPlate?: string;
+  vehicleType?: string;
 }
 
 export interface SendFromDraftRequest {
@@ -126,6 +141,15 @@ export const draftsApi = {
   getOne: (id: string) => {
     return getApiClient()
       .get<VoiceDraft>(`/drafts/${id}`)
+      .then((res) => res.data);
+  },
+
+  /**
+   * 更新草稿
+   */
+  update: (id: string, data: UpdateDraftRequest) => {
+    return getApiClient()
+      .patch<VoiceDraft>(`/drafts/${id}`, data)
       .then((res) => res.data);
   },
 

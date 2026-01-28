@@ -1,12 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { VoiceParserService, ParsedVoiceContent } from './voice-parser.service';
-import {
-  CreateDraftDto,
-  UpdateDraftDto,
-  DraftStatus,
-  DraftResponseDto,
-} from './dto/drafts.dto';
+import { CreateDraftDto, UpdateDraftDto, DraftStatus, DraftResponseDto } from './dto/drafts.dto';
 
 @Injectable()
 export class DraftsService {
@@ -34,6 +29,9 @@ export class DraftsService {
         voiceUrl: dto.voiceUrl,
         voiceDuration: dto.voiceDuration,
         transcript: dto.transcript,
+        selectedPlate: dto.selectedPlate,
+        vehicleType: dto.vehicleType,
+        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
         latitude: dto.latitude,
         longitude: dto.longitude,
         address: dto.address,
@@ -54,11 +52,7 @@ export class DraftsService {
       where: {
         userId,
         status: {
-          in: [
-            DraftStatus.PENDING,
-            DraftStatus.PROCESSING,
-            DraftStatus.READY,
-          ],
+          in: [DraftStatus.PENDING, DraftStatus.PROCESSING, DraftStatus.READY],
         },
         expiresAt: {
           gt: new Date(), // 未過期
@@ -93,11 +87,7 @@ export class DraftsService {
   /**
    * 更新草稿
    */
-  async update(
-    userId: string,
-    draftId: string,
-    dto: UpdateDraftDto,
-  ): Promise<DraftResponseDto> {
+  async update(userId: string, draftId: string, dto: UpdateDraftDto): Promise<DraftResponseDto> {
     const draft = await this.prisma.voiceDraft.findFirst({
       where: { id: draftId, userId },
     });
@@ -180,10 +170,7 @@ export class DraftsService {
   /**
    * 處理語音草稿（AI 解析）
    */
-  private async processVoiceDraft(
-    draftId: string,
-    transcript?: string,
-  ): Promise<void> {
+  private async processVoiceDraft(draftId: string, transcript?: string): Promise<void> {
     try {
       // 如果沒有 transcript，需要先轉文字
       // 這裡假設前端已經處理好 transcript
@@ -247,6 +234,9 @@ export class DraftsService {
       parsedVehicle: draft.parsedVehicle,
       parsedEvent: draft.parsedEvent,
       suggestedMessage: draft.suggestedMessage,
+      selectedPlate: draft.selectedPlate,
+      vehicleType: draft.vehicleType,
+      occurredAt: draft.occurredAt,
       latitude: draft.latitude,
       longitude: draft.longitude,
       address: draft.address,

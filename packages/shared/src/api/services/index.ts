@@ -20,6 +20,7 @@ export {
   type ParsedEvent,
   type DraftStatus,
   type CreateDraftRequest,
+  type UpdateDraftRequest,
 } from './drafts';
 export {
   activitiesApi,

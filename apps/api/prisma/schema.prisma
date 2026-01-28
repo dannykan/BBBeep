@@ -366,6 +366,11 @@ model VoiceDraft {
   parsedEvent     Json?       // { type: "dangerous_driving", category: "SAFETY_REMINDER", description: "危險切換車道" }
   suggestedMessage String?    // AI 建議的訊息
 
+  // 用戶輸入資料（語音提醒頁面填寫）
+  selectedPlate   String?     // 用戶選擇/輸入的車牌
+  vehicleType     String?     // car | scooter
+  occurredAt      DateTime?   // 錄製/事發時間
+
   // 位置（錄音時自動記錄）
   latitude        Float?
   longitude       Float?

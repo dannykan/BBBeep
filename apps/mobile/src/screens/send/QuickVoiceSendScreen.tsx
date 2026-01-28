@@ -48,7 +48,7 @@ interface CategoryOption {
   icon: string;
   iconColor: string;
   iconBgColor: string;
-  apiType: 'VEHICLE_REMINDER' | 'SAFETY_REMINDER' | 'PRAISE' | 'OTHER';
+  apiType: '車況提醒' | '行車安全提醒' | '讚美感謝';
 }
 
 export default function QuickVoiceSendScreen({ navigation, route }: Props) {
@@ -69,14 +69,28 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     latitude: initialLat,
     longitude: initialLng,
     address: initialAddress,
+    // 從草稿進入時帶入的資料
+    draftId,
+    selectedPlate: initialPlate,
+    vehicleType: initialVehicleType,
   } = route.params;
 
-  // Form state
-  const [licensePlate, setLicensePlate] = useState('');
-  const [vehicleType, setVehicleType] = useState<'car' | 'scooter'>('car');
+  // Form state - 從草稿帶入初始值
+  const [licensePlate, setLicensePlateState] = useState(initialPlate || '');
+  const [vehicleType, setVehicleTypeState] = useState<'car' | 'scooter'>(initialVehicleType || 'car');
   const [selectedCategory, setSelectedCategory] = useState<ReminderCategory>('車況提醒');
 
-  // Category options
+  // 包裝 setter 來追蹤編輯狀態
+  const setLicensePlate = (value: string) => {
+    setLicensePlateState(value);
+    if (isFromDraft) setHasEdits(true);
+  };
+  const setVehicleType = (value: 'car' | 'scooter') => {
+    setVehicleTypeState(value);
+    if (isFromDraft) setHasEdits(true);
+  };
+
+  // Category options - apiType 必須使用後端 DTO 接受的中文值
   const categories: CategoryOption[] = [
     {
       id: '車況提醒',
@@ -84,7 +98,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       icon: 'alert-circle-outline',
       iconColor: '#F59E0B',
       iconBgColor: '#FEF3C7',
-      apiType: 'VEHICLE_REMINDER',
+      apiType: '車況提醒',
     },
     {
       id: '行車安全',
@@ -92,7 +106,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       icon: 'shield-checkmark-outline',
       iconColor: '#3B82F6',
       iconBgColor: '#DBEAFE',
-      apiType: 'SAFETY_REMINDER',
+      apiType: '行車安全提醒',
     },
     {
       id: '讚美感謝',
@@ -100,15 +114,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       icon: 'heart',
       iconColor: '#22C55E',
       iconBgColor: '#DCFCE7',
-      apiType: 'PRAISE',
-    },
-    {
-      id: '其他情況',
-      title: '其他情況',
-      icon: 'chatbubble-ellipses-outline',
-      iconColor: '#8B5CF6',
-      iconBgColor: '#EDE9FE',
-      apiType: 'OTHER',
+      apiType: '讚美感謝',
     },
   ];
 
@@ -133,11 +139,22 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   } | null>(null);
 
   // Upload state
-  const [uploadedVoiceUrl, setUploadedVoiceUrl] = useState<string | null>(null);
+  // 如果從草稿進入，voiceUri 已經是 R2 URL，不需要重新上傳
+  const isFromDraft = !!draftId;
+  const [uploadedVoiceUrl, setUploadedVoiceUrl] = useState<string | null>(
+    isFromDraft ? voiceUri : null
+  );
   const [isUploading, setIsUploading] = useState(false);
 
   // Send state
   const [isSending, setIsSending] = useState(false);
+
+  // Draft state - 追蹤草稿是否已儲存，避免重複儲存
+  // 如果從草稿進入（有 draftId），表示草稿已存在
+  const [draftSaved, setDraftSaved] = useState(!!draftId);
+
+  // 追蹤是否有編輯過（用於從草稿進入時判斷是否需要更新）
+  const [hasEdits, setHasEdits] = useState(false);
 
   // 格式化錄製時間
   const formatRecordedTime = (timestamp: string) => {
@@ -153,9 +170,109 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   // 初始化：取得位置和上傳語音
   useEffect(() => {
     getLocationOnInit();
-    uploadVoice();
+    // 從草稿進入時不需要重新上傳語音
+    if (!isFromDraft) {
+      uploadVoice();
+    }
     moderateVoiceContent();
   }, []);
+
+  // 攔截返回手勢和硬體返回鍵
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // 正在發送中，允許直接返回
+      if (isSending) {
+        return;
+      }
+
+      // 如果語音還在上傳中或還沒上傳完成
+      if (isUploading || !uploadedVoiceUrl) {
+        e.preventDefault();
+        Alert.alert(
+          '確認離開',
+          '語音正在上傳中，離開將會遺失錄音。確定要離開嗎？',
+          [
+            { text: '取消', style: 'cancel' },
+            { text: '離開', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+          ]
+        );
+        return;
+      }
+
+      // 從草稿進入且有編輯過 → 詢問是否更新草稿
+      if (isFromDraft && hasEdits) {
+        e.preventDefault();
+        Alert.alert(
+          '更新草稿？',
+          '是否將編輯的內容儲存到草稿？',
+          [
+            {
+              text: '不儲存',
+              style: 'destructive',
+              onPress: () => navigation.dispatch(e.data.action),
+            },
+            {
+              text: '更新草稿',
+              onPress: async () => {
+                const updated = await updateDraft();
+                if (updated) {
+                  Alert.alert('已更新', '草稿已更新', [
+                    { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
+                  ]);
+                } else {
+                  Alert.alert('更新失敗', '無法更新草稿', [
+                    { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
+                  ]);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // 從草稿進入但沒有編輯 → 直接返回
+      if (isFromDraft) {
+        return;
+      }
+
+      // 新錄音且已經儲存過草稿 → 直接返回
+      if (draftSaved) {
+        return;
+      }
+
+      // 新錄音且尚未儲存 → 詢問是否儲存草稿
+      e.preventDefault();
+      Alert.alert(
+        '儲存草稿？',
+        '是否將語音錄音儲存為草稿？稍後可從首頁繼續編輯。',
+        [
+          {
+            text: '不儲存',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+          {
+            text: '儲存草稿',
+            onPress: async () => {
+              const saved = await saveDraft();
+              if (saved) {
+                Alert.alert('已儲存', '語音已儲存至草稿', [
+                  { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
+                ]);
+              } else {
+                Alert.alert('儲存失敗', '無法儲存草稿', [
+                  { text: '確定', onPress: () => navigation.dispatch(e.data.action) },
+                ]);
+              }
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, draftSaved, isSending, isUploading, uploadedVoiceUrl, isFromDraft, hasEdits]);
 
   // 設定位置資料的 helper function
   const setLocationData = useCallback((address: string, lat?: number, lng?: number) => {
@@ -329,19 +446,60 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     }
   };
 
-  // 儲存草稿並導航到錢包
-  const saveAndGoToWallet = async () => {
+  // 更新現有草稿
+  const updateDraft = async (): Promise<boolean> => {
+    if (!draftId) return false;
+
     try {
-      // 儲存草稿
+      await draftsApi.update(draftId, {
+        selectedPlate: licensePlate || undefined,
+        vehicleType: vehicleType,
+      });
+      setHasEdits(false);
+      return true;
+    } catch (err) {
+      console.error('Update draft error:', err);
+      return false;
+    }
+  };
+
+  // 儲存新草稿的共用函數
+  const saveDraft = async (): Promise<boolean> => {
+    // 如果已經儲存過（且不是從草稿來的），不重複儲存
+    if (draftSaved && !isFromDraft) {
+      return true;
+    }
+
+    // 如果語音還沒上傳完成，無法儲存
+    if (!uploadedVoiceUrl) {
+      return false;
+    }
+
+    try {
       await draftsApi.create({
-        voiceUrl: uploadedVoiceUrl!,
+        voiceUrl: uploadedVoiceUrl,
         voiceDuration: voiceDuration,
         transcript: transcript,
+        selectedPlate: licensePlate || undefined,
+        vehicleType: vehicleType,
+        occurredAt: recordedAt,
         latitude: latitude || undefined,
         longitude: longitude || undefined,
         address: location || undefined,
       });
+      setDraftSaved(true);
+      return true;
+    } catch (err) {
+      console.error('Save draft error:', err);
+      return false;
+    }
+  };
 
+  // 儲存草稿並導航到錢包
+  const saveAndGoToWallet = async () => {
+    const saved = await saveDraft();
+
+    if (saved) {
       Alert.alert(
         '點數不足',
         '您的語音已儲存至草稿，儲值後可繼續發送。',
@@ -352,10 +510,96 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
           },
         ]
       );
-    } catch (err) {
-      console.error('Save draft error:', err);
+    } else {
       Alert.alert('儲存失敗', '無法儲存草稿，請稍後再試');
     }
+  };
+
+  // 返回按鈕處理 - 詢問是否儲存草稿
+  const handleBackPress = () => {
+    // 如果語音還在上傳中，無法儲存
+    if (isUploading || !uploadedVoiceUrl) {
+      Alert.alert(
+        '確認離開',
+        '語音正在上傳中，離開將會遺失錄音。確定要離開嗎？',
+        [
+          { text: '取消', style: 'cancel' },
+          { text: '離開', style: 'destructive', onPress: () => navigation.goBack() },
+        ]
+      );
+      return;
+    }
+
+    // 從草稿進入且有編輯過 → 詢問是否更新草稿
+    if (isFromDraft && hasEdits) {
+      Alert.alert(
+        '更新草稿？',
+        '是否將編輯的內容儲存到草稿？',
+        [
+          {
+            text: '不儲存',
+            style: 'destructive',
+            onPress: () => navigation.goBack(),
+          },
+          {
+            text: '更新草稿',
+            onPress: async () => {
+              const updated = await updateDraft();
+              if (updated) {
+                Alert.alert('已更新', '草稿已更新', [
+                  { text: '確定', onPress: () => navigation.goBack() },
+                ]);
+              } else {
+                Alert.alert('更新失敗', '無法更新草稿', [
+                  { text: '確定', onPress: () => navigation.goBack() },
+                ]);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // 從草稿進入但沒有編輯 → 直接返回
+    if (isFromDraft) {
+      navigation.goBack();
+      return;
+    }
+
+    // 新錄音且已經儲存過草稿 → 直接返回
+    if (draftSaved) {
+      navigation.goBack();
+      return;
+    }
+
+    // 新錄音且尚未儲存 → 詢問是否儲存草稿
+    Alert.alert(
+      '儲存草稿？',
+      '是否將語音錄音儲存為草稿？稍後可從首頁繼續編輯。',
+      [
+        {
+          text: '不儲存',
+          style: 'destructive',
+          onPress: () => navigation.goBack(),
+        },
+        {
+          text: '儲存草稿',
+          onPress: async () => {
+            const saved = await saveDraft();
+            if (saved) {
+              Alert.alert('已儲存', '語音已儲存至草稿', [
+                { text: '確定', onPress: () => navigation.goBack() },
+              ]);
+            } else {
+              Alert.alert('儲存失敗', '無法儲存草稿', [
+                { text: '確定', onPress: () => navigation.goBack() },
+              ]);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // 發送語音訊息
@@ -388,8 +632,8 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
 
     setIsSending(true);
     try {
-      // 取得選中類別的 API 類型
-      const categoryApiType = categories.find(c => c.id === selectedCategory)?.apiType || 'VEHICLE_REMINDER';
+      // 取得選中類別的 API 類型（使用中文值）
+      const categoryApiType = categories.find(c => c.id === selectedCategory)?.apiType || '車況提醒';
 
       await messagesApi.create({
         licensePlate: normalizedPlate,
@@ -399,14 +643,18 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         voiceDuration: voiceDuration,
         location: location,
         occurredAt: recordedAt,
-        insistOriginal: insist,
       });
 
       // 成功後導航到成功頁面或返回首頁
       navigation.replace('Main');
       Alert.alert('發送成功', '語音提醒已成功送出');
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || '請稍後再試';
+      // 嘗試從多個位置取得錯誤訊息
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        '請稍後再試';
 
       // 只有真正的點數不足錯誤才儲存草稿並導向儲值
       if (errorMessage.includes('點數不足')) {
@@ -430,7 +678,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleBackPress}
         >
           <Ionicons name="chevron-back" size={24} color={colors.text.secondary} />
         </TouchableOpacity>

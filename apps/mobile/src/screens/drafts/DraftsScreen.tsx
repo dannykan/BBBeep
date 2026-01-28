@@ -64,15 +64,19 @@ export function DraftsScreen() {
 
   const handleSend = useCallback(
     (draft: VoiceDraft) => {
-      // 直接導航到語音提醒頁面
+      // 直接導航到語音提醒頁面，帶入草稿資料
       navigation.navigate('QuickVoiceSend', {
         voiceUri: draft.voiceUrl,
         voiceDuration: draft.voiceDuration,
         transcript: draft.transcript || '',
-        recordedAt: draft.createdAt,
+        recordedAt: draft.occurredAt || draft.createdAt,
         latitude: draft.latitude,
         longitude: draft.longitude,
         address: draft.address,
+        // 帶入草稿 ID 和用戶已填的資料
+        draftId: draft.id,
+        selectedPlate: draft.selectedPlate,
+        vehicleType: draft.vehicleType as 'car' | 'scooter' | undefined,
       });
     },
     [navigation],
