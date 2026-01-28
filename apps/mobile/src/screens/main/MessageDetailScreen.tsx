@@ -27,6 +27,7 @@ import type { Message, AiLimitResponse } from '@bbbeeep/shared';
 import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
+import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
 import type { InboxStackParamList } from '../../navigation/types';
 
 type MessageDetailRouteProp = RouteProp<InboxStackParamList, 'MessageDetail'>;
@@ -349,13 +350,23 @@ export default function MessageDetailScreen() {
 
           {/* Main Content */}
           <View style={[styles.detailCard, { borderLeftColor: accentColor }]}>
-            <Text style={styles.templateText}>{message.template}</Text>
+            {/* Voice Message Player */}
+            {message.voiceUrl ? (
+              <VoiceMessagePlayer
+                voiceUrl={message.voiceUrl}
+                duration={message.voiceDuration}
+              />
+            ) : (
+              <>
+                <Text style={styles.templateText}>{message.template}</Text>
 
-            {message.customText && (
-              <View style={styles.customTextSection}>
-                <Text style={styles.sectionLabel}>補充說明</Text>
-                <Text style={styles.customTextValue}>{message.customText}</Text>
-              </View>
+                {message.customText && (
+                  <View style={styles.customTextSection}>
+                    <Text style={styles.sectionLabel}>補充說明</Text>
+                    <Text style={styles.customTextValue}>{message.customText}</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
 

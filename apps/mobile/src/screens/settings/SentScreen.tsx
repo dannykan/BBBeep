@@ -23,6 +23,7 @@ import { messagesApi, displayLicensePlate } from '@bbbeeep/shared';
 import type { SentMessage } from '@bbbeeep/shared';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
+import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
 
 type SentScreenRouteParams = {
   Sent: {
@@ -234,13 +235,23 @@ export default function SentScreen() {
 
           {/* Message content */}
           <View style={styles.messageCard}>
-            <Text style={styles.templateText}>{selectedMsg.template}</Text>
+            {/* Voice Message Player */}
+            {selectedMsg.voiceUrl ? (
+              <VoiceMessagePlayer
+                voiceUrl={selectedMsg.voiceUrl}
+                duration={selectedMsg.voiceDuration}
+              />
+            ) : (
+              <>
+                <Text style={styles.templateText}>{selectedMsg.template}</Text>
 
-            {selectedMsg.customText && (
-              <View style={styles.customTextBox}>
-                <Text style={styles.customTextLabel}>補充說明</Text>
-                <Text style={styles.customTextContent}>{selectedMsg.customText}</Text>
-              </View>
+                {selectedMsg.customText && (
+                  <View style={styles.customTextBox}>
+                    <Text style={styles.customTextLabel}>補充說明</Text>
+                    <Text style={styles.customTextContent}>{selectedMsg.customText}</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
 
@@ -390,16 +401,27 @@ export default function SentScreen() {
                     <Text style={styles.messageTime}>{formatTime(message.createdAt)}</Text>
                   </View>
 
-                  {/* Template */}
-                  <Text style={styles.messageTemplate} numberOfLines={1}>
-                    {message.template}
-                  </Text>
+                  {/* Template or Voice indicator */}
+                  {message.voiceUrl ? (
+                    <View style={styles.voiceIndicator}>
+                      <Ionicons name="mic" size={14} color={colors.primary.DEFAULT} />
+                      <Text style={[styles.messageTemplate, { color: colors.primary.DEFAULT }]} numberOfLines={1}>
+                        語音訊息
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.messageTemplate} numberOfLines={1}>
+                        {message.template}
+                      </Text>
 
-                  {/* Custom text */}
-                  {message.customText && (
-                    <Text style={styles.messageCustomText} numberOfLines={1}>
-                      {message.customText}
-                    </Text>
+                      {/* Custom text */}
+                      {message.customText && (
+                        <Text style={styles.messageCustomText} numberOfLines={1}>
+                          {message.customText}
+                        </Text>
+                      )}
+                    </>
                   )}
 
                   {/* Receiver */}
@@ -586,6 +608,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     messageReceiver: {
       fontSize: 12,
       color: colors.text.secondary,
+    },
+    voiceIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 4,
     },
 
     // Detail view

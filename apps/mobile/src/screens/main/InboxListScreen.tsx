@@ -140,13 +140,24 @@ export default function InboxListScreen() {
             {!item.read && <View style={styles.unreadDot} />}
             <Text style={styles.messageTime}>{formatDate(item.createdAt)}</Text>
           </View>
-          <Text style={styles.messageTemplate} numberOfLines={1}>
-            {item.template}
-          </Text>
-          {item.customText && (
-            <Text style={styles.messageCustomText} numberOfLines={1}>
-              {item.customText}
-            </Text>
+          {item.voiceUrl ? (
+            <View style={styles.voiceIndicator}>
+              <Ionicons name="mic" size={14} color={colors.primary.DEFAULT} />
+              <Text style={[styles.messageTemplate, { color: colors.primary.DEFAULT }]} numberOfLines={1}>
+                語音訊息
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.messageTemplate} numberOfLines={1}>
+                {item.template}
+              </Text>
+              {item.customText && (
+                <Text style={styles.messageCustomText} numberOfLines={1}>
+                  {item.customText}
+                </Text>
+              )}
+            </>
           )}
         </View>
         <Ionicons
@@ -331,6 +342,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       fontSize: 15,
       fontWeight: '500',
       color: colors.text.primary,
+      marginBottom: 4,
+    },
+    voiceIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
       marginBottom: 4,
     },
     messageCustomText: {
