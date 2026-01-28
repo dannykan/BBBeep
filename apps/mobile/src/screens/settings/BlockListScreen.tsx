@@ -201,6 +201,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
       flexDirection: 'row',
       alignItems: 'center',
       padding: 4,
+      zIndex: 1,
     },
     backText: {
       fontSize: 14,

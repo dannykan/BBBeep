@@ -1162,6 +1162,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing[1],
+    zIndex: 1,
   },
   backText: {
     fontSize: typography.fontSize.sm,

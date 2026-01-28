@@ -140,6 +140,7 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       padding: 4,
+      zIndex: 1,
     },
     backText: {
       fontSize: 14,
