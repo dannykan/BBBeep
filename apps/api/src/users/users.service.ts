@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointsService } from '../points/points.service';
 import { InviteService } from '../invite/invite.service';
@@ -18,9 +24,6 @@ export class UsersService {
   ) {}
 
   async findOne(userId: string) {
-    // 先檢查並重置每日免費點數
-    await this.pointsService.checkAndResetFreePoints(userId);
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -67,7 +70,7 @@ export class UsersService {
     if (!normalizedPlate) {
       throw new BadRequestException('車牌號碼格式無效');
     }
-    
+
     // 查找該車牌的所有用戶（包括臨時用戶）
     const usersWithPlate = await this.prisma.user.findMany({
       where: {
@@ -83,7 +86,7 @@ export class UsersService {
 
     // 檢查是否有已完成的用戶（非臨時用戶）
     const completedUser = usersWithPlate.find(
-      user => user.hasCompletedOnboarding && !user.phone.startsWith('temp_')
+      (user) => user.hasCompletedOnboarding && !user.phone.startsWith('temp_'),
     );
 
     if (completedUser) {
@@ -133,13 +136,13 @@ export class UsersService {
       if (!normalizedPlate) {
         throw new BadRequestException('車牌號碼格式無效');
       }
-      
+
       // 檢查車牌是否已被綁定（非臨時用戶）
       const checkResult = await this.checkLicensePlateAvailability(normalizedPlate);
-      
+
       if (checkResult.isBound) {
         throw new BadRequestException(
-          `該車牌已被綁定到手機號碼 ${checkResult.boundPhone}，無法重複綁定`
+          `該車牌已被綁定到手機號碼 ${checkResult.boundPhone}，無法重複綁定`,
         );
       }
 
@@ -150,9 +153,11 @@ export class UsersService {
           id: { not: userId }, // 排除當前用戶
         },
       });
-      
+
       // 找到臨時用戶（phone 以 temp_ 或 unbound_ 開頭）
-      const tempUser = allUsersWithPlate.find(user => user.phone.startsWith('temp_') || user.phone.startsWith('unbound_'));
+      const tempUser = allUsersWithPlate.find(
+        (user) => user.phone.startsWith('temp_') || user.phone.startsWith('unbound_'),
+      );
 
       // 如果找到臨時用戶，合併數據
       if (tempUser) {
@@ -179,7 +184,9 @@ export class UsersService {
 
         // 更新當前用戶，使用臨時用戶的車牌信息
         // 設定試用期開始，給予試用初始點數（到 trialPoints，不是 points）
-        const trialInitialPoints = POINTS_CONFIG.trial.enabled ? POINTS_CONFIG.trial.initialPoints : 0;
+        const trialInitialPoints = POINTS_CONFIG.trial.enabled
+          ? POINTS_CONFIG.trial.initialPoints
+          : 0;
         const updatedUser = await this.prisma.user.update({
           where: { id: userId },
           data: {
@@ -261,7 +268,7 @@ export class UsersService {
     if (!normalizedPlate) {
       return null;
     }
-    
+
     return this.prisma.user.findFirst({
       where: {
         licensePlate: normalizedPlate,
