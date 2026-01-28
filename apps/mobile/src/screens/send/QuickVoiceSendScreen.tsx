@@ -576,7 +576,10 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                 ) : (
                   <>
                     <Ionicons name="send" size={20} color="#fff" />
-                    <Text style={styles.sendButtonText}>發送語音提醒</Text>
+                    <Text style={styles.sendButtonText}>立即送出語音提醒</Text>
+                    <View style={styles.sendPointBadge}>
+                      <Text style={styles.sendPointBadgeText}>扣 8 點</Text>
+                    </View>
                   </>
                 )}
               </TouchableOpacity>
@@ -844,6 +847,18 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: '#fff',
     fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold as any,
+  },
+  sendPointBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.full,
+    marginLeft: spacing[1],
+  },
+  sendPointBadgeText: {
+    color: '#fff',
+    fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.semibold as any,
   },
   insistButton: {

@@ -239,7 +239,7 @@ export default function HomeScreen() {
               activeOpacity={0.8}
             >
               <Ionicons name="mic" size={20} color="#FFFFFF" />
-              <Text style={styles.heroButtonWarmText}>語音錄製</Text>
+              <Text style={styles.heroButtonWarmText}>一鍵語音</Text>
             </TouchableOpacity>
           </View>
         </GradientBackground>
