@@ -638,11 +638,15 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         </View>
 
         {/* 提醒類型 */}
-        <View style={styles.fieldSection}>
+        <View style={styles.categorySection}>
           <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
             提醒類型
           </Text>
-          <View style={styles.categoryGrid}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollContent}
+          >
             {categories.map((category) => (
               <TouchableOpacity
                 key={category.id}
@@ -677,7 +681,7 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* 位置選擇 */}
@@ -979,10 +983,15 @@ const styles = StyleSheet.create({
   },
 
   // Category
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  categorySection: {
     gap: spacing[2],
+    marginHorizontal: -spacing[5], // Extend to edges for scroll
+    paddingHorizontal: spacing[5],
+  },
+  categoryScrollContent: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    paddingRight: spacing[5],
   },
   categoryButton: {
     flexDirection: 'row',
