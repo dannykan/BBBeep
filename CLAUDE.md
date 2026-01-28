@@ -338,24 +338,49 @@ Standalone address input with Google Geocoding API autocomplete. Used in `Confir
 
 ## Voice Memo / Draft Flow
 
-Voice drafts are saved locally for later editing. **No AI processing** is involved in the draft stage.
+語音訊息有兩個獨立的入口，流程完全分開以避免狀態污染：
 
-### Flow:
-1. User records voice memo via QuickRecordScreen
-2. Recording is uploaded and saved as draft with `status: READY`
-3. User can later open draft from DraftsScreen
-4. Clicking "繼續編輯" sets voiceMemo in SendContext and navigates to Send flow
+### 入口 1：一鍵語音（快速語音發送）
 
-### Key Files:
-- `QuickRecordScreen.tsx` - Voice recording UI
-- `DraftsScreen.tsx` - List of saved drafts
-- `DraftCard.tsx` - Individual draft display (voice player, transcript, location)
-- `VoiceMemoPlayer.tsx` - Reusable voice playback component
+**首頁「一鍵語音」按鈕 或 草稿「繼續編輯」→ QuickVoiceSendScreen**
 
-### Important Notes:
-- DraftCard does NOT show AI analysis (no parsed plates, vehicle info, suggested messages)
+這是專為語音訊息設計的簡化流程：
+1. 用戶錄音（或從草稿繼續）
+2. 填寫車牌、選擇車輛類型
+3. 選擇提醒類型（車況提醒/行車安全/讚美感謝/其他情況）
+4. 自動帶入當前位置（可修改）
+5. AI 審核語音內容
+6. 直接發送（8 點）
+
+**Key Files:**
+- `QuickRecordScreen.tsx` - 語音錄音 UI
+- `QuickVoiceSendScreen.tsx` - 一鍵語音發送頁面（車牌、類型、位置、發送）
+- `DraftsScreen.tsx` - 草稿列表（繼續編輯導向 QuickVoiceSendScreen）
+
+### 入口 2：手動輸入（完整編輯流程）
+
+**首頁「手動輸入」→ Send Flow (PlateInput → Category → MessageEdit → Confirm)**
+
+完整的 4 步驟發送流程，在第 3 步 MessageEditScreen 可選擇：
+- 錄製新語音
+- **從草稿選擇**語音（點擊「從草稿選擇」連結）
+
+這讓用戶可以先錄好語音草稿，之後在手動流程中使用。
+
+**Key Files:**
+- `MessageEditScreen.tsx` - 包含「從草稿選擇」功能
+- `SendContext.tsx` - 管理發送流程狀態
+
+### 重要設計原則
+
+1. **流程分離**：QuickVoiceSendScreen 不使用 SendContext 的 voiceMemo，直接透過 route params 傳遞資料
+2. **草稿繼續編輯**：直接導向 QuickVoiceSendScreen，不會污染一般發送流程
+3. **從草稿選擇**：在 MessageEditScreen 中使用，設定 voiceRecording 狀態
+
+### Voice Draft 相關
 - Drafts expire after 24 hours (handled by backend cron job)
-- VoiceMemoPlayer appears at top of SendLayout when voiceMemo exists (except on SuccessScreen)
+- DraftCard does NOT show AI analysis (no parsed plates, vehicle info, suggested messages)
+- Voice messages cost 8 points regardless of category
 
 ## In-App Purchase (IAP)
 
