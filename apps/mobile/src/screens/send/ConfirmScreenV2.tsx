@@ -82,6 +82,11 @@ export default function ConfirmScreenV2({ navigation }: Props) {
   const hourScrollRef = useRef<ScrollView>(null);
   const minuteScrollRef = useRef<ScrollView>(null);
 
+  // 進入頁面時刷新用戶資料（確保點數是最新的）
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
   // Helper: 取得某日期是「幾天前」（0 = 今天, 1 = 昨天, ...）
   const getDaysAgo = useCallback((date: Date, now: Date) => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());

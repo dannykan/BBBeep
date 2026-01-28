@@ -53,7 +53,12 @@ interface CategoryOption {
 
 export default function QuickVoiceSendScreen({ navigation, route }: Props) {
   const { colors, isDark } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+
+  // 進入頁面時刷新用戶資料（確保點數是最新的）
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   // 從 route params 取得語音資料
   const {
@@ -403,8 +408,8 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || '請稍後再試';
 
-      // 如果是點數不足錯誤，儲存草稿
-      if (errorMessage.includes('點數不足') || err.response?.status === 400) {
+      // 只有真正的點數不足錯誤才儲存草稿並導向儲值
+      if (errorMessage.includes('點數不足')) {
         await saveAndGoToWallet();
       } else {
         Alert.alert('發送失敗', errorMessage);
