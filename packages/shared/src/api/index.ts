@@ -25,6 +25,7 @@ export {
   licensePlateApi,
   inviteApi,
   adminInviteApi,
+  notificationsApi,
   activitiesApi,
   draftsApi,
   appContentApi,
@@ -34,6 +35,8 @@ export {
 export type {
   UploadFile,
   AiModerationResponse,
+  DevicePlatform,
+  RegisterDeviceRequest,
   ActivityType,
   CreateActivityData,
   UserActivity,
