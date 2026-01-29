@@ -13,16 +13,22 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { messagesApi } from '@bbbeeep/shared';
 import type { Message } from '@bbbeeep/shared';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
+import { useNotifications } from '../../context/NotificationContext';
 import type { InboxStackParamList } from '../../navigation/types';
+
+const NOTIFICATION_PROMPT_DISMISSED_KEY = 'inbox_notification_prompt_dismissed';
 
 type InboxListNavigationProp = NativeStackNavigationProp<InboxStackParamList, 'InboxScreen'>;
 
@@ -51,7 +57,10 @@ export default function InboxListScreen() {
   const navigation = useNavigation<InboxListNavigationProp>();
   const { refreshUnreadCount } = useUnread();
   const { colors, isDark } = useTheme();
+  const { permissionStatus, requestPermissions } = useNotifications();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [promptDismissed, setPromptDismissed] = useState(false);
 
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
@@ -90,6 +99,56 @@ export default function InboxListScreen() {
     });
     return unsubscribe;
   }, [navigation, loadMessages, refreshUnreadCount]);
+
+  // Check if we should show notification prompt
+  useEffect(() => {
+    const checkNotificationPrompt = async () => {
+      // Don't show if permission already granted
+      if (permissionStatus === 'granted') {
+        setShowNotificationPrompt(false);
+        return;
+      }
+
+      // Check if user has dismissed the prompt before
+      const dismissed = await AsyncStorage.getItem(NOTIFICATION_PROMPT_DISMISSED_KEY);
+      if (dismissed === 'true') {
+        setPromptDismissed(true);
+        setShowNotificationPrompt(false);
+        return;
+      }
+
+      // Show the prompt
+      setShowNotificationPrompt(true);
+    };
+
+    checkNotificationPrompt();
+  }, [permissionStatus]);
+
+  // Handle enabling notifications
+  const handleEnableNotifications = useCallback(async () => {
+    const granted = await requestPermissions();
+    if (granted) {
+      setShowNotificationPrompt(false);
+      // Mark as dismissed so it doesn't show again
+      await AsyncStorage.setItem(NOTIFICATION_PROMPT_DISMISSED_KEY, 'true');
+    }
+  }, [requestPermissions]);
+
+  // Handle dismissing the prompt
+  const handleDismissPrompt = useCallback(async () => {
+    setShowNotificationPrompt(false);
+    setPromptDismissed(true);
+    await AsyncStorage.setItem(NOTIFICATION_PROMPT_DISMISSED_KEY, 'true');
+  }, []);
+
+  // Handle going to settings
+  const handleGoToSettings = useCallback(async () => {
+    if (Platform.OS === 'ios') {
+      await Linking.openURL('app-settings:');
+    } else {
+      await Linking.openSettings();
+    }
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -223,6 +282,59 @@ export default function InboxListScreen() {
     </View>
   );
 
+  // Notification prompt banner
+  const renderNotificationPrompt = () => {
+    if (!showNotificationPrompt) return null;
+
+    return (
+      <View style={styles.notificationPromptCard}>
+        <View style={styles.notificationPromptHeader}>
+          <View style={styles.notificationIconContainer}>
+            <Ionicons name="notifications" size={24} color={colors.primary.DEFAULT} />
+          </View>
+          <TouchableOpacity
+            style={styles.dismissButton}
+            onPress={handleDismissPrompt}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={20} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.notificationPromptTitle}>
+          開啟推播通知
+        </Text>
+        <Text style={styles.notificationPromptText}>
+          開啟通知功能，才能即時收到來自路上朋友的提醒訊息！
+        </Text>
+
+        <View style={styles.notificationPromptButtons}>
+          {permissionStatus === 'denied' ? (
+            // If previously denied, guide to settings
+            <TouchableOpacity
+              style={styles.notificationPromptButton}
+              onPress={handleGoToSettings}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.notificationPromptButtonText}>前往設定開啟</Text>
+            </TouchableOpacity>
+          ) : (
+            // If not asked yet, show enable button
+            <TouchableOpacity
+              style={styles.notificationPromptButton}
+              onPress={handleEnableNotifications}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.notificationPromptButtonText}>立即開啟通知</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -257,6 +369,7 @@ export default function InboxListScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={renderNotificationPrompt}
           ListEmptyComponent={renderEmpty}
           contentContainerStyle={[
             styles.listContent,
@@ -441,5 +554,62 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+
+    // Notification Prompt
+    notificationPromptCard: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF',
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+    },
+    notificationPromptHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    notificationIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dismissButton: {
+      padding: 4,
+    },
+    notificationPromptTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text.primary,
+      marginBottom: 6,
+    },
+    notificationPromptText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    notificationPromptButtons: {
+      flexDirection: 'row',
+    },
+    notificationPromptButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary.DEFAULT,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    notificationPromptButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
   });
