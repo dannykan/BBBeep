@@ -5,6 +5,7 @@ import { UpdateUserDto, CompleteOnboardingDto } from './dto/update-user.dto';
 import { BlockUserDto, RejectUserDto } from './dto/block-user.dto';
 import { CreateLicensePlateApplicationDto } from './dto/license-plate-application.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -26,10 +27,7 @@ export class UsersController {
 
   @Put('me/onboarding')
   @ApiOperation({ summary: '完成註冊流程' })
-  async completeOnboarding(
-    @CurrentUser() user: any,
-    @Body() dto: CompleteOnboardingDto,
-  ) {
+  async completeOnboarding(@CurrentUser() user: any, @Body() dto: CompleteOnboardingDto) {
     return this.usersService.completeOnboarding(user.userId, dto);
   }
 
@@ -75,8 +73,9 @@ export class UsersController {
     return this.usersService.getRejectedList(user.userId);
   }
 
+  @Public()
   @Get('check-license-plate/:plate')
-  @ApiOperation({ summary: '檢查車牌是否可用' })
+  @ApiOperation({ summary: '檢查車牌是否可用（公開 API，不需認證）' })
   async checkLicensePlate(@Param('plate') plate: string) {
     return this.usersService.checkLicensePlateAvailability(plate);
   }
@@ -98,10 +97,7 @@ export class UsersController {
 
   @Get('license-plate-application/:id')
   @ApiOperation({ summary: '獲取車牌申請詳情' })
-  async getLicensePlateApplication(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async getLicensePlateApplication(@CurrentUser() user: any, @Param('id') id: string) {
     return this.usersService.getLicensePlateApplication(user.userId, id);
   }
 
