@@ -23,11 +23,12 @@ import {
 } from 'react-native';
 // Platform is already imported above
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Region, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, Region, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { typography, spacing, borderRadius } from '../theme';
+import GoogleMapsWebView from './GoogleMapsWebView';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,10 +50,12 @@ interface LocationData {
 }
 
 interface AddressSuggestion {
+  place_id: string;
   address: string;
   mainText: string;
-  latitude: number;
-  longitude: number;
+  secondaryText: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface MapLocationPickerProps {
@@ -156,7 +159,30 @@ export default function MapLocationPicker({
     };
   }, []);
 
-  // Fetch address suggestions (debounced)
+  // Fetch place details to get coordinates
+  const fetchPlaceDetails = useCallback(async (placeId: string): Promise<{ lat: number; lng: number; address: string } | null> => {
+    if (!googleMapsApiKey) return null;
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${googleMapsApiKey}&fields=geometry,formatted_address&language=zh-TW`
+      );
+      const data = await response.json();
+
+      if (data.result?.geometry?.location) {
+        return {
+          lat: data.result.geometry.location.lat,
+          lng: data.result.geometry.location.lng,
+          address: data.result.formatted_address ? simplifyAddress(data.result.formatted_address) : '',
+        };
+      }
+    } catch (error) {
+      console.error('Place details error:', error);
+    }
+    return null;
+  }, [googleMapsApiKey]);
+
+  // Fetch address suggestions using Places Autocomplete API (supports landmarks, POIs, addresses)
   const fetchSuggestions = useCallback(async (query: string) => {
     if (!query.trim() || query.trim().length < 2 || !googleMapsApiKey) {
       setSuggestions([]);
@@ -168,28 +194,28 @@ export default function MapLocationPicker({
 
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleMapsApiKey}&language=zh-TW&components=country:TW&region=tw`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${googleMapsApiKey}&language=zh-TW&components=country:tw`
       );
       const data = await response.json();
 
-      if (data.results && data.results.length > 0) {
+      if (data.predictions && data.predictions.length > 0) {
         // Filter and deduplicate results
         const seen = new Set<string>();
         const newSuggestions: AddressSuggestion[] = [];
 
-        for (const result of data.results) {
-          const address = simplifyAddress(result.formatted_address);
-          if (seen.has(address)) continue;
-          seen.add(address);
+        for (const prediction of data.predictions) {
+          if (seen.has(prediction.place_id)) continue;
+          seen.add(prediction.place_id);
 
-          const mainText = extractMainText(result.address_components, result.formatted_address);
-          const { lat, lng } = result.geometry.location;
+          const mainText = prediction.structured_formatting?.main_text || prediction.description.split(',')[0];
+          const secondaryText = simplifyAddress(prediction.structured_formatting?.secondary_text || '');
+          const address = simplifyAddress(prediction.description);
 
           newSuggestions.push({
+            place_id: prediction.place_id,
             address,
             mainText,
-            latitude: lat,
-            longitude: lng,
+            secondaryText,
           });
 
           if (newSuggestions.length >= 5) break; // Limit to 5 suggestions
@@ -226,26 +252,30 @@ export default function MapLocationPicker({
   }, [fetchSuggestions]);
 
   // Handle suggestion selection
-  const handleSelectSuggestion = useCallback((suggestion: AddressSuggestion) => {
+  const handleSelectSuggestion = useCallback(async (suggestion: AddressSuggestion) => {
     Keyboard.dismiss();
     setSearchQuery(suggestion.mainText);
     setSuggestions([]);
     setShowSuggestions(false);
 
-    // Animate to location
-    mapRef.current?.animateToRegion({
-      latitude: suggestion.latitude,
-      longitude: suggestion.longitude,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
-    }, 500);
+    // Fetch coordinates from Place Details API
+    const details = await fetchPlaceDetails(suggestion.place_id);
+    if (details) {
+      // Animate to location
+      mapRef.current?.animateToRegion({
+        latitude: details.lat,
+        longitude: details.lng,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 500);
 
-    setSelectedLocation({
-      address: suggestion.address,
-      latitude: suggestion.latitude,
-      longitude: suggestion.longitude,
-    });
-  }, []);
+      setSelectedLocation({
+        address: details.address || suggestion.address,
+        latitude: details.lat,
+        longitude: details.lng,
+      });
+    }
+  }, [fetchPlaceDetails]);
 
   // Clear search
   const handleClearSearch = useCallback(() => {
@@ -371,7 +401,7 @@ export default function MapLocationPicker({
     }
   }, [reverseGeocode, showLocationPermissionDeniedAlert]);
 
-  // Search address (manual search button)
+  // Search address (manual search button) - uses Places Find Place API
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() || !googleMapsApiKey) return;
 
@@ -380,14 +410,16 @@ export default function MapLocationPicker({
     setIsSearching(true);
 
     try {
+      // Use Find Place API for better landmark/POI support
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${googleMapsApiKey}&language=zh-TW&components=country:TW&region=tw`
+        `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,formatted_address,geometry,name&key=${googleMapsApiKey}&language=zh-TW&locationbias=circle:50000@25.033,121.5654`
       );
       const data = await response.json();
 
-      if (data.results && data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry.location;
-        const address = simplifyAddress(data.results[0].formatted_address);
+      if (data.candidates && data.candidates.length > 0) {
+        const place = data.candidates[0];
+        const { lat, lng } = place.geometry.location;
+        const address = simplifyAddress(place.formatted_address || place.name);
 
         // Animate to location
         mapRef.current?.animateToRegion({
@@ -399,7 +431,7 @@ export default function MapLocationPicker({
 
         setSelectedLocation({ address, latitude: lat, longitude: lng });
       } else {
-        Alert.alert('找不到地址', '請嘗試不同的搜尋關鍵字');
+        Alert.alert('找不到地點', '請嘗試不同的搜尋關鍵字');
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -490,7 +522,7 @@ export default function MapLocationPicker({
                 >
                   {suggestions.map((suggestion, index) => (
                     <TouchableOpacity
-                      key={`${suggestion.latitude}-${suggestion.longitude}-${index}`}
+                      key={suggestion.place_id}
                       style={[
                         styles.suggestionItem,
                         index < suggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -505,9 +537,11 @@ export default function MapLocationPicker({
                         <Text style={[styles.suggestionMainText, { color: colors.foreground }]} numberOfLines={1}>
                           {suggestion.mainText}
                         </Text>
-                        <Text style={[styles.suggestionSubText, { color: colors.muted.foreground }]} numberOfLines={1}>
-                          {suggestion.address}
-                        </Text>
+                        {suggestion.secondaryText ? (
+                          <Text style={[styles.suggestionSubText, { color: colors.muted.foreground }]} numberOfLines={1}>
+                            {suggestion.secondaryText}
+                          </Text>
+                        ) : null}
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -518,26 +552,46 @@ export default function MapLocationPicker({
 
           {/* Map */}
           <View style={styles.mapContainer}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={PROVIDER_DEFAULT}
-              initialRegion={region}
-              onPress={handleMapPress}
-              showsUserLocation
-              showsMyLocationButton={false}
-            >
-              {selectedLocation && (
-                <Marker
-                  coordinate={{
-                    latitude: selectedLocation.latitude,
-                    longitude: selectedLocation.longitude,
-                  }}
-                  draggable
-                  onDragEnd={handleMarkerDragEnd}
-                />
-              )}
-            </MapView>
+            {Platform.OS === 'ios' ? (
+              // Use WebView-based Google Maps on iOS (native SDK has New Architecture issues)
+              <GoogleMapsWebView
+                style={styles.map}
+                initialRegion={region}
+                marker={selectedLocation ? {
+                  latitude: selectedLocation.latitude,
+                  longitude: selectedLocation.longitude,
+                } : undefined}
+                onMapPress={(coordinate) => {
+                  handleMapPress({ nativeEvent: { coordinate } } as any);
+                }}
+                onMarkerDragEnd={(coordinate) => {
+                  handleMarkerDragEnd({ nativeEvent: { coordinate } } as any);
+                }}
+                showsUserLocation
+              />
+            ) : (
+              // Use native Google Maps on Android
+              <MapView
+                ref={mapRef}
+                style={styles.map}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={region}
+                onPress={handleMapPress}
+                showsUserLocation
+                showsMyLocationButton={false}
+              >
+                {selectedLocation && (
+                  <Marker
+                    coordinate={{
+                      latitude: selectedLocation.latitude,
+                      longitude: selectedLocation.longitude,
+                    }}
+                    draggable
+                    onDragEnd={handleMarkerDragEnd}
+                  />
+                )}
+              </MapView>
+            )}
 
             {/* Map Overlay Hint */}
             {!selectedLocation && (

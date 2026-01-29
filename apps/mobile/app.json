@@ -45,7 +45,7 @@
       [
         "react-native-maps",
         {
-          "googleMapsApiKey": ""
+          "googleMapsApiKey": "AIzaSyBteVysd7aJvM7vJHFdpH_bePP7jmlY-_c"
         }
       ],
       "expo-font"
@@ -58,7 +58,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ubeep.mobile",
-      "buildNumber": "16",
+      "buildNumber": "17",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
@@ -68,7 +68,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
-        "googleMapsApiKey": ""
+        "googleMapsApiKey": "AIzaSyBteVysd7aJvM7vJHFdpH_bePP7jmlY-_c"
       }
     },
     "android": {

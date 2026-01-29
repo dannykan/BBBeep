@@ -1,6 +1,6 @@
 /**
  * AddressAutocomplete Component
- * Uses Google Geocoding API to suggest addresses (same as web version)
+ * Uses Google Places Autocomplete API to suggest addresses and landmarks
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -10,7 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
@@ -22,8 +22,9 @@ interface Prediction {
   place_id: string;
   description: string;
   main_text: string;
-  latitude: number;
-  longitude: number;
+  secondary_text: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface AddressAutocompleteProps {
@@ -42,23 +43,6 @@ function simplifyTaiwanAddress(address: string): string {
     .replace(/,\s*,/g, ',')
     .replace(/,\s*$/, '')
     .trim();
-}
-
-// Extract main text from address
-function extractMainText(address: string, components?: any[]): string {
-  if (components && components.length > 0) {
-    const route = components.find((c: any) => c.types?.includes('route'));
-    if (route) return route.long_name;
-
-    const poi = components.find((c: any) => c.types?.includes('point_of_interest'));
-    if (poi) return poi.long_name;
-
-    return components[0].long_name;
-  }
-
-  const simplified = simplifyTaiwanAddress(address);
-  const parts = simplified.split(/[,，]/);
-  return parts[0] || simplified;
 }
 
 export default function AddressAutocomplete({
@@ -84,7 +68,29 @@ export default function AddressAutocomplete({
     };
   }, []);
 
-  // Fetch predictions using Geocoding API (same as web version)
+  // Fetch place details to get coordinates
+  const fetchPlaceDetails = useCallback(async (placeId: string): Promise<{ lat: number; lng: number } | null> => {
+    if (!googleMapsApiKey) return null;
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${googleMapsApiKey}&fields=geometry&language=zh-TW`
+      );
+      const data = await response.json();
+
+      if (data.result?.geometry?.location) {
+        return {
+          lat: data.result.geometry.location.lat,
+          lng: data.result.geometry.location.lng,
+        };
+      }
+    } catch (error) {
+      console.error('Place details error:', error);
+    }
+    return null;
+  }, [googleMapsApiKey]);
+
+  // Fetch predictions using Places Autocomplete API (supports landmarks, POIs, addresses)
   const fetchPredictions = useCallback(async (input: string) => {
     if (!googleMapsApiKey || input.length < 2) {
       setPredictions([]);
@@ -95,23 +101,22 @@ export default function AddressAutocomplete({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&key=${googleMapsApiKey}&language=zh-TW&components=country:TW&region=tw`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&key=${googleMapsApiKey}&language=zh-TW&components=country:tw`
       );
       const data = await response.json();
 
-      if (data.results && data.results.length > 0) {
-        const results = data.results.slice(0, 5).map((result: any) => ({
-          place_id: result.place_id,
-          description: simplifyTaiwanAddress(result.formatted_address),
-          main_text: extractMainText(result.formatted_address, result.address_components),
-          latitude: result.geometry?.location?.lat,
-          longitude: result.geometry?.location?.lng,
+      if (data.predictions && data.predictions.length > 0) {
+        const results = data.predictions.slice(0, 5).map((prediction: any) => ({
+          place_id: prediction.place_id,
+          description: simplifyTaiwanAddress(prediction.description),
+          main_text: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
+          secondary_text: simplifyTaiwanAddress(prediction.structured_formatting?.secondary_text || ''),
         }));
 
         // Filter duplicates
         const uniqueResults = results.filter(
           (item: Prediction, index: number, self: Prediction[]) =>
-            index === self.findIndex((t) => t.description === item.description)
+            index === self.findIndex((t) => t.place_id === item.place_id)
         );
 
         setPredictions(uniqueResults);
@@ -146,12 +151,19 @@ export default function AddressAutocomplete({
     }
   }, [onChangeText, fetchPredictions]);
 
-  const handleSelectPrediction = useCallback((prediction: Prediction) => {
+  const handleSelectPrediction = useCallback(async (prediction: Prediction) => {
     Keyboard.dismiss();
     setShowDropdown(false);
     setPredictions([]);
-    onChangeText(prediction.description, prediction.latitude, prediction.longitude);
-  }, [onChangeText]);
+
+    // Fetch coordinates from Place Details API
+    const coords = await fetchPlaceDetails(prediction.place_id);
+    if (coords) {
+      onChangeText(prediction.description, coords.lat, coords.lng);
+    } else {
+      onChangeText(prediction.description, undefined, undefined);
+    }
+  }, [onChangeText, fetchPlaceDetails]);
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
@@ -197,12 +209,14 @@ export default function AddressAutocomplete({
 
       {showDropdown && predictions.length > 0 && (
         <View style={[styles.dropdown, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
-          <FlatList
-            data={predictions}
-            keyExtractor={(item) => item.place_id}
+          <ScrollView
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item, index }) => (
+            nestedScrollEnabled
+            style={styles.predictionsList}
+          >
+            {predictions.map((item, index) => (
               <TouchableOpacity
+                key={item.place_id}
                 style={[
                   styles.predictionItem,
                   index < predictions.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -215,13 +229,15 @@ export default function AddressAutocomplete({
                   <Text style={[styles.predictionMainText, { color: colors.foreground }]} numberOfLines={1}>
                     {item.main_text}
                   </Text>
-                  <Text style={[styles.predictionSecondaryText, { color: colors.muted.foreground }]} numberOfLines={1}>
-                    {item.description}
-                  </Text>
+                  {item.secondary_text ? (
+                    <Text style={[styles.predictionSecondaryText, { color: colors.muted.foreground }]} numberOfLines={1}>
+                      {item.secondary_text}
+                    </Text>
+                  ) : null}
                 </View>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </ScrollView>
           {/* Google attribution */}
           <View style={[styles.attribution, { borderTopColor: colors.border }]}>
             <Text style={[styles.attributionText, { color: colors.muted.foreground }]}>
@@ -269,6 +285,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
+  },
+  predictionsList: {
+    maxHeight: 240,
   },
   predictionItem: {
     flexDirection: 'row',

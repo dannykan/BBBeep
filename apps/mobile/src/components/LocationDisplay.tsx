@@ -17,7 +17,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { typography, spacing, borderRadius } from '../theme';
-import Constants from 'expo-constants';
+import GoogleMapsWebView from './GoogleMapsWebView';
 
 interface LocationDisplayProps {
   location: string;
@@ -99,24 +99,39 @@ export default function LocationDisplay({
           onPress={openInMaps}
           activeOpacity={0.9}
         >
-          <MapView
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            initialRegion={region}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            rotateEnabled={false}
-            pitchEnabled={false}
-            customMapStyle={isDark ? darkMapStyle : undefined}
-            onMapReady={() => setMapReady(true)}
-          >
-            {mapReady && (
-              <Marker
-                coordinate={{ latitude, longitude }}
-                pinColor={colors.primary.DEFAULT}
-              />
-            )}
-          </MapView>
+          {Platform.OS === 'ios' ? (
+            // Use WebView-based Google Maps on iOS
+            <GoogleMapsWebView
+              style={styles.map}
+              initialRegion={{
+                latitude: latitude!,
+                longitude: longitude!,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
+              }}
+              marker={{ latitude: latitude!, longitude: longitude! }}
+            />
+          ) : (
+            // Use native Google Maps on Android
+            <MapView
+              style={styles.map}
+              provider={PROVIDER_GOOGLE}
+              initialRegion={region}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              customMapStyle={isDark ? darkMapStyle : undefined}
+              onMapReady={() => setMapReady(true)}
+            >
+              {mapReady && (
+                <Marker
+                  coordinate={{ latitude: latitude!, longitude: longitude! }}
+                  pinColor={colors.primary.DEFAULT}
+                />
+              )}
+            </MapView>
+          )}
           {/* Map Overlay */}
           <View style={styles.mapOverlay}>
             <View style={[styles.tapHint, { backgroundColor: colors.card.DEFAULT }]}>
