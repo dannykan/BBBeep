@@ -313,24 +313,27 @@ Location: `apps/mobile/src/components/MapLocationPicker.tsx`
 Full-featured location picker for selecting incident location in send flow.
 
 ### Features:
-- **Map Display** - Apple Maps on iOS, Google Maps on Android
-- **Address Autocomplete** - Real-time suggestions as user types (400ms debounce, min 2 chars)
+- **Map Display** - Google Maps on both iOS and Android
+- **Address/Landmark Search** - Places Autocomplete API supports POIs (台北101, 星巴克)
 - **Current Location** - GPS button with permission handling
 - **Map Interaction** - Tap to place marker, drag marker to adjust
 - **Reverse Geocoding** - Converts coordinates to readable address
 - **Taiwan Optimized** - Filters results to Taiwan, removes postal codes, simplifies addresses
 
-### Google APIs vs Google Maps SDK (IMPORTANT)
+### Google Maps Implementation (2026-01 更新)
 
-| API | iOS | Android | Notes |
-|-----|-----|---------|-------|
-| Geocoding API | ✅ Works | ✅ Works | HTTP API for address search |
-| Reverse Geocoding | ✅ Works | ✅ Works | HTTP API for coords → address |
-| Google Maps SDK | ❌ Crashes | ✅ Works | Native SDK incompatible with RN New Architecture |
+| Platform | Map Display | Address Search |
+|----------|-------------|----------------|
+| iOS | `GoogleMapsWebView` (WebView + JS API) | Places Autocomplete API |
+| Android | react-native-maps + `PROVIDER_GOOGLE` | Places Autocomplete API |
 
-**iOS uses Apple Maps** for map display because Google Maps SDK crashes with React Native New Architecture (`newArchEnabled: true`). The crash occurs in `RCTThirdPartyComponentsProvider.mm`. This is a known react-native-maps issue.
+**iOS 使用 WebView 方案**：Google Maps native SDK 在 React Native New Architecture 會 crash，所以改用 `GoogleMapsWebView` 組件（WebView + Google Maps JavaScript API）來顯示地圖。
 
-**All Google HTTP APIs work fine** - only the native Maps SDK is affected.
+**Key Files:**
+- `GoogleMapsWebView.tsx` - WebView-based Google Maps for iOS
+- `MapLocationPicker.tsx` - Location picker modal
+- `LocationDisplay.tsx` - Mini map in message details
+- `AddressAutocomplete.tsx` - Address input with Places API
 
 ### DateTimePicker (New Architecture Incompatible)
 
@@ -350,7 +353,12 @@ Full-featured location picker for selecting incident location in send flow.
 ### AddressAutocomplete Component
 Location: `apps/mobile/src/components/AddressAutocomplete.tsx`
 
-Standalone address input with Google Geocoding API autocomplete. Used in `ConfirmScreenV2` for location editing. Same implementation as web version (`apps/web/src/components/ui/address-autocomplete.tsx`).
+Standalone address input with **Google Places Autocomplete API**. Supports searching:
+- 地址（台北市信義區信義路五段）
+- 地標（台北101、信義誠品）
+- 店家（星巴克、全聯）
+
+Used in `ConfirmScreenV2` for location editing.
 
 ## Voice Memo / Draft Flow
 
