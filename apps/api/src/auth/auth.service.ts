@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -31,7 +36,7 @@ export class AuthService {
       // 檢查今日發送次數限制（每天最多5次）
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const countKey = `verify_count:${dto.phone}:${today}`;
-      
+
       console.log(`[VERIFY] Checking send count for ${dto.phone} on ${today}`);
       const currentCount = await this.redis.get(countKey);
       const count = currentCount ? parseInt(currentCount, 10) : 0;
@@ -43,24 +48,25 @@ export class AuthService {
 
       // 模擬發送驗證碼（實際應該發送 SMS）
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      
+
       // 將驗證碼存入 Redis，5分鐘過期
       console.log(`[VERIFY] Storing code in Redis for ${dto.phone}`);
       await this.redis.set(`verify:${dto.phone}`, code, 300);
-      
+
       // 增加今日發送次數（24小時過期，確保跨日時自動重置）
       await this.redis.set(countKey, (count + 1).toString(), 86400); // 24小時 = 86400秒
-      
+
       // 記錄驗證碼到日誌（所有環境）
       console.log(`[VERIFY] Verification code for ${dto.phone}: ${code}`);
       console.log(`[VERIFY] Today's send count: ${count + 1}/5`);
-      
+
       // 開發環境或測試環境直接返回驗證碼
       // 生產環境也暫時返回，方便測試（實際部署時應移除）
-      const shouldReturnCode = process.env.NODE_ENV === 'development' || process.env.RETURN_VERIFY_CODE === 'true';
-      
-      return { 
-        message: '驗證碼已發送', 
+      const shouldReturnCode =
+        process.env.NODE_ENV === 'development' || process.env.RETURN_VERIFY_CODE === 'true';
+
+      return {
+        message: '驗證碼已發送',
         code: shouldReturnCode ? code : code, // 暫時總是返回驗證碼用於測試
         remaining: 5 - (count + 1), // 剩餘發送次數
       };
@@ -73,7 +79,7 @@ export class AuthService {
   async checkPhone(phone: string) {
     try {
       console.log(`[checkPhone] Service: Checking phone: ${phone}`);
-      
+
       // 验证手机号码格式
       if (!phone || typeof phone !== 'string') {
         throw new BadRequestException('手機號碼格式錯誤');
@@ -81,9 +87,9 @@ export class AuthService {
 
       // 清理手机号码（移除空格等）
       const cleanPhone = phone.trim();
-      
+
       console.log(`[checkPhone] Service: Clean phone: ${cleanPhone}`);
-      
+
       const user = await this.prisma.user.findUnique({
         where: { phone: cleanPhone },
         select: { id: true, password: true },
@@ -102,12 +108,12 @@ export class AuthService {
         phone: phone,
         errorName: error.constructor.name,
       });
-      
+
       // 如果是 Prisma 错误，记录更多信息
       if (error.code) {
         console.error('[checkPhone] Prisma error code:', error.code);
       }
-      
+
       // 重新抛出错误
       throw error;
     }
@@ -132,7 +138,7 @@ export class AuthService {
     const errorKey = `verify_error:${dto.phone}`;
     const errorCount = await this.redis.get(errorKey);
     const errors = errorCount ? parseInt(errorCount, 10) : 0;
-    
+
     // 驗證驗證碼
     const storedCode = await this.redis.get(`verify:${dto.phone}`);
     if (!storedCode || storedCode !== dto.code) {
@@ -140,7 +146,7 @@ export class AuthService {
       const newErrorCount = errors + 1;
       // 錯誤計數的過期時間與驗證碼一致（5分鐘）
       await this.redis.set(errorKey, newErrorCount.toString(), 300);
-      
+
       const remaining = 5 - newErrorCount;
       if (remaining <= 0) {
         // 超過5次錯誤，刪除驗證碼並返回特殊錯誤
@@ -148,11 +154,11 @@ export class AuthService {
         await this.redis.del(errorKey);
         throw new UnauthorizedException('連續5次輸入錯誤，請重新獲取驗證碼');
       }
-      
+
       // 返回錯誤次數信息
       throw new UnauthorizedException(`驗證碼錯誤，剩餘 ${remaining} 次機會`);
     }
-    
+
     // 驗證成功，清除錯誤計數
     await this.redis.del(errorKey);
 
@@ -199,7 +205,7 @@ export class AuthService {
     const errorKey = `password_error:${dto.phone}`;
     const errorCount = await this.redis.get(errorKey);
     const errors = errorCount ? parseInt(errorCount, 10) : 0;
-    
+
     // 查找用戶
     const user = await this.prisma.user.findUnique({
       where: { phone: dto.phone },
@@ -209,13 +215,13 @@ export class AuthService {
       // 用戶不存在，增加錯誤次數（防止用戶名枚舉攻擊）
       const newErrorCount = errors + 1;
       await this.redis.set(errorKey, newErrorCount.toString(), 300); // 5分鐘過期
-      
+
       const remaining = 5 - newErrorCount;
       if (remaining <= 0) {
         await this.redis.del(errorKey);
         throw new UnauthorizedException('連續5次輸入錯誤，請前往忘記密碼頁面重設密碼');
       }
-      
+
       throw new UnauthorizedException(`密碼錯誤，剩餘 ${remaining} 次機會`);
     }
 
@@ -229,16 +235,16 @@ export class AuthService {
       // 密碼錯誤，增加錯誤次數
       const newErrorCount = errors + 1;
       await this.redis.set(errorKey, newErrorCount.toString(), 300); // 5分鐘過期
-      
+
       const remaining = 5 - newErrorCount;
       if (remaining <= 0) {
         await this.redis.del(errorKey);
         throw new UnauthorizedException('連續5次輸入錯誤，請前往忘記密碼頁面重設密碼');
       }
-      
+
       throw new UnauthorizedException(`密碼錯誤，剩餘 ${remaining} 次機會`);
     }
-    
+
     // 驗證成功，清除錯誤計數
     await this.redis.del(errorKey);
 
@@ -266,6 +272,11 @@ export class AuthService {
   async licensePlateLogin(dto: LicensePlateLoginDto) {
     // 正規化車牌號碼
     const normalizedPlate = normalizeLicensePlate(dto.licensePlate);
+
+    // 檢查車牌格式是否有效
+    if (!normalizedPlate) {
+      throw new BadRequestException('車牌號碼格式無效，請輸入正確的台灣車牌');
+    }
 
     // 檢查密碼錯誤次數限制
     const errorKey = `plate_password_error:${normalizedPlate}`;
@@ -345,24 +356,24 @@ export class AuthService {
     const errorKey = `verify_error:${dto.phone}`;
     const errorCount = await this.redis.get(errorKey);
     const errors = errorCount ? parseInt(errorCount, 10) : 0;
-    
+
     // 驗證驗證碼
     const storedCode = await this.redis.get(`verify:${dto.phone}`);
     if (!storedCode || storedCode !== dto.code) {
       // 驗證碼錯誤，增加錯誤次數
       const newErrorCount = errors + 1;
       await this.redis.set(errorKey, newErrorCount.toString(), 300);
-      
+
       const remaining = 5 - newErrorCount;
       if (remaining <= 0) {
         await this.redis.del(`verify:${dto.phone}`);
         await this.redis.del(errorKey);
         throw new UnauthorizedException('連續5次輸入錯誤，請重新獲取驗證碼');
       }
-      
+
       throw new UnauthorizedException(`驗證碼錯誤，剩餘 ${remaining} 次機會`);
     }
-    
+
     // 驗證成功，清除錯誤計數
     await this.redis.del(errorKey);
 
@@ -404,7 +415,7 @@ export class AuthService {
     const payload = { sub: user.id, phone: user.phone };
     const token = this.jwtService.sign(payload);
 
-    return { 
+    return {
       message: '密碼設置成功',
       access_token: token,
       user: {
@@ -426,24 +437,24 @@ export class AuthService {
     const errorKey = `verify_error:${dto.phone}`;
     const errorCount = await this.redis.get(errorKey);
     const errors = errorCount ? parseInt(errorCount, 10) : 0;
-    
+
     // 驗證驗證碼
     const storedCode = await this.redis.get(`verify:${dto.phone}`);
     if (!storedCode || storedCode !== dto.code) {
       // 驗證碼錯誤，增加錯誤次數
       const newErrorCount = errors + 1;
       await this.redis.set(errorKey, newErrorCount.toString(), 300);
-      
+
       const remaining = 5 - newErrorCount;
       if (remaining <= 0) {
         await this.redis.del(`verify:${dto.phone}`);
         await this.redis.del(errorKey);
         throw new UnauthorizedException('連續5次輸入錯誤，請重新獲取驗證碼');
       }
-      
+
       throw new UnauthorizedException(`驗證碼錯誤，剩餘 ${remaining} 次機會`);
     }
-    
+
     // 驗證成功，清除錯誤計數
     await this.redis.del(errorKey);
 
@@ -564,7 +575,10 @@ export class AuthService {
     }
   }
 
-  private async exchangeLineCode(code: string, redirectUri?: string): Promise<{ access_token: string; id_token?: string }> {
+  private async exchangeLineCode(
+    code: string,
+    redirectUri?: string,
+  ): Promise<{ access_token: string; id_token?: string }> {
     const channelId = this.configService.get<string>('LINE_CHANNEL_ID');
     const channelSecret = this.configService.get<string>('LINE_CHANNEL_SECRET');
     const callbackUrl = redirectUri || this.configService.get<string>('LINE_CALLBACK_URL');
@@ -580,15 +594,11 @@ export class AuthService {
     params.append('client_id', channelId);
     params.append('client_secret', channelSecret);
 
-    const response = await axios.post(
-      'https://api.line.me/oauth2/v2.1/token',
-      params.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+    const response = await axios.post('https://api.line.me/oauth2/v2.1/token', params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-    );
+    });
 
     return response.data;
   }
@@ -621,7 +631,10 @@ export class AuthService {
       });
       return response.data.friendFlag === true;
     } catch (error) {
-      console.error('[LINE_LOGIN] Failed to check friendship status:', error.response?.data || error.message);
+      console.error(
+        '[LINE_LOGIN] Failed to check friendship status:',
+        error.response?.data || error.message,
+      );
       return false;
     }
   }
