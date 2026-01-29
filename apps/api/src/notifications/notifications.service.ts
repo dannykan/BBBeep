@@ -29,11 +29,7 @@ export class NotificationsService {
   /**
    * 註冊裝置 Token
    */
-  async registerDevice(
-    userId: string,
-    token: string,
-    platform: DevicePlatform,
-  ) {
+  async registerDevice(userId: string, token: string, platform: DevicePlatform) {
     // 先將該 token 從其他用戶移除（如果存在）
     await this.prisma.deviceToken.updateMany({
       where: {
@@ -162,15 +158,9 @@ export class NotificationsService {
   /**
    * 發送回覆通知給發送者
    */
-  async sendReplyNotification(
-    senderId: string,
-    messageId: string,
-    replierNickname?: string,
-  ) {
+  async sendReplyNotification(senderId: string, messageId: string, replierNickname?: string) {
     const title = '你收到一則回覆';
-    const body = replierNickname
-      ? `${replierNickname} 回覆了你的提醒`
-      : '有人回覆了你的提醒';
+    const body = replierNickname ? `${replierNickname} 回覆了你的提醒` : '有人回覆了你的提醒';
 
     const result = await this.sendToUser(senderId, title, body, {
       type: 'reply',
@@ -199,7 +189,7 @@ export class NotificationsService {
     body: string,
     adminId: string,
     data?: Record<string, any>,
-  ): Promise<{ success: boolean; sent: number; failed: number }> {
+  ): Promise<{ success: boolean; successCount: number; failureCount: number }> {
     // 取得所有有效的裝置 token
     const devices = await this.prisma.deviceToken.findMany({
       where: { isActive: true },
@@ -208,7 +198,7 @@ export class NotificationsService {
 
     if (devices.length === 0) {
       this.logger.debug('No active device tokens for broadcast');
-      return { success: true, sent: 0, failed: 0 };
+      return { success: true, successCount: 0, failureCount: 0 };
     }
 
     const messages: ExpoPushMessage[] = devices.map((device) => ({
@@ -233,7 +223,7 @@ export class NotificationsService {
       adminId,
     );
 
-    return result;
+    return { success: result.success, successCount: result.sent, failureCount: result.failed };
   }
 
   /**
@@ -245,7 +235,7 @@ export class NotificationsService {
     body: string,
     adminId: string,
     data?: Record<string, any>,
-  ): Promise<{ success: boolean; sent: number; failed: number }> {
+  ): Promise<{ success: boolean; successCount: number; failureCount: number }> {
     // 取得指定用戶的所有有效裝置 token
     const devices = await this.prisma.deviceToken.findMany({
       where: {
@@ -257,7 +247,7 @@ export class NotificationsService {
 
     if (devices.length === 0) {
       this.logger.debug('No active device tokens for selected users');
-      return { success: true, sent: 0, failed: 0 };
+      return { success: true, successCount: 0, failureCount: 0 };
     }
 
     const messages: ExpoPushMessage[] = devices.map((device) => ({
@@ -282,7 +272,7 @@ export class NotificationsService {
       adminId,
     );
 
-    return result;
+    return { success: result.success, successCount: result.sent, failureCount: result.failed };
   }
 
   /**

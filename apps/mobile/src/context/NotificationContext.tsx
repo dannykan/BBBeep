@@ -92,35 +92,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     );
   }, []);
 
-  // Request notification permissions (just-in-time pattern)
-  const requestPermissions = useCallback(async (): Promise<boolean> => {
-    if (!Device.isDevice) {
-      Alert.alert('錯誤', '推播通知只能在真實裝置上使用');
-      return false;
-    }
-
-    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
-
-    if (existingStatus === 'granted') {
-      setPermissionStatus(existingStatus);
-      return true;
-    }
-
-    // Permission not granted
-    if (canAskAgain) {
-      // Can still ask, show system dialog
-      const { status } = await Notifications.requestPermissionsAsync();
-      setPermissionStatus(status);
-      return status === 'granted';
-    } else {
-      // Previously denied and can't ask again, guide to settings
-      setPermissionStatus(existingStatus);
-      showPermissionDeniedAlert();
-      return false;
-    }
-  }, [showPermissionDeniedAlert]);
-
-  // Register push token with backend
+  // Register push token with backend (moved before requestPermissions so it can be called)
   const registerPushToken = useCallback(async () => {
     if (!Device.isDevice) {
       console.log('Not a physical device, skipping push token registration');
@@ -128,14 +100,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Check permission first
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Notification permission not granted');
-        return;
-      }
-
-      // Get push token
+      // Get push token (permission should already be granted at this point)
       const projectId = Constants.expoConfig?.extra?.eas?.projectId;
       const token = await Notifications.getExpoPushTokenAsync({
         projectId,
@@ -157,6 +122,40 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       console.error('Failed to register push token:', error);
     }
   }, []);
+
+  // Request notification permissions (just-in-time pattern)
+  const requestPermissions = useCallback(async (): Promise<boolean> => {
+    if (!Device.isDevice) {
+      Alert.alert('錯誤', '推播通知只能在真實裝置上使用');
+      return false;
+    }
+
+    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
+
+    if (existingStatus === 'granted') {
+      setPermissionStatus(existingStatus);
+      // 直接註冊 token，不依賴 useEffect timing
+      await registerPushToken();
+      return true;
+    }
+
+    // Permission not granted
+    if (canAskAgain) {
+      // Can still ask, show system dialog
+      const { status } = await Notifications.requestPermissionsAsync();
+      setPermissionStatus(status);
+      if (status === 'granted') {
+        // 權限授予後直接註冊 token
+        await registerPushToken();
+      }
+      return status === 'granted';
+    } else {
+      // Previously denied and can't ask again, guide to settings
+      setPermissionStatus(existingStatus);
+      showPermissionDeniedAlert();
+      return false;
+    }
+  }, [showPermissionDeniedAlert, registerPushToken]);
 
   // Handle notification received while app is foregrounded
   const handleNotification = useCallback(
@@ -223,11 +222,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   }, [checkPermissions]);
 
   // Register push token when authenticated, has completed onboarding, and permission is granted
+  // This acts as a fallback for app restarts when the user already has permission
   useEffect(() => {
-    if (isAuthenticated && user?.hasCompletedOnboarding && permissionStatus === 'granted') {
+    if (isAuthenticated && user?.hasCompletedOnboarding && permissionStatus === 'granted' && !isRegistered) {
       registerPushToken();
     }
-  }, [isAuthenticated, user?.hasCompletedOnboarding, permissionStatus, registerPushToken]);
+  }, [isAuthenticated, user?.hasCompletedOnboarding, permissionStatus, isRegistered, registerPushToken]);
 
   // Setup Android notification channel
   useEffect(() => {
