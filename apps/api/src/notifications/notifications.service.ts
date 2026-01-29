@@ -292,6 +292,9 @@ export class NotificationsService {
 
     for (const chunk of chunks) {
       try {
+        this.logger.log(`Sending ${chunk.length} push notifications to Expo API`);
+        this.logger.debug(`Tokens: ${chunk.map((m) => m.to.substring(0, 30) + '...').join(', ')}`);
+
         const response = await fetch(this.EXPO_PUSH_URL, {
           method: 'POST',
           headers: {
@@ -303,6 +306,9 @@ export class NotificationsService {
         });
 
         const result = await response.json();
+        this.logger.log(`Expo API response status: ${response.status}`);
+        this.logger.debug(`Expo API response: ${JSON.stringify(result)}`);
+
         const tickets: ExpoPushTicket[] = result.data || [];
 
         for (let i = 0; i < tickets.length; i++) {
