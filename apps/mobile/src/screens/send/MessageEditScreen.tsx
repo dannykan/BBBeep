@@ -623,11 +623,8 @@ export default function MessageEditScreen({ navigation, route }: Props) {
       Alert.alert('訊息太短', `請至少輸入 ${MIN_CHARS} 個字`);
       return;
     }
-    const validation = validateContent(message);
-    if (!validation.isValid) {
-      Alert.alert('內容不當', validation.message || '請修改內容後再試');
-      return;
-    }
+    // 2026-01 更新：不再阻擋發送，只在 UI 顯示警告
+    // 用戶可以選擇繼續發送或使用 AI 優化
     setCustomText(message);
     setSendMode('text');
     setUseAiVersion(false);
