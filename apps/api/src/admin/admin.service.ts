@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { UserType, VehicleType, InviteStatus } from '@prisma/client';
-import { normalizeLicensePlate } from '../common/utils/license-plate-format';
+import { formatLicensePlate, normalizeLicensePlate } from '../common/utils/license-plate-format';
 
 const ADMIN_PASSWORD = '12345678';
 
@@ -64,21 +64,25 @@ export class AdminService {
     // 搜尋功能：支援手機、暱稱、車牌、LINE 顯示名稱
     if (search && search.trim()) {
       const searchTerm = search.trim();
-      // 嘗試將搜尋詞正規化為車牌格式
-      const normalizedPlate = normalizeLicensePlate(searchTerm);
+      // 格式化搜尋詞（移除分隔符、轉大寫）以便比對車牌
+      const formattedSearch = formatLicensePlate(searchTerm);
 
-      where.AND.push({
-        OR: [
-          { phone: { contains: searchTerm, mode: 'insensitive' } },
-          { nickname: { contains: searchTerm, mode: 'insensitive' } },
-          { lineDisplayName: { contains: searchTerm, mode: 'insensitive' } },
-          // 車牌搜尋：同時比對原始輸入和正規化後的車牌
-          { licensePlate: { contains: searchTerm, mode: 'insensitive' } },
-          ...(normalizedPlate !== searchTerm
-            ? [{ licensePlate: { contains: normalizedPlate, mode: 'insensitive' } }]
-            : []),
-        ],
-      });
+      const searchConditions: any[] = [
+        { phone: { contains: searchTerm, mode: 'insensitive' } },
+        { nickname: { contains: searchTerm, mode: 'insensitive' } },
+        { lineDisplayName: { contains: searchTerm, mode: 'insensitive' } },
+        // 車牌搜尋：同時比對原始輸入和格式化後的搜尋詞
+        { licensePlate: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+
+      // 如果格式化後的搜尋詞不同，也加入比對（例如 "abc-123" 格式化為 "ABC123"）
+      if (formattedSearch && formattedSearch !== searchTerm.toUpperCase()) {
+        searchConditions.push({
+          licensePlate: { contains: formattedSearch, mode: 'insensitive' },
+        });
+      }
+
+      where.AND.push({ OR: searchConditions });
     }
 
     return this.prisma.user.findMany({
