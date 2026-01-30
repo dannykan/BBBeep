@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { PointsService } from '../points/points.service';
+import { normalizeLicensePlate } from '../common/utils/license-plate-format';
 
 // 排除易混淆字元：0, O, I, l
 const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -65,6 +66,7 @@ export class InviteService {
       where: { id: userId },
       select: {
         inviteCode: true,
+        licensePlate: true,
         customInviterReward: true,
         customInviteeReward: true,
       },
@@ -74,15 +76,21 @@ export class InviteService {
       throw new NotFoundException('用戶不存在');
     }
 
-    // 如果用戶還沒有邀請碼，生成一個
-    let inviteCode = user.inviteCode;
-    if (!inviteCode) {
-      inviteCode = await this.generateUniqueInviteCode();
+    // 如果用戶還沒有邀請碼，生成一個（作為 fallback）
+    let storedInviteCode = user.inviteCode;
+    if (!storedInviteCode) {
+      storedInviteCode = await this.generateUniqueInviteCode();
       await this.prisma.user.update({
         where: { id: userId },
-        data: { inviteCode },
+        data: { inviteCode: storedInviteCode },
       });
     }
+
+    // 顯示邀請碼：有車牌用車牌，沒車牌用隨機碼
+    // 車牌正規化後去掉符號作為邀請碼
+    const displayInviteCode = user.licensePlate
+      ? normalizeLicensePlate(user.licensePlate) || storedInviteCode
+      : storedInviteCode;
 
     // 取得邀請統計
     const inviteHistory = await this.prisma.inviteHistory.findMany({
@@ -101,12 +109,43 @@ export class InviteService {
     const inviteeReward = user.customInviteeReward ?? settings.defaultInviteeReward;
 
     return {
-      inviteCode,
+      inviteCode: displayInviteCode,
       inviteCount,
       totalRewards,
       inviterReward,
       inviteeReward,
     };
+  }
+
+  // 根據邀請碼或車牌找到邀請人
+  private async findInviterByCode(code: string) {
+    const upperCode = code.toUpperCase();
+
+    // 1. 先用 inviteCode 查找
+    let inviter = await this.prisma.user.findUnique({
+      where: { inviteCode: upperCode },
+      select: {
+        id: true,
+        nickname: true,
+        customInviterReward: true,
+        customInviteeReward: true,
+      },
+    });
+
+    // 2. 如果沒找到，用正規化後的車牌查找
+    if (!inviter) {
+      inviter = await this.prisma.user.findUnique({
+        where: { licensePlate: upperCode },
+        select: {
+          id: true,
+          nickname: true,
+          customInviterReward: true,
+          customInviteeReward: true,
+        },
+      });
+    }
+
+    return inviter;
   }
 
   // 驗證邀請碼（無需登入，用於 onboarding）
@@ -120,14 +159,8 @@ export class InviteService {
       };
     }
 
-    const inviter = await this.prisma.user.findUnique({
-      where: { inviteCode: code.toUpperCase() },
-      select: {
-        id: true,
-        nickname: true,
-        customInviteeReward: true,
-      },
-    });
+    // 雙軌驗證：同時支援 inviteCode 和車牌
+    const inviter = await this.findInviterByCode(code);
 
     if (!inviter) {
       return {
@@ -186,15 +219,8 @@ export class InviteService {
       throw new BadRequestException(validation.message);
     }
 
-    // 找到邀請人
-    const inviter = await this.prisma.user.findUnique({
-      where: { inviteCode: code.toUpperCase() },
-      select: {
-        id: true,
-        customInviterReward: true,
-        customInviteeReward: true,
-      },
-    });
+    // 找到邀請人（雙軌：支援 inviteCode 和車牌）
+    const inviter = await this.findInviterByCode(code);
 
     if (!inviter) {
       throw new BadRequestException('無效的邀請碼');
