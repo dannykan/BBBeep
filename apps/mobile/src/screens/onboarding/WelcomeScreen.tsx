@@ -88,7 +88,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
           subtitle={
             userType === 'pedestrian'
               ? '你可以開始提醒路上的汽車與機車'
-              : '7 天免費試用，50 點讓你盡情體驗'
+              : '14 天免費試用，80 點讓你盡情體驗'
           }
         >
           <View style={[styles.welcomeIconCircle, { backgroundColor: `${colors.primary.DEFAULT}10` }]}>
@@ -114,7 +114,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
         {userType === 'pedestrian' && (
           <View style={[styles.pedestrianInfoCard, { backgroundColor: colors.muted.DEFAULT, borderColor: colors.border }]}>
             <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 可以發送提醒</Text>
-            <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 7 天試用期，50 點免費體驗</Text>
+            <Text style={[styles.pedestrianInfoItem, { color: colors.foreground }]}>✅ 14 天試用期，80 點免費體驗</Text>
             <Text style={[styles.pedestrianInfoItemWarning, { color: colors.foreground }]}>
               ⚠️ 因沒有車牌，無法接收提醒
             </Text>

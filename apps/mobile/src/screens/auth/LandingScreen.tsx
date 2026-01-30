@@ -92,7 +92,7 @@ export default function LandingScreen({ navigation }: Props) {
         {/* Trial Badge */}
         <View style={styles.trialBadge}>
           <Ionicons name="gift-outline" size={16} color="#D97706" />
-          <Text style={styles.trialBadgeText}>新用戶 7 天試用，免費體驗</Text>
+          <Text style={styles.trialBadgeText}>新用戶 14 天試用，80 點免費體驗</Text>
         </View>
       </ScrollView>
 

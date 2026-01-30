@@ -36,13 +36,13 @@ export default function PointsExplanationScreen({ navigation }: Props) {
 
         {/* 試用期說明卡片 */}
         <View style={[styles.trialCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)', borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : 'rgba(16, 185, 129, 0.3)' }]}>
-          <Text style={styles.trialTitle}>7 天免費試用</Text>
+          <Text style={styles.trialTitle}>14 天免費試用</Text>
           <View style={styles.trialPointsRow}>
-            <Text style={styles.trialPointsNumber}>50</Text>
+            <Text style={styles.trialPointsNumber}>80</Text>
             <Text style={styles.trialPointsLabel}>點</Text>
           </View>
           <Text style={[styles.trialDescription, { color: colors.muted.foreground }]}>
-            立即獲得 50 點，盡情體驗所有功能
+            立即獲得 80 點，盡情體驗所有功能
           </Text>
         </View>
 
