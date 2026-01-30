@@ -134,7 +134,7 @@ export class InviteService {
 
     // 2. 如果沒找到，用正規化後的車牌查找
     if (!inviter) {
-      inviter = await this.prisma.user.findUnique({
+      inviter = await this.prisma.user.findFirst({
         where: { licensePlate: upperCode },
         select: {
           id: true,
