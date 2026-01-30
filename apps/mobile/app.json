@@ -2,7 +2,7 @@
   "expo": {
     "name": "UBeep",
     "slug": "ubeep",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -58,7 +58,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ubeep.mobile",
-      "buildNumber": "21",
+      "buildNumber": "3",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "需要存取您的相簿以上傳行照照片",
