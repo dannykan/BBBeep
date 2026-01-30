@@ -207,10 +207,10 @@ export default function InviteFriendsScreen() {
               <View style={styles.inputRow}>
                 <TextInput
                   style={styles.codeInput}
-                  placeholder="輸入邀請碼"
+                  placeholder="輸入邀請碼或車牌"
                   placeholderTextColor={colors.text.secondary}
                   value={inputCode}
-                  onChangeText={(text) => setInputCode(text.toUpperCase())}
+                  onChangeText={(text) => setInputCode(text.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                   autoCapitalize="characters"
                   maxLength={8}
                 />
