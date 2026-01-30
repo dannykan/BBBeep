@@ -37,3 +37,4 @@ export {
   type CreateSavedPlateRequest,
   type UpdateSavedPlateRequest,
 } from './saved-plates';
+export { profanityApi, type ProfanityDictionary, type ProfanityVersion } from './profanity';

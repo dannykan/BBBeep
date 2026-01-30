@@ -34,9 +34,13 @@ import CustomSplashScreen from './src/components/CustomSplashScreen';
 import { useAnalytics } from './src/hooks/useAnalytics';
 import { analytics } from './src/lib/analytics';
 import { initializeApiClient } from './src/lib/api';
+import { initProfanitySync } from './src/lib/profanitySync';
 
 // 初始化 API Client（同步執行，確保所有 Provider 的 useEffect 執行前已完成）
 initializeApiClient();
+
+// 初始化詞庫同步（背景執行，不阻擋 App 啟動）
+initProfanitySync();
 
 // 防止 native splash screen 自動隱藏
 SplashScreen.preventAutoHideAsync();

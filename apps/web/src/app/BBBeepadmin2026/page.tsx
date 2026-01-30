@@ -274,6 +274,13 @@ const AdminPage = React.memo(() => {
             >
               應用程式內容
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/BBBeepadmin2026/profanity')}
+            >
+              詞庫管理
+            </Button>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               登出

@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { aiApi, filterContent, type ContentFilterResult, type AiModerationResponse } from '@bbbeeep/shared';
 import type { VehicleType, MessageType } from '@bbbeeep/shared';
+import { checkProfanityFromSync } from '../lib/profanitySync';
 
 type ReminderCategory = '車況提醒' | '行車安全' | '讚美感謝' | '其他情況';
 type SendMode = 'text' | 'voice' | 'ai' | 'template';
@@ -362,6 +363,24 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // 再用同步的詞庫檢查（從後端同步的最新詞庫）
+    const syncedResult = checkProfanityFromSync(text);
+    if (syncedResult.hasIssue) {
+      console.log('[Synced Filter] Caught violation:', syncedResult.matchedWord);
+      setState((prev) => ({
+        ...prev,
+        aiModeration: {
+          isAppropriate: false,
+          reason: `內容包含不當用語：${syncedResult.matchedWord}`,
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        },
+        isAiModerating: false,
+        contentWarning: '內容包含不當用語',
+      }));
+      return;
+    }
+
     console.log('[AI Moderation] Starting check for:', text);
     setState((prev) => ({ ...prev, isAiModerating: true }));
 
@@ -412,6 +431,22 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // 再用同步的詞庫檢查
+    const syncedResult = checkProfanityFromSync(transcript);
+    if (syncedResult.hasIssue) {
+      console.log('[Voice Synced Filter] Caught violation:', syncedResult.matchedWord);
+      setState((prev) => ({
+        ...prev,
+        voiceModeration: {
+          isAppropriate: false,
+          reason: `語音內容包含不當用語：${syncedResult.matchedWord}`,
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        },
+      }));
+      return;
+    }
+
     try {
       const result = await aiApi.moderate(transcript);
       console.log('[Voice Moderation] Result:', result);
@@ -444,6 +479,25 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
       const moderationResult = {
         isAppropriate: false,
         reason: violation?.message || '文字內容包含不當用語',
+        category: 'emotional' as const,
+        suggestion: '建議使用 AI 優化功能改善訊息內容',
+      };
+      setState((prev) => ({
+        ...prev,
+        textModeration: moderationResult,
+        aiModeration: moderationResult,
+        isAiModerating: false,
+      }));
+      return;
+    }
+
+    // 再用同步的詞庫檢查
+    const syncedResult = checkProfanityFromSync(text);
+    if (syncedResult.hasIssue) {
+      console.log('[Text Synced Filter] Caught violation:', syncedResult.matchedWord);
+      const moderationResult = {
+        isAppropriate: false,
+        reason: `文字內容包含不當用語：${syncedResult.matchedWord}`,
         category: 'emotional' as const,
         suggestion: '建議使用 AI 優化功能改善訊息內容',
       };

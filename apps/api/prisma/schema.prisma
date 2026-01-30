@@ -480,3 +480,41 @@ model SavedPlate {
   @@unique([userId, licensePlate])
   @@index([userId])
 }
+
+// ============ 內容過濾詞庫 ============
+
+enum ProfanityCategory {
+  PROFANITY       // 髒話/粗話
+  THREAT          // 威脅性言語
+  HARASSMENT      // 騷擾性言語
+  DISCRIMINATION  // 歧視性言語
+}
+
+enum ProfanitySeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model ProfanityWord {
+  id          String            @id @default(cuid())
+  word        String            @unique
+  category    ProfanityCategory
+  severity    ProfanitySeverity @default(MEDIUM)
+  isActive    Boolean           @default(true)
+  note        String?           // 備註說明
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([severity])
+}
+
+// 詞庫版本控制（用於 App 同步）
+model ProfanityDictVersion {
+  id          String   @id @default(cuid())
+  version     Int      @unique @default(autoincrement())
+  description String?  // 版本說明
+  createdAt   DateTime @default(now())
+}
