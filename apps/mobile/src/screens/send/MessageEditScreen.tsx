@@ -1035,7 +1035,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                     >
                       <Text style={[styles.aiPreviewButtonText, { color: colors.primary.foreground }]}>使用此版本送出</Text>
                       <View style={styles.pointBadge}>
-                        <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
+                        <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -1061,7 +1061,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         </View>
                         <View style={styles.pointBadge}>
                           <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>
-                            {selectedCategory === '讚美感謝' ? '免費' : '1 點'}
+                            免費
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -1094,7 +1094,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Text option - 審核通過時顯示（審核通過只扣 2 點）*/}
+                      {/* Text option - 審核通過時顯示（文字免費）*/}
                       {aiModerationPassed && (
                         <TouchableOpacity
                           style={[styles.submitOption, { backgroundColor: colors.primary.DEFAULT }]}
@@ -1108,7 +1108,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                             </Text>
                           </View>
                           <View style={styles.pointBadge}>
-                            <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
+                            <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
                           </View>
                         </TouchableOpacity>
                       )}
@@ -1139,7 +1139,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                                 </Text>
                               </View>
                               <View style={styles.pointBadge}>
-                                <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
+                                <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
                               </View>
                             </TouchableOpacity>
                           )}
@@ -1177,7 +1177,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                                 </Text>
                               </View>
                               <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>4 點</Text>
+                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>免費</Text>
                               </View>
                             </TouchableOpacity>
                           )}

@@ -279,49 +279,14 @@ export function SendProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.selectedCategory]);
 
+  // 2026-01 更新：簡化點數計算
+  // 文字訊息永遠免費，只有語音需要 8 點
   const getPointCost = useCallback((): number => {
-    // Template mode: 1 point (unchanged template)
-    if (state.sendMode === 'template') {
-      // 讚美感謝模板：免費
-      if (state.selectedCategory === '讚美感謝') {
-        return 0;
-      }
-      return 1;
-    }
-
-    // Voice mode: 8 points for voice
     if (state.sendMode === 'voice') {
       return 8;
     }
-
-    // AI 優化版本扣 2 點
-    if (state.useAiVersion && state.aiSuggestion) {
-      return 2;
-    }
-
-    // If we have a voice recording and using AI optimization
-    if (state.voiceRecording && state.sendMode === 'ai') {
-      return 2;
-    }
-
-    // 讚美感謝（純模板）：免費
-    if (state.selectedCategory === '讚美感謝' && !state.customText.trim()) {
-      return 0;
-    }
-
-    // 文字模式：如果 AI 審核通過，只扣 2 點；否則扣 4 點
-    if (state.sendMode === 'text' || state.customText.trim()) {
-      // AI 審核通過的文字內容只扣 2 點
-      if (state.aiModeration?.isAppropriate) {
-        return 2;
-      }
-      // 未審核或審核未通過的文字內容扣 4 點
-      return 4;
-    }
-
-    // 純系統模板（非讚美）：1 點
-    return 1;
-  }, [state.useAiVersion, state.aiSuggestion, state.selectedCategory, state.customText, state.sendMode, state.voiceRecording, state.aiModeration]);
+    return 0; // 文字訊息（template, text, ai）全部免費
+  }, [state.sendMode]);
 
   const getFinalMessage = useCallback((): string => {
     if (state.useAiVersion && state.aiSuggestion) {

@@ -9,9 +9,18 @@ import { PointsService } from '../points/points.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageType, PointHistoryType } from '@prisma/client';
-import { toChineseType, toPrismaType, MessageTypeChinese } from '../common/utils/message-type-mapper';
+import {
+  toChineseType,
+  toPrismaType,
+  MessageTypeChinese,
+} from '../common/utils/message-type-mapper';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
-import { getMessageCost, getReplyCost, getVoiceMessageCost, POINTS_CONFIG } from '../config/points.config';
+import {
+  getMessageCost,
+  getReplyCost,
+  getVoiceMessageCost,
+  POINTS_CONFIG,
+} from '../config/points.config';
 
 @Injectable()
 export class MessagesService {
@@ -45,16 +54,23 @@ export class MessagesService {
           licensePlate: normalizedPlate,
         },
       });
-      
-      const existingTempUser = existingTempUsers.find(u => u.phone.startsWith('temp_') || u.phone.startsWith('unbound_'));
-      
+
+      const existingTempUser = existingTempUsers.find(
+        (u) => u.phone.startsWith('temp_') || u.phone.startsWith('unbound_'),
+      );
+
       if (existingTempUser) {
         // 如果已有臨時用戶，使用現有的
         receiver = existingTempUser;
       } else {
         // 判斷車種（根據車牌長度：7位通常是汽車，6位可能是機車或汽車）
-        const vehicleType = normalizedPlate.length === 7 ? 'car' : normalizedPlate.length === 6 && /^[A-Z]{3}[0-9]{3}$/.test(normalizedPlate) ? 'scooter' : 'car';
-        
+        const vehicleType =
+          normalizedPlate.length === 7
+            ? 'car'
+            : normalizedPlate.length === 6 && /^[A-Z]{3}[0-9]{3}$/.test(normalizedPlate)
+              ? 'scooter'
+              : 'car';
+
         // 創建未綁定車牌用戶（使用 unbound_ 前綴，以便 Admin 平台識別）
         receiver = await this.prisma.user.create({
           data: {
@@ -122,9 +138,10 @@ export class MessagesService {
     }
 
     // 轉換中文字符串為 Prisma enum
-    const prismaType = typeof dto.type === 'string'
-      ? toPrismaType(dto.type as MessageTypeChinese)
-      : dto.type as MessageType;
+    const prismaType =
+      typeof dto.type === 'string'
+        ? toPrismaType(dto.type as MessageTypeChinese)
+        : (dto.type as MessageType);
 
     // 檢查是否為語音訊息
     const isVoiceMessage = !!dto.voiceUrl && !!dto.voiceDuration;
@@ -134,15 +151,13 @@ export class MessagesService {
       throw new BadRequestException('語音功能目前未啟用');
     }
 
-    // 計算點數消耗（使用設定檔）
+    // 計算點數消耗
+    // 2026-01 更新：文字訊息永遠免費，只有語音需要扣點
     let pointCost: number;
     if (isVoiceMessage) {
-      // 語音訊息使用語音點數
-      pointCost = getVoiceMessageCost();
+      pointCost = getVoiceMessageCost(); // 固定 8 點
     } else {
-      // 文字訊息使用原有邏輯
-      const category = prismaType === MessageType.PRAISE ? 'praise' : 'other';
-      pointCost = getMessageCost(category, !!dto.customText, !!dto.useAiRewrite);
+      pointCost = 0; // 文字訊息免費
     }
 
     // 檢查點數
@@ -164,7 +179,12 @@ export class MessagesService {
     if (pointCost > 0) {
       await this.pointsService.deductPoints(userId, pointCost, {
         type: 'spend',
-        description: this.getPointDescription(prismaType, !!dto.customText, !!dto.useAiRewrite, isVoiceMessage),
+        description: this.getPointDescription(
+          prismaType,
+          !!dto.customText,
+          !!dto.useAiRewrite,
+          isVoiceMessage,
+        ),
       });
     }
 
@@ -248,7 +268,7 @@ export class MessagesService {
     });
 
     // 轉換為中文返回
-    return messages.map(msg => ({
+    return messages.map((msg) => ({
       ...msg,
       type: toChineseType(msg.type),
     }));
@@ -274,7 +294,7 @@ export class MessagesService {
     });
 
     // 轉換為中文返回
-    return messages.map(msg => ({
+    return messages.map((msg) => ({
       ...msg,
       type: toChineseType(msg.type),
     }));

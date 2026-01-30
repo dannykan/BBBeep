@@ -12,30 +12,33 @@ export const POINTS_CONFIG = {
 
   message: {
     /**
-     * 讚美類提醒（鼓勵正向互動）
+     * 讚美類提醒
+     * 2026-01 更新：文字訊息永遠免費
      */
     praise: {
-      template: 0, // 使用系統模板
-      customWithAi: 2, // 自訂文字 + AI 優化
-      customWithoutAi: 4, // 自訂文字（無 AI）
+      template: 0,
+      customWithAi: 0,
+      customWithoutAi: 0,
     },
 
     /**
      * 其他提醒（車況提醒、行車安全提醒）
+     * 2026-01 更新：文字訊息永遠免費
      */
     other: {
-      template: 1, // 使用系統模板
-      customWithAi: 2, // 自訂文字 + AI 優化
-      customWithoutAi: 4, // 自訂文字（無 AI）
+      template: 0,
+      customWithAi: 0,
+      customWithoutAi: 0,
     },
 
     /**
      * 回覆訊息成本
+     * 2026-01 更新：文字訊息永遠免費
      */
     reply: {
-      quickReply: 0, // 快速回覆（預設文字）
-      customWithAi: 2, // 自訂回覆 + AI 優化
-      customWithoutAi: 4, // 自訂回覆（無 AI）
+      quickReply: 0,
+      customWithAi: 0,
+      customWithoutAi: 0,
     },
   },
 
@@ -46,8 +49,7 @@ export const POINTS_CONFIG = {
   voice: {
     enabled: true, // 是否啟用語音功能
     maxDuration: 15, // 最大秒數
-    cost: 8, // 發送成本
-    trialMaxUsage: 2, // 試用期最多使用次數
+    cost: 8, // 發送成本（固定 8 點）
   },
 
   // ============================================
@@ -79,8 +81,8 @@ export const POINTS_CONFIG = {
 
   trial: {
     enabled: true, // 是否啟用試用期機制
-    durationDays: 7, // 試用天數
-    initialPoints: 50, // 試用起始點數
+    durationDays: 14, // 試用天數（2026-01 更新：7 → 14）
+    initialPoints: 80, // 試用起始點數（2026-01 更新：50 → 80，等於 10 次語音）
     carryOverPoints: false, // 試用結束後是否保留剩餘點數
   },
 
@@ -191,7 +193,7 @@ export function isInTrialPeriod(trialStartDate: Date | null): boolean {
  */
 export function getDailyFreePointsAmount(isInTrial: boolean): number {
   if (isInTrial) {
-    // 試用期間不需要每日補點（因為有 50 點）
+    // 試用期間不需要每日補點（因為有 80 點試用點數）
     return 0;
   }
 
