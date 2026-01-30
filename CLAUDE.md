@@ -236,21 +236,34 @@ This ensures important decisions and patterns are documented for future sessions
 
 ## Business Rules (MUST FOLLOW)
 
-### Point Cost Rules
-When displaying or calculating point costs, follow these rules strictly:
+### Point Cost Rules (2026-01-30 更新)
 
-| Send Mode | Category | Point Cost |
-|-----------|----------|------------|
-| Template (未編輯) | 讚美感謝 | **免費 (0 點)** |
-| Template (未編輯) | 其他類別 | 1 點 |
-| Text (AI 審核通過) | Any | 2 點 |
-| Text (堅持原內容) | Any | 4 點 |
-| AI 優化 | Any | 2 點 |
-| Voice | Any | 8 點 |
+**試用期政策：**
+- 試用期：**14 天**
+- 試用點數：**80 點**（等於 10 次語音）
+
+**點數規則（簡化版）：**
+
+| 功能 | 點數 |
+|------|------|
+| 文字訊息（所有模式） | **免費** |
+| 語音訊息 | **8 點** |
+| 回覆訊息 | **免費** |
+| AI 優化次數 | 5 次/天（不扣點） |
+
+**設計理念：**
+- 文字功能完全免費，降低用戶使用門檻
+- 語音是付費功能（8 點/次），試用期提供 80 點 = 10 次免費語音
+- 點數未來可能有其他用途，保持統一的點數計價系統
 
 **Key Implementation:**
-- `SendContext.tsx` → `getPointCost()` handles the logic
-- `MessageEditScreen.tsx` → UI buttons must dynamically display correct points based on `selectedCategory`
+- `apps/api/src/config/points.config.ts` → 所有點數規則設定
+- `SendContext.tsx` → `getPointCost()` 前端點數計算（語音 8 點、其他 0 點）
+- `messages.service.ts` → 後端扣點邏輯
+- `MessageEditScreen.tsx` → UI 顯示「免費」或「8 點」
+
+**遷移腳本：**
+- `apps/api/scripts/migrate-trial-points.ts` → 更新現有用戶的試用點數
 
 ### AI Moderation Categories
 AI moderation returns one of these categories:
@@ -369,15 +382,13 @@ Used in `ConfirmScreenV2` for location editing.
 **首頁「一鍵語音」按鈕 或 草稿「繼續編輯」→ QuickVoiceSendScreen**
 
 這是專為語音訊息設計的簡化流程：
-1. 用戶錄音（或從草稿繼續）
-2. 填寫車牌、選擇車輛類型
-3. 選擇提醒類型（車況提醒/行車安全/讚美感謝/其他情況）
-4. 自動帶入當前位置（可修改）
-5. AI 審核語音內容
-6. 直接發送（8 點）
+1. 用戶錄音 → 立即進入選擇畫面（無等待）
+2. 選擇「現在發送」或「稍後再發」
+3. 現在發送：填寫車牌、類型、位置 → 發送（8 點）
+4. 稍後再發：上傳語音 + 背景轉錄 → 存入草稿
 
 **Key Files:**
-- `QuickRecordScreen.tsx` - 語音錄音 UI
+- `QuickRecordScreen.tsx` - 語音錄音 UI + 選擇畫面
 - `QuickVoiceSendScreen.tsx` - 一鍵語音發送頁面（車牌、類型、位置、發送）
 - `DraftsScreen.tsx` - 草稿列表（繼續編輯導向 QuickVoiceSendScreen）
 
@@ -400,11 +411,34 @@ Used in `ConfirmScreenV2` for location editing.
 1. **流程分離**：QuickVoiceSendScreen 不使用 SendContext 的 voiceMemo，直接透過 route params 傳遞資料
 2. **草稿繼續編輯**：直接導向 QuickVoiceSendScreen，不會污染一般發送流程
 3. **從草稿選擇**：在 MessageEditScreen 中使用，設定 voiceRecording 狀態
+4. **轉錄時機**：只在儲存草稿時背景執行，發送流程不等待轉錄
 
 ### Voice Draft 相關
 - Drafts expire after 24 hours (handled by backend cron job)
 - DraftCard does NOT show AI analysis (no parsed plates, vehicle info, suggested messages)
 - Voice messages cost 8 points regardless of category
+- 轉錄只用於草稿列表預覽，發送流程不需要
+
+### 語音錄音優化設定
+
+錄音使用優化設定（檔案大小約為 HIGH_QUALITY 的 25%）：
+```javascript
+{
+  sampleRate: 22050,    // 語音足夠（原 44100）
+  numberOfChannels: 1,  // 單聲道（原 2）
+  bitRate: 64000,       // 語音足夠（原 128000）
+}
+```
+
+### 語音預載系統 (VoicePreloadContext)
+
+App 啟動時背景預載最近的語音訊息，提升播放體驗：
+- 預載最近 5 則收到的語音
+- 預載最近 3 則發送的語音
+- 最多快取 10 個音訊
+- 支援串流播放（邊下載邊播放）
+
+**Key File:** `apps/mobile/src/context/VoicePreloadContext.tsx`
 
 ## In-App Purchase (IAP)
 
@@ -659,3 +693,55 @@ useFocusEffect(
 - DraftsScreen：從編輯頁返回後更新草稿列表
 - InboxListScreen：返回時更新未讀狀態
 - WalletScreen：購買完成後更新點數
+
+## Invite Code System（邀請碼系統）
+
+### 雙軌邀請碼設計
+
+邀請碼同時支援兩種格式，方便記憶且向後相容：
+
+| 類型 | 格式 | 範例 | 說明 |
+|------|------|------|------|
+| 車牌邀請碼 | 正規化車牌 | `ABC1234` | 有車牌的用戶使用車牌作為邀請碼 |
+| 隨機邀請碼 | 6 位英數 | `K5MN2P` | 沒有車牌的用戶使用隨機碼 |
+
+### 驗證邏輯
+
+輸入邀請碼時，後端會依序檢查：
+1. 先查 `User.inviteCode` 欄位（精確匹配）
+2. 若無結果，再查 `User.licensePlate` 欄位
+
+```typescript
+// apps/api/src/invite/invite.service.ts
+private async findInviterByCode(code: string) {
+  const upperCode = code.toUpperCase();
+
+  // 1. 先用 inviteCode 查找
+  let inviter = await this.prisma.user.findUnique({
+    where: { inviteCode: upperCode },
+  });
+
+  // 2. 如果沒找到，用車牌查找
+  if (!inviter) {
+    inviter = await this.prisma.user.findFirst({
+      where: { licensePlate: upperCode },
+    });
+  }
+
+  return inviter;
+}
+```
+
+### 前端顯示邏輯
+
+用戶的邀請碼顯示優先級：
+1. 有車牌 → 顯示正規化後的車牌（去掉符號）
+2. 沒車牌 → 顯示隨機邀請碼（`inviteCode` 欄位）
+
+### 注意事項
+
+- **Prisma 查詢**：`licensePlate` 不是 unique 欄位，必須用 `findFirst` 而非 `findUnique`
+- **向後相容**：舊用戶的隨機邀請碼仍然有效
+- **大小寫不敏感**：輸入會自動轉換為大寫
+
+**Key File:** `apps/api/src/invite/invite.service.ts`
