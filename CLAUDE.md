@@ -283,6 +283,50 @@ AI moderation returns one of these categories:
 - 使用黃色警告樣式（不是紅色錯誤樣式）
 - **不阻擋發送**，只是提醒用戶
 
+### Profanity Dictionary Management (2026-01 新增)
+
+詞庫可透過 Admin 後台管理，App 會自動同步最新詞庫。
+
+**架構：**
+```
+Admin 修改詞庫 → 版本號遞增 → App 啟動時檢查版本 → 有更新就下載 → 使用新詞庫檢查
+```
+
+**Admin 頁面：** `/BBBeepadmin2026/profanity`
+- 新增/編輯/刪除詞彙
+- 批量匯入
+- 篩選：類別、嚴重度、啟用狀態
+
+**API Endpoints：**
+| Endpoint | 說明 | 權限 |
+|----------|------|------|
+| `GET /profanity/version` | 取得版本號 | 公開 |
+| `GET /profanity/dictionary` | 取得完整詞庫 | 公開 |
+| `GET /profanity/admin` | 列出所有詞彙 | Admin |
+| `POST /profanity/admin` | 新增詞彙 | Admin |
+| `POST /profanity/admin/import` | 批量匯入 | Admin |
+| `PUT /profanity/admin/:id` | 更新詞彙 | Admin |
+| `DELETE /profanity/admin/:id` | 刪除詞彙 | Admin |
+
+**詞彙類別：**
+- `PROFANITY` - 髒話/粗話
+- `THREAT` - 威脅性言語
+- `HARASSMENT` - 騷擾性言語
+- `DISCRIMINATION` - 歧視性言語
+
+**嚴重度：** `LOW` / `MEDIUM` / `HIGH`
+
+**Mobile 同步機制：**
+- `apps/mobile/src/lib/profanitySync.ts` - 同步邏輯
+- App 啟動時呼叫 `initProfanitySync()`
+- 詞庫快取在 AsyncStorage
+- `checkProfanityFromSync()` 用於檢查文字
+
+**Key Files:**
+- `apps/api/src/profanity/` - 後端模組
+- `apps/web/src/app/BBBeepadmin2026/profanity/page.tsx` - Admin 頁面
+- `packages/shared/src/api/services/profanity.ts` - API client
+
 ### Messages API 格式要求 (CRITICAL)
 
 發送訊息時，必須遵守後端 DTO 的格式要求：
