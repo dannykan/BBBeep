@@ -37,6 +37,14 @@ import {
   borderRadius,
 } from '../../theme';
 
+// 根據時間返回問候語
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return '早安';
+  if (hour >= 12 && hour < 18) return '午安';
+  return '晚安';
+};
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { user, refreshUser } = useAuth();
@@ -133,6 +141,25 @@ export default function HomeScreen() {
   const totalPoints = getTotalPoints(user);
   const isLowPoints = totalPoints < 5;
 
+  // 問候語和顯示名稱
+  const greeting = useMemo(() => getGreeting(), []);
+  const displayName = useMemo(() => user?.nickname || '大大', [user?.nickname]);
+
+  // 根據試用剩餘天數返回對應顏色
+  const getTrialColors = useCallback((daysRemaining: number) => {
+    if (daysRemaining >= 7) {
+      return { bg: '#F3E8FF', text: '#8B5CF6' }; // 紫色 - 正常
+    } else if (daysRemaining >= 4) {
+      return { bg: '#FEF3C7', text: '#D97706' }; // 橘色 - 提醒
+    } else {
+      return { bg: '#FEE2E2', text: '#DC2626' }; // 紅色 - 緊急
+    }
+  }, []);
+
+  const trialColors = useMemo(() => {
+    return getTrialColors(trialStatus?.daysRemaining ?? 14);
+  }, [trialStatus?.daysRemaining, getTrialColors]);
+
   // 顯示麥克風權限被拒絕的提示
   const showMicPermissionDeniedAlert = useCallback(() => {
     Alert.alert(
@@ -197,9 +224,9 @@ export default function HomeScreen() {
           <View style={styles.headerRight}>
             {/* Trial Badge */}
             {trialStatus?.isInTrial && trialStatus.daysRemaining > 0 && (
-              <View style={styles.trialBadge}>
-                <Ionicons name="time-outline" size={14} color="#8B5CF6" />
-                <Text style={styles.trialText}>試用 {trialStatus.daysRemaining} 天</Text>
+              <View style={[styles.trialBadge, { backgroundColor: trialColors.bg }]}>
+                <Ionicons name="time-outline" size={14} color={trialColors.text} />
+                <Text style={[styles.trialText, { color: trialColors.text }]}>試用 {trialStatus.daysRemaining} 天</Text>
               </View>
             )}
 
@@ -223,16 +250,48 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Hero Section */}
+        {/* Hero Section - 合併個人資訊 */}
         <GradientBackground
           colors={[colors.primary.DEFAULT, '#1D4ED8']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroSection}
         >
+          {/* 上方：問候語（左）+ 車牌（右） */}
+          <View style={styles.heroTopRow}>
+            {/* 左側：問候語 */}
+            <Text style={styles.heroGreeting}>{greeting}，{displayName} 👋</Text>
+
+            {/* 右側：車牌 Badge（半透明背景 + 白字） */}
+            {user?.licensePlate ? (
+              <View style={styles.heroPlateBadge}>
+                <VehicleIcon
+                  userType={user?.userType}
+                  vehicleType={user?.vehicleType}
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.heroPlateBadgeText}>
+                  {displayLicensePlate(user.licensePlate)}
+                </Text>
+              </View>
+            ) : user?.userType === 'pedestrian' ? (
+              <View style={styles.heroPlateBadge}>
+                <VehicleIcon
+                  userType="pedestrian"
+                  size={14}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.heroPlateBadgeText}>行人</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* 標題和副標題 */}
           <Text style={styles.heroTitle}>{heroTitle}</Text>
           <Text style={styles.heroSubtitle}>{heroSubtitle}</Text>
 
+          {/* 操作按鈕 */}
           <View style={styles.heroButtons}>
             <TouchableOpacity
               style={styles.heroButtonWhite}
@@ -255,37 +314,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </GradientBackground>
-
-        {/* User Profile Card */}
-        <View style={styles.userCard}>
-          <View style={styles.userAvatar}>
-            <VehicleIcon
-              userType={user?.userType}
-              vehicleType={user?.vehicleType}
-              size={28}
-              color={colors.primary.DEFAULT}
-            />
-          </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userNickname}>{user?.nickname || '用戶'}</Text>
-            <View style={styles.userPlateRow}>
-              <View style={styles.userTypeBadge}>
-                <Text style={styles.userTypeBadgeText}>
-                  {user?.userType === 'pedestrian' ? '行人' : user?.vehicleType === 'motorcycle' ? '機車' : '汽車'}
-                </Text>
-              </View>
-              {user?.licensePlate && (
-                <Text style={styles.userPlateText}>{displayLicensePlate(user.licensePlate)}</Text>
-              )}
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.userEditButton}
-            onPress={() => navigation.navigate('EditProfile')}
-          >
-            <Ionicons name="pencil" size={16} color={colors.text.secondary} />
-          </TouchableOpacity>
-        </View>
 
         {/* Quick Access Section */}
         <View style={styles.sectionContainer}>
@@ -501,11 +529,36 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       gap: 24,
     },
 
-    // Hero Section
+    // Hero Section - 合併個人資訊
     heroSection: {
       borderRadius: 24,
       padding: 24,
       gap: 16,
+    },
+    heroTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    heroGreeting: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: 'rgba(255, 255, 255, 0.9)',
+    },
+    heroPlateBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 16,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    heroPlateBadgeText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: '#FFFFFF',
+      letterSpacing: 0.3,
     },
     heroTitle: {
       fontSize: 22,

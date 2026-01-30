@@ -66,6 +66,24 @@ export default function WalletScreen() {
   const { user, refreshUser } = useAuth();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
+  // 根據試用剩餘天數返回對應顏色
+  const getTrialColors = useCallback((daysRemaining: number) => {
+    if (daysRemaining >= 7) {
+      // 紫色 - 正常狀態
+      return { bg: 'rgba(139, 92, 246, 0.3)', text: '#FFFFFF', icon: '#E9D5FF' };
+    } else if (daysRemaining >= 4) {
+      // 橘色 - 提醒快到期
+      return { bg: 'rgba(251, 191, 36, 0.4)', text: '#FFFFFF', icon: '#FEF3C7' };
+    } else {
+      // 紅色 - 緊急提醒
+      return { bg: 'rgba(239, 68, 68, 0.4)', text: '#FFFFFF', icon: '#FECACA' };
+    }
+  }, []);
+
+  const trialColors = useMemo(() => {
+    return getTrialColors(trialStatus?.daysRemaining ?? 14);
+  }, [trialStatus?.daysRemaining, getTrialColors]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isRecharging, setIsRecharging] = useState(false);
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
@@ -385,8 +403,8 @@ export default function WalletScreen() {
             <Text style={styles.balanceUnit}>點</Text>
             {/* Trial Badge */}
             {trialStatus?.isInTrial && trialStatus.daysRemaining > 0 && (
-              <View style={styles.trialBadge}>
-                <Ionicons name="time-outline" size={14} color="#FFFFFF" />
+              <View style={[styles.trialBadge, { backgroundColor: trialColors.bg }]}>
+                <Ionicons name="time-outline" size={14} color={trialColors.icon} />
                 <Text style={styles.trialBadgeText}>免費試用剩餘 {trialStatus.daysRemaining} 天</Text>
               </View>
             )}
