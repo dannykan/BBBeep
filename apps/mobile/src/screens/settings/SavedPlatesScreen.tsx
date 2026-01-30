@@ -360,11 +360,12 @@ export default function SavedPlatesScreen() {
               style={styles.modalInput}
               value={addPlate}
               onChangeText={(text) => setAddPlate(formatPlateNumber(text))}
-              placeholder="ABC-1234"
+              placeholder="ABC1234"
               placeholderTextColor={colors.muted.foreground}
               autoCapitalize="characters"
-              maxLength={10}
+              maxLength={8}
             />
+            <Text style={styles.plateHint}>「-」可以不用輸入</Text>
 
             <Text style={styles.modalLabel}>暱稱</Text>
             <TextInput
@@ -708,6 +709,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean = false) =>
       fontWeight: '500',
       color: colors.text.secondary,
       marginBottom: 8,
+    },
+    plateHint: {
+      fontSize: 12,
+      color: colors.muted.foreground,
+      marginTop: -4,
+      marginBottom: 12,
     },
     modalInput: {
       backgroundColor: colors.background,

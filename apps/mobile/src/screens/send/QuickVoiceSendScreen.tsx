@@ -741,12 +741,20 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
                 color: colors.foreground,
               },
             ]}
-            placeholder="例：ABC-1234"
+            placeholder="例：ABC1234"
             placeholderTextColor={colors.muted.foreground}
             value={licensePlate}
-            onChangeText={setLicensePlate}
+            onChangeText={(text) => {
+              // 只允許大寫英文和數字
+              const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+              setLicensePlate(cleaned);
+            }}
             autoCapitalize="characters"
+            maxLength={8}
           />
+          <Text style={[styles.plateHint, { color: colors.muted.foreground }]}>
+            「-」可以不用輸入
+          </Text>
         </View>
 
         {/* 車輛類型 */}
@@ -1075,6 +1083,10 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
+  },
+  plateHint: {
+    fontSize: typography.fontSize.xs,
+    marginTop: spacing[1],
   },
   input: {
     borderWidth: 1,

@@ -151,13 +151,21 @@ export default function LoginScreen({ navigation }: Props) {
                         color: colors.foreground,
                       }
                     ]}
-                    placeholder="例如：ABC-1234"
+                    placeholder="例如：ABC1234"
                     placeholderTextColor={colors.muted.foreground}
                     value={licensePlate}
-                    onChangeText={setLicensePlate}
+                    onChangeText={(text) => {
+                      // 只允許大寫英文和數字
+                      const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                      setLicensePlate(cleaned);
+                    }}
                     autoCapitalize="characters"
                     autoCorrect={false}
+                    maxLength={8}
                   />
+                  <Text style={[styles.plateHint, { color: colors.muted.foreground }]}>
+                    「-」可以不用輸入
+                  </Text>
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -410,6 +418,10 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
     marginBottom: spacing[2],
+  },
+  plateHint: {
+    fontSize: typography.fontSize.xs,
+    marginTop: spacing[1],
   },
   input: {
     borderWidth: 1,

@@ -249,8 +249,8 @@ export default function LicensePlateChangeScreen() {
             />
             <Text style={styles.inputHint}>
               {vehicleType === 'car'
-                ? '格式範例：ABC1234 或 ABC-1234'
-                : '格式範例：ABC123 或 ABC-123'}
+                ? '格式範例：ABC1234（「-」可以不用輸入）'
+                : '格式範例：ABC123（「-」可以不用輸入）'}
             </Text>
           </View>
 

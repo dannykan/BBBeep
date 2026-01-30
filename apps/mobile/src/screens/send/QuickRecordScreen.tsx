@@ -107,22 +107,79 @@ export default function QuickRecordScreen() {
     };
   }, [voiceUri, step]);
 
-  // 進入頁面時自動開始錄音
+  // 進入頁面時：先請求所有權限，再開始錄音
   useEffect(() => {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
-      const timer = setTimeout(() => {
-        if (AppState.currentState === 'active') {
-          console.log('[Recording] Auto-start triggered');
-          startRecordingRef.current?.();
-        } else {
-          console.log('[Recording] App not active, skipping auto-start');
+
+      const initializeAndStart = async () => {
+        if (AppState.currentState !== 'active') {
+          console.log('[Recording] App not active, skipping');
+          navigation.goBack();
+          return;
+        }
+
+        try {
+          // 1. 先請求麥克風權限
+          console.log('[Recording] Requesting microphone permission...');
+          const { status: micStatus } = await Audio.requestPermissionsAsync();
+
+          if (micStatus !== 'granted') {
+            Alert.alert(
+              '需要麥克風權限',
+              '請在設定中開啟麥克風權限以使用語音功能',
+              [{ text: '確定', onPress: () => navigation.goBack() }]
+            );
+            return;
+          }
+          console.log('[Recording] Microphone permission granted');
+
+          // 2. 請求位置權限（發送時需要位置資訊）
+          const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+          console.log('[Recording] Location permission:', locStatus);
+
+          if (locStatus !== 'granted') {
+            // 位置權限被拒絕，詢問用戶是否繼續
+            Alert.alert(
+              '位置權限未開啟',
+              '發送語音提醒需要地點資訊。您可以繼續錄音，稍後手動輸入地點。',
+              [
+                {
+                  text: '返回',
+                  style: 'cancel',
+                  onPress: () => navigation.goBack(),
+                },
+                {
+                  text: '繼續錄音',
+                  onPress: async () => {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (AppState.currentState === 'active') {
+                      startRecordingRef.current?.();
+                    }
+                  },
+                },
+              ]
+            );
+            return;
+          }
+
+          // 3. 短暫延遲後開始錄音（讓 UI 穩定）
+          await new Promise(resolve => setTimeout(resolve, 200));
+
+          if (AppState.currentState === 'active') {
+            console.log('[Recording] Starting recording...');
+            startRecordingRef.current?.();
+          }
+        } catch (err) {
+          console.error('[Recording] Permission error:', err);
+          Alert.alert('錯誤', '無法取得必要權限');
           navigation.goBack();
         }
-      }, 300);
-      return () => clearTimeout(timer);
+      };
+
+      initializeAndStart();
     }
-  }, []);
+  }, [navigation]);
 
   // 清理
   useEffect(() => {
@@ -289,18 +346,12 @@ export default function QuickRecordScreen() {
 
   startRecordingRef.current = startRecording;
 
-  // 取得位置
+  // 取得位置（權限已在進入頁面時請求過）
   const getLocation = async () => {
     try {
-      const { status: existingStatus, canAskAgain } = await Location.getForegroundPermissionsAsync();
-      let hasPermission = existingStatus === 'granted';
+      const { status } = await Location.getForegroundPermissionsAsync();
 
-      if (!hasPermission && canAskAgain) {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        hasPermission = status === 'granted';
-      }
-
-      if (hasPermission) {
+      if (status === 'granted') {
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });

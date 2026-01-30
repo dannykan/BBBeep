@@ -232,7 +232,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
             )}
           </View>
           <Text style={[styles.inputHint, { color: colors.muted.foreground }]}>
-            僅用於投遞提醒，不會公開顯示
+            「-」可以不用輸入，僅用於投遞提醒
           </Text>
         </View>
 
