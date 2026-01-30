@@ -79,8 +79,9 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
-        nickname: true,
         hasCompletedOnboarding: true,
+        appleUserId: true,
+        lineUserId: true,
       },
     });
 
@@ -90,11 +91,18 @@ export class UsersService {
     );
 
     if (completedUser) {
+      // 判斷註冊方式
+      let authProvider: 'apple' | 'line' | undefined;
+      if (completedUser.appleUserId) {
+        authProvider = 'apple';
+      } else if (completedUser.lineUserId) {
+        authProvider = 'line';
+      }
+
       return {
         available: false,
         isBound: true,
-        boundPhone: completedUser.phone,
-        boundNickname: completedUser.nickname,
+        authProvider,
       };
     }
 
@@ -141,9 +149,7 @@ export class UsersService {
       const checkResult = await this.checkLicensePlateAvailability(normalizedPlate);
 
       if (checkResult.isBound) {
-        throw new BadRequestException(
-          `該車牌已被綁定到手機號碼 ${checkResult.boundPhone}，無法重複綁定`,
-        );
+        throw new BadRequestException('該車牌已被其他帳號綁定，無法重複綁定');
       }
 
       // 查找該車牌的臨時用戶（phone 以 temp_ 或 unbound_ 開頭）

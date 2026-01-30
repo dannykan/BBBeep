@@ -35,8 +35,7 @@ const OnboardingPage = React.memo(() => {
   const [showLicensePlateDialog, setShowLicensePlateDialog] = useState(false);
   const [licensePlateCheckResult, setLicensePlateCheckResult] = useState<{
     isBound: boolean;
-    boundPhone?: string;
-    boundNickname?: string;
+    authProvider?: 'apple' | 'line';
   } | null>(null);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
   const [licenseImage, setLicenseImage] = useState<string>('');
@@ -135,8 +134,7 @@ const OnboardingPage = React.memo(() => {
         // 車牌已被綁定，顯示警示對話框
         setLicensePlateCheckResult({
           isBound: true,
-          boundPhone: checkResult.boundPhone,
-          boundNickname: checkResult.boundNickname,
+          authProvider: checkResult.authProvider,
         });
         setShowLicensePlateDialog(true);
         setIsLoading(false);
@@ -683,31 +681,45 @@ const OnboardingPage = React.memo(() => {
       <Dialog open={showLicensePlateDialog} onOpenChange={setShowLicensePlateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>車牌已被登記</DialogTitle>
+            <DialogTitle>此車牌已被註冊</DialogTitle>
             <DialogDescription>
-              該車牌號碼 <strong>{licensePlate.toUpperCase()}</strong> 已被綁定到手機號碼{' '}
-              <strong>{licensePlateCheckResult?.boundPhone}</strong>
-              {licensePlateCheckResult?.boundNickname && ` (${licensePlateCheckResult.boundNickname})`}。
-              <br />
-              <br />
-              這是否為您的車輛？
+              車牌 <strong>{licensePlate.toUpperCase()}</strong> 已有人註冊。
+              {licensePlateCheckResult?.authProvider && (
+                <>
+                  <br />
+                  註冊方式：<strong>{licensePlateCheckResult.authProvider === 'apple' ? 'Apple 帳號' : 'LINE 帳號'}</strong>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex-wrap">
+          <div className="flex flex-col gap-3 py-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowLicensePlateDialog(false);
+                alert('您可以返回登入頁面，嘗試使用其他帳號（Apple 或 LINE）登入，看看是否能找到您之前的帳戶。');
+              }}
+              className="w-full justify-start gap-2"
+            >
+              <span>🔑</span>
+              我忘記用哪個帳號註冊了
+            </Button>
+            <Button onClick={handleConfirmApplication} className="w-full justify-start gap-2">
+              <span>🚗</span>
+              這是我的車，但被別人註冊
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
                 setShowLicensePlateDialog(false);
                 setLicensePlate('');
               }}
-              className="flex-1 min-w-0 shrink"
+              className="w-full justify-start gap-2"
             >
-              不是，重新輸入
+              <span>←</span>
+              重新輸入車牌
             </Button>
-            <Button onClick={handleConfirmApplication} className="flex-1 min-w-0 shrink">
-              是，提交申請
-            </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

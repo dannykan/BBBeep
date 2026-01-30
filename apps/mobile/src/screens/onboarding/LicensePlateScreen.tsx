@@ -250,39 +250,70 @@ export default function LicensePlateScreen({ navigation }: Props) {
       <Modal visible={showLicensePlateDialog} transparent animationType="fade">
         <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)' }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.card.DEFAULT }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>車牌已被登記</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>此車牌已被註冊</Text>
             <Text style={[styles.modalDescription, { color: colors.muted.foreground }]}>
-              該車牌號碼{' '}
+              車牌{' '}
               <Text style={[styles.boldText, { color: colors.foreground }]}>
                 {displayLicensePlate(licensePlate)}
               </Text>{' '}
-              已被綁定到手機號碼{' '}
-              <Text style={[styles.boldText, { color: colors.foreground }]}>
-                {licensePlateCheckResult?.boundPhone}
-              </Text>
-              {licensePlateCheckResult?.boundNickname &&
-                ` (${licensePlateCheckResult.boundNickname})`}
-              。{'\n\n'}這是否為您的車輛？
+              已有人註冊。
+              {licensePlateCheckResult?.authProvider && (
+                <>
+                  {'\n'}註冊方式：
+                  <Text style={[styles.boldText, { color: colors.foreground }]}>
+                    {licensePlateCheckResult.authProvider === 'apple' ? 'Apple 帳號' : 'LINE 帳號'}
+                  </Text>
+                </>
+              )}
             </Text>
-            <View style={styles.modalButtons}>
+
+            <View style={styles.optionButtons}>
+              {/* Option 1: Forgot which account */}
               <TouchableOpacity
-                style={[styles.modalSecondaryButton, { backgroundColor: colors.muted.DEFAULT }]}
+                style={[styles.optionButton, { backgroundColor: colors.muted.DEFAULT }]}
+                onPress={() => {
+                  setShowLicensePlateDialog(false);
+                  Alert.alert(
+                    '試試其他登入方式',
+                    '您可以返回登入頁面，嘗試使用其他帳號（Apple 或 LINE）登入，看看是否能找到您之前的帳戶。',
+                    [
+                      { text: '知道了', style: 'default' },
+                    ]
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="key-outline" size={20} color={colors.foreground} />
+                <Text style={[styles.optionButtonText, { color: colors.foreground }]}>
+                  我忘記用哪個帳號註冊了
+                </Text>
+              </TouchableOpacity>
+
+              {/* Option 2: Someone else registered my plate */}
+              <TouchableOpacity
+                style={[styles.optionButton, { backgroundColor: colors.primary.DEFAULT }]}
+                onPress={handleConfirmApplication}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="car-outline" size={20} color={colors.primary.foreground} />
+                <Text style={[styles.optionButtonText, { color: colors.primary.foreground }]}>
+                  這是我的車，但被別人註冊
+                </Text>
+              </TouchableOpacity>
+
+              {/* Option 3: Re-enter plate */}
+              <TouchableOpacity
+                style={[styles.optionButtonOutline, { borderColor: colors.border }]}
                 onPress={() => {
                   setShowLicensePlateDialog(false);
                   setLicensePlate('');
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.modalSecondaryButtonText, { color: colors.foreground }]}>
-                  不是，重新輸入
+                <Ionicons name="arrow-back-outline" size={20} color={colors.muted.foreground} />
+                <Text style={[styles.optionButtonText, { color: colors.muted.foreground }]}>
+                  重新輸入車牌
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalPrimaryButton, { backgroundColor: colors.primary.DEFAULT }]}
-                onPress={handleConfirmApplication}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.modalPrimaryButtonText, { color: colors.primary.foreground }]}>是，提交申請</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -559,6 +590,33 @@ const styles = StyleSheet.create({
   modalPrimaryButtonText: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium as any,
+  },
+
+  // Option Buttons (for license plate bound dialog)
+  optionButtons: {
+    gap: spacing[3],
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[3.5],
+    paddingHorizontal: spacing[4],
+  },
+  optionButtonOutline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[3.5],
+    paddingHorizontal: spacing[4],
+    borderWidth: 1,
+  },
+  optionButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium as any,
+    flex: 1,
   },
 
   // Application Form

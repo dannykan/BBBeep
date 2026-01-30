@@ -244,8 +244,7 @@ export interface UserInviteStats {
 export interface LicensePlateCheckResponse {
   available: boolean;
   isBound: boolean;
-  boundPhone?: string;
-  boundNickname?: string;
+  authProvider?: 'apple' | 'line';
   hasPendingApplication?: boolean;
 }
 
