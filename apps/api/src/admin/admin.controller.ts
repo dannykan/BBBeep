@@ -15,7 +15,13 @@ import { AdminService } from './admin.service';
 import { AIPromptService } from '../ai/ai-prompt.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivitiesService } from '../activities/activities.service';
-import { UserType, VehicleType, InviteStatus, NotificationType, ActivityType } from '@prisma/client';
+import {
+  UserType,
+  VehicleType,
+  InviteStatus,
+  NotificationType,
+  ActivityType,
+} from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Admin')
@@ -41,12 +47,14 @@ export class AdminController {
   async getAllUsers(
     @Headers('x-admin-token') token: string,
     @Query('userType') userType?: UserType,
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
   ) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
     }
-    return this.adminService.getAllUsers(userType);
+    return this.adminService.getAllUsers(userType, search, limit ? parseInt(limit, 10) : undefined);
   }
 
   @Get('users/:id')
@@ -119,10 +127,7 @@ export class AdminController {
   @Post('license-plates')
   @ApiOperation({ summary: '新增未綁定車牌' })
   @ApiHeader({ name: 'x-admin-token', required: true })
-  async createLicensePlate(
-    @Headers('x-admin-token') token: string,
-    @Body() data: any,
-  ) {
+  async createLicensePlate(@Headers('x-admin-token') token: string, @Body() data: any) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
@@ -259,10 +264,7 @@ export class AdminController {
   @Put('users/:id/unblock')
   @ApiOperation({ summary: '解除封鎖用戶' })
   @ApiHeader({ name: 'x-admin-token', required: true })
-  async unblockUser(
-    @Headers('x-admin-token') token: string,
-    @Param('id') id: string,
-  ) {
+  async unblockUser(@Headers('x-admin-token') token: string, @Param('id') id: string) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
@@ -273,10 +275,7 @@ export class AdminController {
   @Delete('users/:id')
   @ApiOperation({ summary: '刪除用戶（讓用戶可以重新註冊）' })
   @ApiHeader({ name: 'x-admin-token', required: true })
-  async deleteUser(
-    @Headers('x-admin-token') token: string,
-    @Param('id') id: string,
-  ) {
+  async deleteUser(@Headers('x-admin-token') token: string, @Param('id') id: string) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
@@ -302,7 +301,8 @@ export class AdminController {
   @ApiHeader({ name: 'x-admin-token', required: true })
   async updateInviteSettings(
     @Headers('x-admin-token') token: string,
-    @Body() data: {
+    @Body()
+    data: {
       defaultInviterReward?: number;
       defaultInviteeReward?: number;
       isEnabled?: boolean;
@@ -346,7 +346,8 @@ export class AdminController {
   async updateUserInviteSettings(
     @Headers('x-admin-token') token: string,
     @Param('id') id: string,
-    @Body() data: {
+    @Body()
+    data: {
       inviteCode?: string;
       customInviterReward?: number | null;
       customInviteeReward?: number | null;
@@ -362,10 +363,7 @@ export class AdminController {
   @Post('users/:id/invite/generate')
   @ApiOperation({ summary: '為用戶生成新的邀請碼' })
   @ApiHeader({ name: 'x-admin-token', required: true })
-  async generateUserInviteCode(
-    @Headers('x-admin-token') token: string,
-    @Param('id') id: string,
-  ) {
+  async generateUserInviteCode(@Headers('x-admin-token') token: string, @Param('id') id: string) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
@@ -376,10 +374,7 @@ export class AdminController {
   @Get('users/:id/invite-stats')
   @ApiOperation({ summary: '取得用戶的邀請統計' })
   @ApiHeader({ name: 'x-admin-token', required: true })
-  async getUserInviteStats(
-    @Headers('x-admin-token') token: string,
-    @Param('id') id: string,
-  ) {
+  async getUserInviteStats(@Headers('x-admin-token') token: string, @Param('id') id: string) {
     const isValid = await this.adminService.verifyToken(token);
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
@@ -400,11 +395,7 @@ export class AdminController {
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
     }
-    return this.notificationsService.sendBroadcast(
-      data.title,
-      data.body,
-      'admin',
-    );
+    return this.notificationsService.sendBroadcast(data.title, data.body, 'admin');
   }
 
   @Post('notifications/send')
@@ -418,12 +409,7 @@ export class AdminController {
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
     }
-    return this.notificationsService.sendToUsers(
-      data.userIds,
-      data.title,
-      data.body,
-      'admin',
-    );
+    return this.notificationsService.sendToUsers(data.userIds, data.title, data.body, 'admin');
   }
 
   @Get('notifications/logs')
@@ -498,9 +484,7 @@ export class AdminController {
     if (!isValid) {
       throw new UnauthorizedException('無效的管理員 token');
     }
-    return this.activitiesService.getRecentActivities(
-      limit ? parseInt(limit) : 50,
-    );
+    return this.activitiesService.getRecentActivities(limit ? parseInt(limit) : 50);
   }
 
   @Get('activities/stats')
@@ -558,7 +542,8 @@ export class AdminController {
   @ApiHeader({ name: 'x-admin-token', required: true })
   async updateAppContent(
     @Headers('x-admin-token') token: string,
-    @Body() data: {
+    @Body()
+    data: {
       landingTagline?: string;
       landingSubtext?: string;
       homeHeroTitle?: string;

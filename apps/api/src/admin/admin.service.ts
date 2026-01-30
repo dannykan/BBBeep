@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { UserType, VehicleType, InviteStatus } from '@prisma/client';
 import { normalizeLicensePlate } from '../common/utils/license-plate-format';
@@ -33,23 +38,47 @@ export class AdminService {
     }
   }
 
-  async getAllUsers(userType?: UserType) {
+  async getAllUsers(userType?: UserType, search?: string, limit?: number) {
     const where: any = {
       // 排除臨時用戶和未綁定車牌用戶
       // 包含: LINE 用戶 (phone 為 null) 或 一般用戶 (phone 不以 temp_/unbound_ 開頭)
-      OR: [
-        { phone: null }, // LINE 用戶
+      AND: [
         {
-          AND: [
-            { phone: { not: { startsWith: 'temp_' } } },
-            { phone: { not: { startsWith: 'unbound_' } } },
+          OR: [
+            { phone: null }, // LINE 用戶
+            {
+              AND: [
+                { phone: { not: { startsWith: 'temp_' } } },
+                { phone: { not: { startsWith: 'unbound_' } } },
+              ],
+            },
           ],
         },
       ],
     };
 
     if (userType) {
-      where.userType = userType;
+      where.AND.push({ userType });
+    }
+
+    // 搜尋功能：支援手機、暱稱、車牌、LINE 顯示名稱
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      // 嘗試將搜尋詞正規化為車牌格式
+      const normalizedPlate = normalizeLicensePlate(searchTerm);
+
+      where.AND.push({
+        OR: [
+          { phone: { contains: searchTerm, mode: 'insensitive' } },
+          { nickname: { contains: searchTerm, mode: 'insensitive' } },
+          { lineDisplayName: { contains: searchTerm, mode: 'insensitive' } },
+          // 車牌搜尋：同時比對原始輸入和正規化後的車牌
+          { licensePlate: { contains: searchTerm, mode: 'insensitive' } },
+          ...(normalizedPlate !== searchTerm
+            ? [{ licensePlate: { contains: normalizedPlate, mode: 'insensitive' } }]
+            : []),
+        ],
+      });
     }
 
     return this.prisma.user.findMany({
@@ -79,6 +108,7 @@ export class AdminService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      ...(limit && { take: limit }),
     });
   }
 
@@ -103,14 +133,17 @@ export class AdminService {
     return user;
   }
 
-  async updateUser(userId: string, data: {
-    nickname?: string;
-    licensePlate?: string;
-    userType?: UserType;
-    vehicleType?: VehicleType;
-    points?: number;
-    email?: string;
-  }) {
+  async updateUser(
+    userId: string,
+    data: {
+      nickname?: string;
+      licensePlate?: string;
+      userType?: UserType;
+      vehicleType?: VehicleType;
+      points?: number;
+      email?: string;
+    },
+  ) {
     const updateData: any = {};
     if (data.nickname !== undefined) updateData.nickname = data.nickname;
     if (data.licensePlate !== undefined) {
@@ -132,9 +165,7 @@ export class AdminService {
   }
 
   async getUserMessages(userId: string, type: 'received' | 'sent' = 'received') {
-    const where = type === 'received' 
-      ? { receiverId: userId }
-      : { senderId: userId };
+    const where = type === 'received' ? { receiverId: userId } : { senderId: userId };
 
     return this.prisma.message.findMany({
       where,
@@ -158,11 +189,14 @@ export class AdminService {
     });
   }
 
-  async updateMessage(messageId: string, data: {
-    template?: string;
-    customText?: string;
-    read?: boolean;
-  }) {
+  async updateMessage(
+    messageId: string,
+    data: {
+      template?: string;
+      customText?: string;
+      read?: boolean;
+    },
+  ) {
     return this.prisma.message.update({
       where: { id: messageId },
       data,
@@ -185,7 +219,7 @@ export class AdminService {
     if (!normalizedPlate) {
       throw new BadRequestException('車牌號碼格式無效');
     }
-    
+
     // 檢查車牌是否已存在（不包括臨時和未綁定用戶）
     const existing = await this.prisma.user.findFirst({
       where: {
@@ -220,18 +254,18 @@ export class AdminService {
     if (!normalizedPlate) {
       throw new BadRequestException('車牌號碼格式無效');
     }
-    
-      // 檢查新車牌是否已被其他用戶使用（不包括臨時和未綁定用戶）
-      const existing = await this.prisma.user.findFirst({
-        where: {
-          licensePlate: normalizedPlate,
-          id: { not: userId },
-          AND: [
-            { phone: { not: { startsWith: 'temp_' } } },
-            { phone: { not: { startsWith: 'unbound_' } } },
-          ],
-        },
-      });
+
+    // 檢查新車牌是否已被其他用戶使用（不包括臨時和未綁定用戶）
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        licensePlate: normalizedPlate,
+        id: { not: userId },
+        AND: [
+          { phone: { not: { startsWith: 'temp_' } } },
+          { phone: { not: { startsWith: 'unbound_' } } },
+        ],
+      },
+    });
 
     if (existing) {
       throw new BadRequestException('該車牌已被其他用戶使用');
@@ -266,7 +300,11 @@ export class AdminService {
     });
   }
 
-  async reviewApplication(applicationId: string, decision: 'approved' | 'rejected', adminNote?: string) {
+  async reviewApplication(
+    applicationId: string,
+    decision: 'approved' | 'rejected',
+    adminNote?: string,
+  ) {
     const application = await this.prisma.licensePlateApplication.findUnique({
       where: { id: applicationId },
       include: { user: true },
@@ -286,7 +324,7 @@ export class AdminService {
       if (!normalizedPlate) {
         throw new BadRequestException('車牌號碼格式無效');
       }
-      
+
       // 檢查車牌是否已被綁定（不包括臨時和未綁定用戶）
       const existing = await this.prisma.user.findFirst({
         where: {
@@ -365,7 +403,11 @@ export class AdminService {
     });
   }
 
-  async reviewMessageReport(reportId: string, decision: 'reviewed' | 'resolved', adminNote?: string) {
+  async reviewMessageReport(
+    reportId: string,
+    decision: 'reviewed' | 'resolved',
+    adminNote?: string,
+  ) {
     const report = await this.prisma.messageReport.findUnique({
       where: { id: reportId },
     });
@@ -605,7 +647,9 @@ export class AdminService {
       expiredInvites: totalInvites - completedInvites - pendingInvites,
       totalInviterRewards: totalInviterRewards._sum.inviterReward || 0,
       totalInviteeRewards: totalInviteeRewards._sum.inviteeReward || 0,
-      totalRewardsDistributed: (totalInviterRewards._sum.inviterReward || 0) + (totalInviteeRewards._sum.inviteeReward || 0),
+      totalRewardsDistributed:
+        (totalInviterRewards._sum.inviterReward || 0) +
+        (totalInviteeRewards._sum.inviteeReward || 0),
     };
   }
 
@@ -641,11 +685,14 @@ export class AdminService {
   }
 
   // 更新用戶的邀請碼設定
-  async updateUserInviteSettings(userId: string, data: {
-    inviteCode?: string;
-    customInviterReward?: number | null;
-    customInviteeReward?: number | null;
-  }) {
+  async updateUserInviteSettings(
+    userId: string,
+    data: {
+      inviteCode?: string;
+      customInviterReward?: number | null;
+      customInviteeReward?: number | null;
+    },
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -777,7 +824,7 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const completedInvites = inviteHistory.filter(h => h.status === 'completed');
+    const completedInvites = inviteHistory.filter((h) => h.status === 'completed');
     const totalRewards = completedInvites.reduce((sum, h) => sum + h.inviterReward, 0);
 
     const settings = await this.getInviteSettings();
@@ -790,9 +837,9 @@ export class AdminService {
       effectiveInviteeReward: user.customInviteeReward ?? settings.defaultInviteeReward,
       invitedBy: user.invitedBy,
       inviteCount: completedInvites.length,
-      pendingCount: inviteHistory.filter(h => h.status === 'pending').length,
+      pendingCount: inviteHistory.filter((h) => h.status === 'pending').length,
       totalRewards,
-      inviteHistory: inviteHistory.map(h => ({
+      inviteHistory: inviteHistory.map((h) => ({
         id: h.id,
         inviteeNickname: h.invitee.nickname || '匿名用戶',
         status: h.status,
@@ -807,8 +854,8 @@ export class AdminService {
   // ========== 推播通知統計 ==========
 
   async getNotificationStats() {
-    const [totalDevices, activeDevices, iosDevices, androidDevices, recentLogs] =
-      await Promise.all([
+    const [totalDevices, activeDevices, iosDevices, androidDevices, recentLogs] = await Promise.all(
+      [
         this.prisma.deviceToken.count(),
         this.prisma.deviceToken.count({ where: { isActive: true } }),
         this.prisma.deviceToken.count({ where: { platform: 'ios', isActive: true } }),
@@ -817,7 +864,8 @@ export class AdminService {
           orderBy: { createdAt: 'desc' },
           take: 10,
         }),
-      ]);
+      ],
+    );
 
     const totalSent = await this.prisma.notificationLog.aggregate({
       _sum: {
