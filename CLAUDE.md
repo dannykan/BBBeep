@@ -265,21 +265,23 @@ This ensures important decisions and patterns are documented for future sessions
 **遷移腳本：**
 - `apps/api/scripts/migrate-trial-points.ts` → 更新現有用戶的試用點數
 
-### AI Moderation Categories
+### AI Moderation Categories (2026-01 簡化)
 AI moderation returns one of these categories:
 
 | Category | Behavior |
 |----------|----------|
 | `ok` | Content passes - show normal submit options |
-| `emotional` | Show "AI 優化（推薦）" button + "堅持原內容" button with warning |
-| `inappropriate` | Content unrelated to traffic - ask to re-edit, no submit buttons |
-| `dangerous` | Threats/harassment - ask to re-edit, no submit buttons |
+| `emotional` | Show warning + AI optimization option, **allow sending** |
+| `inappropriate` | Show warning + AI optimization option, **allow sending** |
+| `dangerous` | Show warning + AI optimization option, **allow sending** |
 
-### Content Warning UI
-- Keep warning messages concise
-- Do NOT include legal terms like "公然侮辱、誹謗" - just mention "可能有法律風險"
-- For `inappropriate`/`dangerous`: show "請修改為與行車相關的內容"
-- For `emotional`: show "建議使用 AI 優化，或修改後再發送"
+**重要原則：** 不要阻擋用戶發送！所有類別都允許用戶送出，只是顯示警告。
+
+### Content Warning UI (2026-01 簡化)
+- 統一警告訊息：「內容可能有法律風險，送出前請三思」
+- 統一建議：「建議使用 AI 優化讓訊息更友善」
+- 使用黃色警告樣式（不是紅色錯誤樣式）
+- **不阻擋發送**，只是提醒用戶
 
 ### Messages API 格式要求 (CRITICAL)
 

@@ -959,24 +959,17 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                 </View>
               )}
 
-              {/* AI 審核不通過 - 簡潔警告 (只在非模板模式顯示) */}
+              {/* AI 審核警告 - 統一警告訊息 (只在非模板模式顯示) */}
               {!effectiveIsUsingTemplate && !isAiModerating && combinedWarning.hasIssue && trimmedLength >= MIN_CHARS && (
-                <View style={[styles.warningCard, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2', borderColor: isDark ? '#DC2626' : '#EF4444' }]}>
-                  <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                <View style={[styles.warningCard, { backgroundColor: isDark ? '#7F1D1D' : '#FEF3C7', borderColor: isDark ? '#DC2626' : '#F59E0B' }]}>
+                  <Ionicons name="warning" size={20} color={isDark ? '#DC2626' : '#F59E0B'} />
                   <View style={styles.warningContent}>
-                    <Text style={[styles.warningText, { color: isDark ? '#FECACA' : '#991B1B' }]}>
-                      {combinedWarning.message || aiModeration?.reason || '內容可能不適合發送'}
+                    <Text style={[styles.warningText, { color: isDark ? '#FECACA' : '#92400E' }]}>
+                      內容可能有法律風險，送出前請三思
                     </Text>
-                    {aiModeration?.category === 'emotional' && (
-                      <Text style={[styles.warningHint, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>
-                        建議使用 AI 優化，或修改後再發送
-                      </Text>
-                    )}
-                    {(aiModeration?.category === 'inappropriate' || aiModeration?.category === 'dangerous') && (
-                      <Text style={[styles.warningHint, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>
-                        請修改為與行車相關的內容
-                      </Text>
-                    )}
+                    <Text style={[styles.warningHint, { color: isDark ? '#FCA5A5' : '#B45309' }]}>
+                      建議使用 AI 優化讓訊息更友善
+                    </Text>
                   </View>
                 </View>
               )}
@@ -1072,11 +1065,11 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                     </>
                   )}
 
-                  {/* 非模板模式：顯示語音/AI優化/文字發送選項 */}
+                  {/* 非模板模式：簡化邏輯 - 永遠顯示發送按鈕，有警告時額外顯示提示 */}
                   {!effectiveIsUsingTemplate && (
                     <>
-                      {/* Voice option */}
-                      {hasVoice && !combinedWarning.hasIssue && (
+                      {/* Voice option - 有語音時顯示 */}
+                      {hasVoice && (
                         <TouchableOpacity
                           style={[styles.submitOption, { backgroundColor: '#10B981' }]}
                           onPress={handleVoiceSubmit}
@@ -1094,8 +1087,8 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Text option - 審核通過時顯示（文字免費）*/}
-                      {aiModerationPassed && (
+                      {/* Text option - 永遠顯示（無語音時）*/}
+                      {!hasVoice && (
                         <TouchableOpacity
                           style={[styles.submitOption, { backgroundColor: colors.primary.DEFAULT }]}
                           onPress={handleTextSubmit}
@@ -1113,79 +1106,30 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                         </TouchableOpacity>
                       )}
 
-                      {/* emotional 類別：顯示 AI 優化（推薦）+ 堅持原內容 */}
-                      {!aiModerationPassed && aiModeration?.category === 'emotional' && (
-                        <>
-                          {/* AI 優化（推薦） */}
-                          {aiLimit.canUse && (
-                            <TouchableOpacity
-                              style={[
-                                styles.submitOption,
-                                { backgroundColor: colors.primary.DEFAULT },
-                                isOptimizing && styles.buttonDisabled,
-                              ]}
-                              onPress={handleAiSubmit}
-                              activeOpacity={0.8}
-                              disabled={isOptimizing}
-                            >
-                              <View style={styles.optionMain}>
-                                {isOptimizing ? (
-                                  <ActivityIndicator size="small" color={colors.primary.foreground} />
-                                ) : (
-                                  <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
-                                )}
-                                <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
-                                  {isOptimizing ? 'AI 優化中...' : 'AI 優化（推薦）'}
-                                </Text>
-                              </View>
-                              <View style={styles.pointBadge}>
-                                <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-
-                          {/* 堅持原內容 - 語音 */}
-                          {hasVoice && (
-                            <TouchableOpacity
-                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.border }]}
-                              onPress={handleVoiceSubmit}
-                              activeOpacity={0.8}
-                            >
-                              <View style={styles.optionMain}>
-                                <Ionicons name="volume-high" size={20} color={colors.muted.foreground} />
-                                <Text style={[styles.optionText, { color: colors.foreground }]}>
-                                  堅持使用語音送出
-                                </Text>
-                              </View>
-                              <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>8 點</Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-
-                          {/* 堅持原內容 - 文字 */}
-                          {!hasVoice && (
-                            <TouchableOpacity
-                              style={[styles.submitOption, styles.insistOption, { borderColor: colors.border }]}
-                              onPress={handleTextSubmit}
-                              activeOpacity={0.8}
-                            >
-                              <View style={styles.optionMain}>
-                                <Ionicons name="document-text-outline" size={20} color={colors.muted.foreground} />
-                                <Text style={[styles.optionText, { color: colors.foreground }]}>
-                                  堅持原內容送出
-                                </Text>
-                              </View>
-                              <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                                <Text style={[styles.pointBadgeText, { color: colors.foreground }]}>免費</Text>
-                              </View>
-                            </TouchableOpacity>
-                          )}
-
-                          <Text style={[styles.insistHint, { color: colors.muted.foreground }]}>
-                            堅持原內容發送可能有法律風險
-                          </Text>
-                        </>
+                      {/* AI 優化選項 - 有警告且 AI 可用時顯示 */}
+                      {!aiModerationPassed && aiLimit.canUse && (
+                        <TouchableOpacity
+                          style={[
+                            styles.submitOption,
+                            styles.insistOption,
+                            { borderColor: colors.primary.DEFAULT },
+                            isOptimizing && styles.buttonDisabled,
+                          ]}
+                          onPress={handleAiSubmit}
+                          activeOpacity={0.8}
+                          disabled={isOptimizing}
+                        >
+                          <View style={styles.optionMain}>
+                            {isOptimizing ? (
+                              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                            ) : (
+                              <Ionicons name="sparkles" size={20} color={colors.primary.DEFAULT} />
+                            )}
+                            <Text style={[styles.optionText, { color: colors.primary.DEFAULT }]}>
+                              {isOptimizing ? 'AI 優化中...' : 'AI 優化（推薦）'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
                       )}
                     </>
                   )}
