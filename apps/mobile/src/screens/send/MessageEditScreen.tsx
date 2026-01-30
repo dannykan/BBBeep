@@ -957,7 +957,8 @@ export default function MessageEditScreen({ navigation, route }: Props) {
               )}
 
               {/* AI 審核警告 - 統一警告訊息 (只在非模板模式顯示) */}
-              {!effectiveIsUsingTemplate && !isAiModerating && combinedWarning.hasIssue && trimmedLength >= MIN_CHARS && (
+              {/* 檢查 combinedWarning (voice/text moderation) 或 aiModeration 任一有問題就顯示警告 */}
+              {!effectiveIsUsingTemplate && !isAiModerating && (combinedWarning.hasIssue || (aiModeration && !aiModeration.isAppropriate)) && trimmedLength >= MIN_CHARS && (
                 <View style={[styles.warningCard, { backgroundColor: isDark ? '#7F1D1D' : '#FEF3C7', borderColor: isDark ? '#DC2626' : '#F59E0B' }]}>
                   <Ionicons name="warning" size={20} color={isDark ? '#DC2626' : '#F59E0B'} />
                   <View style={styles.warningContent}>
