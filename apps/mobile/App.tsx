@@ -28,6 +28,7 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { DraftProvider } from './src/context/DraftContext';
 import { SendProvider } from './src/context/SendContext';
+import { VoicePreloadProvider } from './src/context/VoicePreloadContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import CustomSplashScreen from './src/components/CustomSplashScreen';
 import { useAnalytics } from './src/hooks/useAnalytics';
@@ -143,15 +144,17 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <UnreadProvider>
-            <UnreadReplyProvider>
-              <DraftProvider>
-                <SendProvider>
-                  <AppContent />
-                </SendProvider>
-              </DraftProvider>
-            </UnreadReplyProvider>
-          </UnreadProvider>
+          <VoicePreloadProvider>
+            <UnreadProvider>
+              <UnreadReplyProvider>
+                <DraftProvider>
+                  <SendProvider>
+                    <AppContent />
+                  </SendProvider>
+                </DraftProvider>
+              </UnreadReplyProvider>
+            </UnreadProvider>
+          </VoicePreloadProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

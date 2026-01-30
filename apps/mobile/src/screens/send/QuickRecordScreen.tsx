@@ -27,7 +27,7 @@ import { useSend } from '../../context/SendContext';
 import { uploadApi, draftsApi } from '@bbbeeep/shared';
 import { typography, spacing, borderRadius } from '../../theme';
 
-type Step = 'recording' | 'processing' | 'choose' | 'success';
+type Step = 'recording' | 'choose' | 'success';
 
 const MAX_RECORDING_DURATION = 30;
 
@@ -60,8 +60,9 @@ export default function QuickRecordScreen() {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [address, setAddress] = useState('');
 
-  // 轉錄結果（用於顯示，但不再依賴它來判斷內容）
+  // 轉錄結果（僅用於草稿預覽）
   const [transcript, setTranscript] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   // Loading 狀態
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -70,6 +71,41 @@ export default function QuickRecordScreen() {
   // 播放狀態
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
+
+  // 預載音訊（錄音完成後）
+  useEffect(() => {
+    if (!voiceUri || step !== 'choose') return;
+
+    let isMounted = true;
+    const preloadAudio = async () => {
+      try {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: voiceUri },
+          { shouldPlay: false },
+          (status: any) => {
+            if (status.didJustFinish && isMounted) {
+              setIsPlaying(false);
+            }
+          }
+        );
+        if (isMounted) {
+          setSound(newSound);
+          setIsAudioLoaded(true);
+        } else {
+          newSound.unloadAsync();
+        }
+      } catch (err) {
+        console.error('Audio preload error:', err);
+      }
+    };
+
+    preloadAudio();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [voiceUri, step]);
 
   // 進入頁面時自動開始錄音
   useEffect(() => {
@@ -139,8 +175,8 @@ export default function QuickRecordScreen() {
       });
 
       if (uri && duration >= 1) {
-        setStep('processing');
-        await processRecording(uri);
+        // 直接進入選擇畫面，不再顯示「處理中」
+        setStep('choose');
       } else {
         Alert.alert('錄音太短', '請至少錄製 1 秒');
         navigation.goBack();
@@ -172,9 +208,32 @@ export default function QuickRecordScreen() {
 
       Vibration.vibrate(50);
 
-      const recordingOptions = {
-        ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      // 優化的語音錄音設定（檔案大小約為 HIGH_QUALITY 的 1/4）
+      const recordingOptions: Audio.RecordingOptions = {
         isMeteringEnabled: true,
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 22050,  // 語音足夠（原 44100）
+          numberOfChannels: 1, // 單聲道（原 2）
+          bitRate: 64000,     // 語音足夠（原 128000）
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM, // 語音足夠（原 MAX）
+          sampleRate: 22050,
+          numberOfChannels: 1,
+          bitRate: 64000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 64000,
+        },
       };
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
@@ -291,36 +350,45 @@ export default function QuickRecordScreen() {
     navigation.goBack();
   };
 
-  // 處理錄音完成（嘗試轉錄，但不依賴結果）
-  const processRecording = async (uri: string) => {
-    try {
-      // 嘗試轉錄，僅供參考用
-      const transcribeResult = await uploadApi.transcribeVoice(uri);
-      const transcriptText = transcribeResult?.text || '';
-      setTranscript(transcriptText);
-    } catch (err) {
-      console.warn('[Transcribe] Error:', err);
-      // 轉錄失敗不影響流程
-    }
-
-    setStep('choose');
-  };
-
-  // 儲存草稿
+  // 儲存草稿（上傳語音 + 背景轉錄）
   const handleSaveDraft = async () => {
     if (!voiceUri) return;
 
     setIsSavingDraft(true);
     try {
+      // 1. 先上傳語音檔案
       const uploadResult = await uploadApi.uploadVoice(voiceUri);
-      await draftsApi.create({
+
+      // 2. 建立草稿（先不帶 transcript）
+      const draft = await draftsApi.create({
         voiceUrl: uploadResult.url,
         voiceDuration,
-        transcript: transcript || '',
+        transcript: '',
         latitude: latitude || undefined,
         longitude: longitude || undefined,
         address: address || undefined,
       });
+
+      // 3. 背景執行轉錄（不阻塞 UI）
+      setIsTranscribing(true);
+      uploadApi.transcribeVoice(voiceUri)
+        .then(async (transcribeResult) => {
+          const transcriptText = transcribeResult?.text || '';
+          if (transcriptText && draft?.id) {
+            // 更新草稿的 transcript
+            try {
+              await draftsApi.update(draft.id, { transcript: transcriptText });
+            } catch (e) {
+              console.warn('[Transcribe] Failed to update draft:', e);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[Transcribe] Background transcription error:', err);
+        })
+        .finally(() => {
+          setIsTranscribing(false);
+        });
 
       setSavedAsDraft(true);
       setStep('success');
@@ -335,15 +403,15 @@ export default function QuickRecordScreen() {
     }
   };
 
-  // 繼續編輯（進入一鍵語音送出頁面）
-  const handleContinueEdit = () => {
+  // 現在發送（進入一鍵語音送出頁面）
+  const handleSendNow = () => {
     if (!voiceUri) return;
 
-    // 導航到一鍵語音送出頁面
+    // 導航到一鍵語音送出頁面（不需要 transcript）
     navigation.replace('QuickVoiceSend', {
       voiceUri,
       voiceDuration,
-      transcript: transcript || '',
+      transcript: '', // 發送流程不需要顯示轉錄
       recordedAt: new Date().toISOString(),
       latitude: latitude || undefined,
       longitude: longitude || undefined,
@@ -351,28 +419,16 @@ export default function QuickRecordScreen() {
     });
   };
 
-  // 播放/暫停語音
+  // 播放/暫停語音（使用預載的音訊，無延遲）
   const togglePlayback = async () => {
-    if (!voiceUri) return;
+    if (!voiceUri || !sound) return;
 
     try {
-      if (isPlaying && sound) {
+      if (isPlaying) {
         await sound.pauseAsync();
         setIsPlaying(false);
-      } else if (sound) {
-        await sound.playAsync();
-        setIsPlaying(true);
       } else {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: voiceUri },
-          { shouldPlay: true },
-          (status: any) => {
-            if (status.didJustFinish) {
-              setIsPlaying(false);
-            }
-          }
-        );
-        setSound(newSound);
+        await sound.playAsync();
         setIsPlaying(true);
       }
     } catch (err) {
@@ -480,17 +536,6 @@ export default function QuickRecordScreen() {
     </View>
   );
 
-  // 處理中
-  const renderProcessing = () => (
-    <View style={styles.processingContainer}>
-      <View style={styles.processingIcon}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
-      <Text style={styles.processingTitle}>處理中...</Text>
-      <Text style={styles.processingSubtitle}>正在準備您的錄音</Text>
-    </View>
-  );
-
   // 選擇畫面
   const renderChoose = () => (
     <View style={[styles.chooseContainer, { backgroundColor: colors.background }]}>
@@ -508,10 +553,19 @@ export default function QuickRecordScreen() {
         {/* 錄音卡片 */}
         <View style={[styles.voiceCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.playButtonLarge, { backgroundColor: colors.primary.DEFAULT }]}
+            style={[
+              styles.playButtonLarge,
+              { backgroundColor: colors.primary.DEFAULT },
+              !isAudioLoaded && { opacity: 0.7 },
+            ]}
             onPress={togglePlayback}
+            disabled={!isAudioLoaded}
           >
-            <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+            {!isAudioLoaded ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={28} color="#fff" />
+            )}
           </TouchableOpacity>
 
           <View style={styles.voiceCardInfo}>
@@ -527,18 +581,9 @@ export default function QuickRecordScreen() {
               </Text>
             </View>
 
-            {transcript ? (
-              <Text
-                style={[styles.voiceCardTranscript, { color: colors.muted.foreground }]}
-                numberOfLines={2}
-              >
-                「{transcript}」
-              </Text>
-            ) : (
-              <Text style={[styles.voiceCardTranscript, { color: colors.muted.foreground }]}>
-                點擊播放收聽錄音內容
-              </Text>
-            )}
+            <Text style={[styles.voiceCardTranscript, { color: colors.muted.foreground }]}>
+              點擊播放收聽錄音內容
+            </Text>
 
             {(address || latitude) && (
               <View style={styles.locationRow}>
@@ -551,38 +596,63 @@ export default function QuickRecordScreen() {
           </View>
         </View>
 
-        {/* 說明文字 */}
-        <Text style={[styles.chooseDescription, { color: colors.muted.foreground }]}>
-          您可以稍後再來編輯發送，或現在繼續填寫發送資料
+        {/* 標題 */}
+        <Text style={[styles.chooseTitle, { color: colors.foreground }]}>
+          接下來要做什麼？
         </Text>
 
-        {/* 按鈕區 */}
+        {/* 按鈕區 - 主要行動放前面 */}
         <View style={styles.buttonGroup}>
+          {/* 現在發送 - 主要按鈕 */}
+          <TouchableOpacity
+            style={[styles.primaryActionButton, { backgroundColor: colors.primary.DEFAULT }]}
+            onPress={handleSendNow}
+            activeOpacity={0.8}
+          >
+            <View style={styles.actionButtonContent}>
+              <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Ionicons name="send" size={20} color="#fff" />
+              </View>
+              <View style={styles.actionTextContainer}>
+                <Text style={styles.actionButtonTitle}>現在發送</Text>
+                <Text style={styles.actionButtonSubtitle}>填寫車牌，立即送出提醒</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 稍後再發 - 次要按鈕 */}
           <TouchableOpacity
             style={[
-              styles.draftButton,
+              styles.secondaryActionButton,
               { backgroundColor: colors.card.DEFAULT, borderColor: colors.border },
               isSavingDraft && { opacity: 0.6 },
             ]}
             onPress={handleSaveDraft}
             disabled={isSavingDraft}
+            activeOpacity={0.8}
           >
             {isSavingDraft ? (
-              <ActivityIndicator size="small" color={colors.foreground} />
+              <View style={styles.actionButtonContent}>
+                <ActivityIndicator size="small" color={colors.foreground} />
+                <View style={styles.actionTextContainer}>
+                  <Text style={[styles.actionButtonTitle, { color: colors.foreground }]}>儲存中...</Text>
+                </View>
+              </View>
             ) : (
-              <>
-                <Ionicons name="bookmark-outline" size={20} color={colors.foreground} />
-                <Text style={[styles.draftButtonText, { color: colors.foreground }]}>儲存草稿</Text>
-              </>
+              <View style={styles.actionButtonContent}>
+                <View style={[styles.actionIconContainer, { backgroundColor: colors.muted.DEFAULT }]}>
+                  <Ionicons name="time-outline" size={20} color={colors.foreground} />
+                </View>
+                <View style={styles.actionTextContainer}>
+                  <Text style={[styles.actionButtonTitle, { color: colors.foreground }]}>稍後再發</Text>
+                  <Text style={[styles.actionButtonSubtitle, { color: colors.muted.foreground }]}>
+                    先存起來，之後從首頁繼續
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.muted.foreground} />
+              </View>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.editButton, { backgroundColor: colors.primary.DEFAULT }]}
-            onPress={handleContinueEdit}
-          >
-            <Ionicons name="create-outline" size={20} color="#fff" />
-            <Text style={styles.editButtonText}>繼續編輯</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -607,7 +677,6 @@ export default function QuickRecordScreen() {
   return (
     <View style={styles.container}>
       {step === 'recording' && renderRecording()}
-      {step === 'processing' && renderProcessing()}
       {step === 'choose' && renderChoose()}
       {step === 'success' && renderSuccess()}
     </View>
@@ -739,32 +808,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.4)',
     marginTop: 16,
   },
-  // ========== 處理中畫面 ==========
-  processingContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  processingIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  processingTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  processingSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
   // ========== 選擇畫面 ==========
   chooseContainer: {
     flex: 1,
@@ -836,41 +879,49 @@ const styles = StyleSheet.create({
   locationText: {
     fontSize: typography.fontSize.xs,
   },
-  chooseDescription: {
-    fontSize: typography.fontSize.sm,
+  chooseTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold as any,
     textAlign: 'center',
     marginTop: spacing[6],
     marginBottom: spacing[4],
-    lineHeight: typography.fontSize.sm * 1.6,
   },
   buttonGroup: {
     gap: spacing[3],
   },
-  draftButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[4],
-    borderRadius: borderRadius.lg,
+  primaryActionButton: {
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+  },
+  secondaryActionButton: {
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
     borderWidth: 1,
-    gap: spacing[2],
   },
-  draftButtonText: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium as any,
-  },
-  editButton: {
+  actionButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[4],
-    borderRadius: borderRadius.lg,
-    gap: spacing[2],
+    gap: spacing[3],
   },
-  editButtonText: {
+  actionIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionTextContainer: {
+    flex: 1,
+    gap: spacing[0.5],
+  },
+  actionButtonTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold as any,
     color: '#fff',
+  },
+  actionButtonSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
   },
   // ========== 成功畫面 ==========
   successContainer: {

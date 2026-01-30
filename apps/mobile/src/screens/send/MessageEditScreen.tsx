@@ -295,9 +295,32 @@ export default function MessageEditScreen({ navigation, route }: Props) {
         playsInSilentModeIOS: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // 優化的語音錄音設定（檔案大小約為 HIGH_QUALITY 的 1/4）
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 22050,
+          numberOfChannels: 1,
+          bitRate: 64000,
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 22050,
+          numberOfChannels: 1,
+          bitRate: 64000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 64000,
+        },
+      });
       recordingRef.current = recording;
 
       setIsRecording(true);

@@ -23,6 +23,7 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome6 } from '@expo/vector-icons';
@@ -707,11 +708,16 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* 語音播放器 - 使用統一組件 */}
         <VoiceMessagePlayer
           voiceUrl={voiceUri}
@@ -720,18 +726,6 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
           label="語音訊息"
         />
 
-        {/* 轉錄文字預覽（緊湊版） */}
-        {transcript && (
-          <View style={[styles.transcriptBanner, { backgroundColor: colors.muted.DEFAULT }]}>
-            <Ionicons name="document-text-outline" size={14} color={colors.muted.foreground} />
-            <Text style={[styles.transcriptBannerText, { color: colors.muted.foreground }]} numberOfLines={1}>
-              {transcript}
-            </Text>
-            <Text style={[styles.transcriptBannerHint, { color: colors.muted.foreground }]}>
-              預覽僅供參考
-            </Text>
-          </View>
-        )}
 
         {/* 車牌輸入 */}
         <View style={styles.fieldSection}>
@@ -977,7 +971,8 @@ export default function QuickVoiceSendScreen({ navigation, route }: Props) {
             </View>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* 底部按鈕 */}
       <SafeAreaView edges={['bottom']} style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
@@ -1039,6 +1034,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1068,24 +1066,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing[5],
     gap: spacing[5],
-  },
-
-  // Transcript (compact banner)
-  transcriptBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-    borderRadius: borderRadius.lg,
-    gap: spacing[2],
-  },
-  transcriptBannerText: {
-    flex: 1,
-    fontSize: typography.fontSize.xs,
-  },
-  transcriptBannerHint: {
-    fontSize: typography.fontSize.xs,
-    opacity: 0.7,
   },
 
   // Fields

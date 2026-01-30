@@ -11,6 +11,7 @@
  * - 統一設計風格
  * - 流暢的進度條動畫（50ms 更新間隔）
  * - 可配置：compact, showLabel, label 自訂
+ * - 支援全域預載快取（VoicePreloadContext）
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -21,10 +22,12 @@ import {
   TouchableOpacity,
   Animated,
   LayoutChangeEvent,
+  ActivityIndicator,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useVoicePreload } from '../context/VoicePreloadContext';
 
 interface VoiceMessagePlayerProps {
   voiceUrl: string;
@@ -42,27 +45,88 @@ export function VoiceMessagePlayer({
   compact = false,
 }: VoiceMessagePlayerProps) {
   const { colors } = useTheme();
+  const { getPreloadedSound, preloadAudio: preloadToCache } = useVoicePreload();
 
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [position, setPosition] = useState(0);
   const [totalDuration, setTotalDuration] = useState(duration);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const trackWidth = useRef(0);
   const lastProgress = useRef(0);
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const usedCacheRef = useRef(false);
 
-  // 清理音訊
+  // 載入音訊（優先使用全域快取，支援串流播放）
   useEffect(() => {
+    let isMounted = true;
+
+    const loadAudio = async () => {
+      try {
+        // 1. 先檢查全域快取
+        const cachedSound = getPreloadedSound(voiceUrl);
+        if (cachedSound) {
+          console.log('[VoicePlayer] Using cached audio');
+          cachedSound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
+          if (isMounted) {
+            soundRef.current = cachedSound;
+            setSound(cachedSound);
+            setIsLoading(false);
+            usedCacheRef.current = true;
+          }
+          return;
+        }
+
+        // 2. 沒有快取，使用串流模式載入（邊下載邊播放）
+        console.log('[VoicePlayer] Loading audio (streaming mode)...');
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: voiceUrl },
+          {
+            shouldPlay: false,
+            progressUpdateIntervalMillis: 50,
+            // 串流模式：不等完整下載就可以播放
+            androidImplementation: 'MediaPlayer',
+          },
+          onPlaybackStatusUpdate,
+          // downloadFirst: false 讓 iOS 也支援串流
+          false
+        );
+
+        if (isMounted) {
+          soundRef.current = newSound;
+          setSound(newSound);
+          setIsLoading(false);
+          usedCacheRef.current = false;
+        } else {
+          newSound.unloadAsync();
+        }
+      } catch (err) {
+        console.error('Audio load error:', err);
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadAudio();
+
     return () => {
-      if (sound) {
-        sound.unloadAsync();
+      isMounted = false;
+      if (soundRef.current && !usedCacheRef.current) {
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
       if (animationRef.current) {
         animationRef.current.stop();
       }
     };
-  }, [sound]);
+  }, [voiceUrl, getPreloadedSound]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -80,25 +144,11 @@ export function VoiceMessagePlayer({
           animationRef.current.stop();
         }
       } else if (sound) {
+        // 音訊已預載，直接播放（無延遲）
         await sound.playAsync();
         setIsPlaying(true);
-      } else {
-        // 設定音訊模式
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-        });
-
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: voiceUrl },
-          {
-            shouldPlay: true,
-            progressUpdateIntervalMillis: 50, // 50ms 更新一次，讓進度條更流暢
-          },
-          onPlaybackStatusUpdate,
-        );
-        setSound(newSound);
-        setIsPlaying(true);
       }
+      // 如果 sound 還是 null（預載失敗），不做任何事
     } catch (err) {
       console.error('Playback error:', err);
     }
@@ -158,15 +208,21 @@ export function VoiceMessagePlayer({
         style={[
           styles.playButton,
           { backgroundColor: colors.primary.DEFAULT, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
+          isLoading && { opacity: 0.7 },
         ]}
         onPress={handlePlayPause}
         activeOpacity={0.8}
+        disabled={isLoading}
       >
-        <Ionicons
-          name={isPlaying ? 'pause' : 'play'}
-          size={iconSize}
-          color="#fff"
-        />
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={iconSize}
+            color="#fff"
+          />
+        )}
       </TouchableOpacity>
 
       <View style={styles.content}>
