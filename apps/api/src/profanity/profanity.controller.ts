@@ -7,9 +7,10 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { ProfanityService } from './profanity.service';
 import {
   CreateProfanityDto,
@@ -17,13 +18,17 @@ import {
   ImportProfanityDto,
   QueryProfanityDto,
 } from './dto/profanity.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AdminGuard } from '../auth/guards/admin.guard';
+import { AdminService } from '../admin/admin.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('profanity')
 @Controller('profanity')
+@Public() // 公開 API 不需要 JWT，Admin API 使用 x-admin-token 驗證
 export class ProfanityController {
-  constructor(private readonly profanityService: ProfanityService) {}
+  constructor(
+    private readonly profanityService: ProfanityService,
+    private readonly adminService: AdminService,
+  ) {}
 
   // ============ 公開 API（供 App 使用）============
 
@@ -42,10 +47,16 @@ export class ProfanityController {
   // ============ Admin API ============
 
   @Get('admin')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 取得所有詞彙' })
-  async findAll(@Query() query: QueryProfanityDto) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async findAll(
+    @Headers('x-admin-token') token: string,
+    @Query() query: QueryProfanityDto,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.findAll({
       category: query.category,
       severity: query.severity,
@@ -55,42 +66,73 @@ export class ProfanityController {
   }
 
   @Post('admin')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 新增詞彙' })
-  async create(@Body() dto: CreateProfanityDto) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async create(
+    @Headers('x-admin-token') token: string,
+    @Body() dto: CreateProfanityDto,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.create(dto);
   }
 
   @Post('admin/import')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 批量匯入詞彙' })
-  async import(@Body() dto: ImportProfanityDto) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async import(
+    @Headers('x-admin-token') token: string,
+    @Body() dto: ImportProfanityDto,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.importFromLocal(dto);
   }
 
   @Put('admin/:id')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 更新詞彙' })
-  async update(@Param('id') id: string, @Body() dto: UpdateProfanityDto) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async update(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateProfanityDto,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.update(id, dto);
   }
 
   @Put('admin/:id/toggle')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 切換啟用狀態' })
-  async toggleActive(@Param('id') id: string) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async toggleActive(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.toggleActive(id);
   }
 
   @Delete('admin/:id')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] 刪除詞彙' })
-  async delete(@Param('id') id: string) {
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async delete(
+    @Headers('x-admin-token') token: string,
+    @Param('id') id: string,
+  ) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
     return this.profanityService.delete(id);
   }
 }
