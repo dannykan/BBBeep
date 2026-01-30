@@ -373,7 +373,7 @@ export default function ProfanityPage() {
             </div>
             <Select
               value={filterCategory}
-              onValueChange={(v) => setFilterCategory(v as ProfanityCategory | 'all')}
+              onValueChange={(v: string) => setFilterCategory(v as ProfanityCategory | 'all')}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="類別" />
@@ -388,7 +388,7 @@ export default function ProfanityPage() {
             </Select>
             <Select
               value={filterSeverity}
-              onValueChange={(v) => setFilterSeverity(v as ProfanitySeverity | 'all')}
+              onValueChange={(v: string) => setFilterSeverity(v as ProfanitySeverity | 'all')}
             >
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="嚴重度" />
@@ -402,7 +402,7 @@ export default function ProfanityPage() {
             </Select>
             <Select
               value={filterActive}
-              onValueChange={(v) => setFilterActive(v as 'all' | 'active' | 'inactive')}
+              onValueChange={(v: string) => setFilterActive(v as 'all' | 'active' | 'inactive')}
             >
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="狀態" />
@@ -522,7 +522,7 @@ export default function ProfanityPage() {
             </div>
             <div>
               <Label>類別</Label>
-              <Select value={formCategory} onValueChange={(v) => setFormCategory(v as ProfanityCategory)}>
+              <Select value={formCategory} onValueChange={(v: string) => setFormCategory(v as ProfanityCategory)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -536,7 +536,7 @@ export default function ProfanityPage() {
             </div>
             <div>
               <Label>嚴重度</Label>
-              <Select value={formSeverity} onValueChange={(v) => setFormSeverity(v as ProfanitySeverity)}>
+              <Select value={formSeverity} onValueChange={(v: string) => setFormSeverity(v as ProfanitySeverity)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -578,7 +578,7 @@ export default function ProfanityPage() {
             </div>
             <div>
               <Label>類別</Label>
-              <Select value={formCategory} onValueChange={(v) => setFormCategory(v as ProfanityCategory)}>
+              <Select value={formCategory} onValueChange={(v: string) => setFormCategory(v as ProfanityCategory)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -592,7 +592,7 @@ export default function ProfanityPage() {
             </div>
             <div>
               <Label>嚴重度</Label>
-              <Select value={formSeverity} onValueChange={(v) => setFormSeverity(v as ProfanitySeverity)}>
+              <Select value={formSeverity} onValueChange={(v: string) => setFormSeverity(v as ProfanitySeverity)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -636,7 +636,7 @@ export default function ProfanityPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>類別</Label>
-                <Select value={batchCategory} onValueChange={(v) => setBatchCategory(v as ProfanityCategory)}>
+                <Select value={batchCategory} onValueChange={(v: string) => setBatchCategory(v as ProfanityCategory)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -650,7 +650,7 @@ export default function ProfanityPage() {
               </div>
               <div>
                 <Label>嚴重度</Label>
-                <Select value={batchSeverity} onValueChange={(v) => setBatchSeverity(v as ProfanitySeverity)}>
+                <Select value={batchSeverity} onValueChange={(v: string) => setBatchSeverity(v as ProfanitySeverity)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
