@@ -47,7 +47,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
   const currentStep = userType === 'pedestrian' ? 4 : 5;
 
   const handleValidateInviteCode = useCallback(async (code: string) => {
-    if (code.length !== 6) {
+    if (code.length < 6) {
       setInviteCodeValidation(null);
       return;
     }
@@ -65,9 +65,9 @@ export default function InviteCodeScreen({ navigation }: Props) {
 
   const handleInviteCodeChange = useCallback((text: string) => {
     const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (cleaned.length <= 6) {
+    if (cleaned.length <= 8) {
       setInviteCode(cleaned);
-      if (cleaned.length === 6) {
+      if (cleaned.length >= 6) {
         handleValidateInviteCode(cleaned);
       } else {
         setInviteCodeValidation(null);
@@ -112,11 +112,11 @@ export default function InviteCodeScreen({ navigation }: Props) {
           <Text style={[styles.label, { color: colors.foreground }]}>邀請碼</Text>
           <TextInput
             style={[styles.inviteCodeInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card.DEFAULT }]}
-            placeholder="輸入 6 位邀請碼"
+            placeholder="輸入邀請碼或車牌"
             placeholderTextColor={colors.muted.foreground}
             value={inviteCode}
             onChangeText={handleInviteCodeChange}
-            maxLength={6}
+            maxLength={8}
             autoCapitalize="characters"
           />
 

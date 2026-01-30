@@ -59,7 +59,7 @@ const OnboardingPage = React.memo(() => {
 
   // Validate invite code
   const handleValidateInviteCode = async (code: string) => {
-    if (code.length !== 6) {
+    if (code.length < 6) {
       setInviteCodeValidation(null);
       return;
     }
@@ -409,20 +409,20 @@ const OnboardingPage = React.memo(() => {
               <Input
                 id="inviteCode"
                 type="text"
-                placeholder="輸入 6 位邀請碼"
+                placeholder="輸入邀請碼或車牌"
                 value={inviteCode}
                 onChange={(e) => {
                   const cleaned = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                  if (cleaned.length <= 6) {
+                  if (cleaned.length <= 8) {
                     setInviteCode(cleaned);
-                    if (cleaned.length === 6) {
+                    if (cleaned.length >= 6) {
                       handleValidateInviteCode(cleaned);
                     } else {
                       setInviteCodeValidation(null);
                     }
                   }
                 }}
-                maxLength={6}
+                maxLength={8}
                 className="text-center font-mono text-xl tracking-[0.5em] h-14"
               />
 
