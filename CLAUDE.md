@@ -747,6 +747,28 @@ export function getErrorMessage(error: any, fallback: string = '操作失敗'): 
 
 **已修復的檔案（15 個）：** ConfirmScreenV2, MessageDetailScreen, EditProfileScreen, InviteCodeScreen, WelcomeScreen, LicensePlateScreen, VerifyCodeScreen, CustomScreen, PlateInputScreenV2, InboxListScreen, SendScreen, BlockListScreen, SavedPlatesScreen, LicensePlateChangeScreen, SentScreen
 
+### Hook 宣告順序問題 (CRITICAL)
+
+React Hooks 必須按照正確順序宣告。使用 `useMemo` 或 `useCallback` 時，不能引用還沒宣告的 state。
+
+```javascript
+// ❌ 錯誤 - trialStatus 還沒宣告就使用
+const trialColors = useMemo(() => {
+  return getTrialColors(trialStatus?.daysRemaining ?? 14);
+}, [trialStatus?.daysRemaining]);
+
+const [trialStatus, setTrialStatus] = useState(null);  // 太晚宣告！
+
+// ✅ 正確 - state 先宣告，再用 useMemo
+const [trialStatus, setTrialStatus] = useState(null);
+
+const trialColors = useMemo(() => {
+  return getTrialColors(trialStatus?.daysRemaining ?? 14);
+}, [trialStatus?.daysRemaining]);
+```
+
+**症狀：** Component 不斷 crash 重新渲染，畫面一直閃爍/refresh
+
 ### API Timeout 設定
 
 預設 API timeout 為 30 秒，但某些操作需要更長時間：
