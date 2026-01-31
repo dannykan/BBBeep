@@ -67,6 +67,16 @@ export default function WalletScreen() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [isRecharging, setIsRecharging] = useState(false);
+  const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [iapProducts, setIapProducts] = useState<Product[]>([]);
+  const [iapConnected, setIapConnected] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
+
   // 根據試用剩餘天數返回對應顏色
   const getTrialColors = useCallback((daysRemaining: number) => {
     if (daysRemaining >= 7) {
@@ -84,15 +94,6 @@ export default function WalletScreen() {
   const trialColors = useMemo(() => {
     return getTrialColors(trialStatus?.daysRemaining ?? 14);
   }, [trialStatus?.daysRemaining, getTrialColors]);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [isRecharging, setIsRecharging] = useState(false);
-  const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [iapProducts, setIapProducts] = useState<Product[]>([]);
-  const [iapConnected, setIapConnected] = useState(false);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
 
   const loadPointHistory = useCallback(async () => {
     try {
