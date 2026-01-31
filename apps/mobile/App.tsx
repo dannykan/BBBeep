@@ -5,7 +5,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { LogBox } from 'react-native';
+import { LogBox, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import {
   NavigationContainer,
   DarkTheme,
@@ -31,10 +32,12 @@ import { SendProvider } from './src/context/SendContext';
 import { VoicePreloadProvider } from './src/context/VoicePreloadContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import CustomSplashScreen from './src/components/CustomSplashScreen';
+import { ForceUpdateModal } from './src/components/ForceUpdateModal';
 import { useAnalytics } from './src/hooks/useAnalytics';
 import { analytics } from './src/lib/analytics';
 import { initializeApiClient } from './src/lib/api';
 import { initProfanitySync } from './src/lib/profanitySync';
+import { appVersionApi, VersionCheckResponse } from '@bbbeeep/shared';
 
 // 初始化 API Client（同步執行，確保所有 Provider 的 useEffect 執行前已完成）
 initializeApiClient();
@@ -110,6 +113,7 @@ function AppContent() {
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState<VersionCheckResponse | null>(null);
 
   // 當 app 準備好後，隱藏 native splash 並顯示 custom splash
   useEffect(() => {
@@ -120,6 +124,35 @@ export default function App() {
     }
     prepare();
   }, []);
+
+  // 檢查 App 版本
+  useEffect(() => {
+    async function checkAppVersion() {
+      try {
+        const appVersion = Constants.expoConfig?.version || '1.0.0';
+
+        // 只在 iOS 和 Android 上檢查版本
+        if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+          return;
+        }
+
+        const platform = Platform.OS;
+        const result = await appVersionApi.checkVersion(platform, appVersion);
+
+        // 只有當 forceUpdate=true 且 needsUpdate=true 才顯示強制更新
+        if (result.forceUpdate && result.needsUpdate) {
+          setForceUpdate(result);
+        }
+      } catch (error) {
+        // 版本檢查失敗時不阻擋用戶使用 App
+        console.warn('Version check failed:', error);
+      }
+    }
+
+    if (appReady) {
+      checkAppVersion();
+    }
+  }, [appReady]);
 
   // 當 app ready 時隱藏 native splash 並追踪 app 開啟
   useEffect(() => {
@@ -147,6 +180,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
+        {/* 強制更新 Modal（在 ThemeProvider 內以使用主題） */}
+        {forceUpdate && (
+          <ForceUpdateModal
+            visible={true}
+            updateUrl={forceUpdate.updateUrl}
+            updateMessage={forceUpdate.updateMessage}
+            currentVersion={forceUpdate.currentVersion}
+          />
+        )}
         <AuthProvider>
           <VoicePreloadProvider>
             <UnreadProvider>

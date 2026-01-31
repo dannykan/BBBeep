@@ -518,3 +518,16 @@ model ProfanityDictVersion {
   description String?  // 版本說明
   createdAt   DateTime @default(now())
 }
+
+// ============ App 版本控制（強制更新功能）============
+
+model AppVersionConfig {
+  id              String   @id @default(cuid())
+  platform        String   @unique // "ios" | "android"
+  minVersion      String   @default("1.0.0")  // 最低支援版本
+  currentVersion  String   @default("1.0.0")  // 最新版本
+  forceUpdate     Boolean  @default(false)    // 是否強制更新
+  updateUrl       String?                     // App Store / Play Store URL
+  updateMessage   String?                     // 更新說明訊息
+  updatedAt       DateTime @updatedAt
+}

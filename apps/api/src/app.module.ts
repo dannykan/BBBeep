@@ -19,6 +19,7 @@ import { ActivitiesModule } from './activities/activities.module';
 import { DraftsModule } from './drafts/drafts.module';
 import { SavedPlatesModule } from './saved-plates/saved-plates.module';
 import { ProfanityModule } from './profanity/profanity.module';
+import { AppVersionModule } from './app-version/app-version.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
@@ -43,6 +44,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     DraftsModule,
     SavedPlatesModule,
     ProfanityModule,
+    AppVersionModule,
   ],
   controllers: [AppController],
   providers: [

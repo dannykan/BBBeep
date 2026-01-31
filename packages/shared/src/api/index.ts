@@ -31,6 +31,7 @@ export {
   appContentApi,
   savedPlatesApi,
   profanityApi,
+  appVersionApi,
 } from './services';
 
 export type {
@@ -55,4 +56,5 @@ export type {
   UpdateSavedPlateRequest,
   ProfanityDictionary,
   ProfanityVersion,
+  VersionCheckResponse,
 } from './services';

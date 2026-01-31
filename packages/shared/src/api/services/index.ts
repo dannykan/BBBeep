@@ -38,3 +38,4 @@ export {
   type UpdateSavedPlateRequest,
 } from './saved-plates';
 export { profanityApi, type ProfanityDictionary, type ProfanityVersion } from './profanity';
+export { appVersionApi, type VersionCheckResponse } from './app-version';
