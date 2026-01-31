@@ -21,6 +21,7 @@ import VehicleIcon from '../../components/VehicleIcon';
 import { useNavigation } from '@react-navigation/native';
 import { messagesApi, aiApi, normalizeLicensePlate, displayLicensePlate, getTotalPoints } from '@bbbeeep/shared';
 import type { MessageType } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useAuth } from '../../context/AuthContext';
 import {
   VehicleType,
@@ -242,7 +243,7 @@ export default function SendScreen() {
         await checkAiLimit();
         setStep('ai-suggest');
       } catch (error: any) {
-        Alert.alert('錯誤', error.response?.data?.message || 'AI 改寫失敗');
+        Alert.alert('錯誤', getErrorMessage(error, 'AI 改寫失敗'));
         setStep('confirm');
       } finally {
         setIsLoading(false);
@@ -313,7 +314,7 @@ export default function SendScreen() {
       await refreshUser();
       setStep('success');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '發送失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '發送失敗'));
     } finally {
       setIsLoading(false);
     }

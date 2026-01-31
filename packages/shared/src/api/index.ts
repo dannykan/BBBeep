@@ -30,6 +30,7 @@ export {
   draftsApi,
   appContentApi,
   savedPlatesApi,
+  profanityApi,
 } from './services';
 
 export type {
@@ -52,4 +53,6 @@ export type {
   CheckSavedPlateResponse,
   CreateSavedPlateRequest,
   UpdateSavedPlateRequest,
+  ProfanityDictionary,
+  ProfanityVersion,
 } from './services';

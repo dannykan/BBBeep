@@ -85,9 +85,10 @@ export function DraftProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const response = await draftsApi.getAll();
-      setDrafts(response.drafts);
+      const draftsArray = response.drafts || [];
+      setDrafts(draftsArray);
       setPendingCount(
-        response.drafts.filter((d) => d.status === 'READY').length,
+        draftsArray.filter((d) => d.status === 'READY').length,
       );
     } catch (err: any) {
       setError(err.message || '無法載入草稿');

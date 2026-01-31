@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { messagesApi, displayLicensePlate } from '@bbbeeep/shared';
 import type { SentMessage } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
 import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
@@ -85,7 +86,7 @@ export default function SentScreen() {
       const messages = await messagesApi.getSent();
       setSentMessages(messages);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '載入發送記錄失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '載入發送記錄失敗'));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

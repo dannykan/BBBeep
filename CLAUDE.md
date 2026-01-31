@@ -716,6 +716,37 @@ const handleRefresh = useCallback(async () => {
 
 使用此模式的頁面：HomeScreen, InboxListScreen, DraftsScreen, WalletScreen, BlockListScreen, SentScreen
 
+### Alert.alert 錯誤訊息處理 (CRITICAL)
+
+NestJS class-validator 返回的錯誤訊息是**陣列格式**，但 React Native 的 `Alert.alert()` 第二個參數期望**字串**。傳入陣列會導致 App 閃退。
+
+```javascript
+// ❌ 錯誤 - error.response.data.message 可能是陣列，導致閃退
+Alert.alert('錯誤', error.response?.data?.message || '發送失敗');
+
+// ✅ 正確 - 使用 getErrorMessage 統一處理
+import { getErrorMessage } from '../../lib/error-utils';
+Alert.alert('錯誤', getErrorMessage(error, '發送失敗'));
+```
+
+**NestJS 錯誤格式：**
+```json
+{ "statusCode": 400, "message": ["template: 內容包含不當資訊"], "error": "Bad Request" }
+```
+
+**工具函數：** `apps/mobile/src/lib/error-utils.ts`
+```typescript
+export function getErrorMessage(error: any, fallback: string = '操作失敗'): string {
+  if (!error?.response?.data?.message) return fallback;
+  const msg = error.response.data.message;
+  if (Array.isArray(msg)) return msg.join('\n');
+  if (typeof msg === 'string') return msg;
+  return fallback;
+}
+```
+
+**已修復的檔案（15 個）：** ConfirmScreenV2, MessageDetailScreen, EditProfileScreen, InviteCodeScreen, WelcomeScreen, LicensePlateScreen, VerifyCodeScreen, CustomScreen, PlateInputScreenV2, InboxListScreen, SendScreen, BlockListScreen, SavedPlatesScreen, LicensePlateChangeScreen, SentScreen
+
 ### API Timeout 設定
 
 預設 API timeout 為 30 秒，但某些操作需要更長時間：

@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { usersApi, BlockedUser } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 
 export default function BlockListScreen() {
@@ -73,7 +74,7 @@ export default function BlockListScreen() {
               setBlockedUsers((prev) => prev.filter((u) => u.id !== item.id));
               Alert.alert('成功', '已解除封鎖');
             } catch (error: any) {
-              Alert.alert('錯誤', error.response?.data?.message || '解除封鎖失敗');
+              Alert.alert('錯誤', getErrorMessage(error, '解除封鎖失敗'));
             } finally {
               setUnblockingId(null);
             }

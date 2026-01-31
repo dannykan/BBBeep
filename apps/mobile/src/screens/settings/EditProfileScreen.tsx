@@ -23,6 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { usersApi, displayLicensePlate } from '@bbbeeep/shared';
 import VehicleIcon from '../../components/VehicleIcon';
+import { getErrorMessage } from '../../lib/error-utils';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation<any>();
@@ -54,7 +55,7 @@ export default function EditProfileScreen() {
         { text: '確定', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '更新失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '更新失敗'));
     } finally {
       setIsSaving(false);
     }

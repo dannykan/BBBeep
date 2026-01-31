@@ -30,6 +30,7 @@ import {
   displayLicensePlate,
 } from '@bbbeeep/shared';
 import VehicleIcon from '../../components/VehicleIcon';
+import { getErrorMessage } from '../../lib/error-utils';
 
 export default function LicensePlateChangeScreen() {
   const navigation = useNavigation<any>();
@@ -68,7 +69,7 @@ export default function LicensePlateChangeScreen() {
       setLicenseImageUrl(result.url);
       setLicenseImageUri(uri);
     } catch (error: any) {
-      Alert.alert('上傳失敗', error.response?.data?.message || '圖片上傳失敗，請稍後再試');
+      Alert.alert('上傳失敗', getErrorMessage(error, '圖片上傳失敗，請稍後再試'));
       setLicenseImageUri(null);
       setLicenseImageUrl(null);
     } finally {
@@ -176,7 +177,7 @@ export default function LicensePlateChangeScreen() {
         [{ text: '確定', onPress: () => navigation.goBack() }]
       );
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '提交申請失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '提交申請失敗'));
     } finally {
       setIsSubmitting(false);
     }

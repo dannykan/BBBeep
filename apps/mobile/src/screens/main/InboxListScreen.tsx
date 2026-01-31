@@ -23,6 +23,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { messagesApi } from '@bbbeeep/shared';
 import type { Message } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -80,7 +81,7 @@ export default function InboxListScreen() {
       const data = await messagesApi.getAll();
       setMessages(data);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '載入失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '載入失敗'));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

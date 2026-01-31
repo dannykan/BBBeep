@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { VoiceMessagePlayer } from '../../components/VoiceMessagePlayer';
+import { getErrorMessage } from '../../lib/error-utils';
 import type { InboxStackParamList } from '../../navigation/types';
 
 type MessageDetailRouteProp = RouteProp<InboxStackParamList, 'MessageDetail'>;
@@ -76,7 +77,7 @@ export default function MessageDetailScreen() {
         navigation.goBack();
       }
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '載入失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '載入失敗'));
       navigation.goBack();
     } finally {
       setIsLoading(false);
@@ -120,7 +121,7 @@ export default function MessageDetailScreen() {
       setMessage({ ...message, replyText });
       Alert.alert('成功', '回覆已送出');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '回覆失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '回覆失敗'));
     } finally {
       setIsReplying(false);
     }
@@ -136,7 +137,7 @@ export default function MessageDetailScreen() {
       const limitResult = await aiApi.checkLimit();
       setAiLimit(limitResult);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || 'AI 改寫失敗');
+      Alert.alert('錯誤', getErrorMessage(error, 'AI 改寫失敗'));
     } finally {
       setIsLoadingAi(false);
     }
@@ -164,7 +165,7 @@ export default function MessageDetailScreen() {
       resetCustomReply();
       Alert.alert('成功', '回覆已送出');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '回覆失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '回覆失敗'));
     } finally {
       setIsReplying(false);
     }
@@ -183,7 +184,7 @@ export default function MessageDetailScreen() {
         { text: '確定', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '封鎖失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '封鎖失敗'));
     }
   };
 
@@ -197,7 +198,7 @@ export default function MessageDetailScreen() {
       setReportReason('');
       Alert.alert('成功', '檢舉已提交，我們會儘快處理');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '檢舉失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '檢舉失敗'));
     } finally {
       setIsReporting(false);
     }

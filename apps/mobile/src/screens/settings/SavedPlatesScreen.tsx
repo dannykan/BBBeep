@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { savedPlatesApi, SavedPlate, displayLicensePlate, normalizeLicensePlate } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { formatPlateNumber } from '../../data/vehicleTemplates';
 import { typography, spacing, borderRadius } from '../../theme';
@@ -103,7 +104,7 @@ export default function SavedPlatesScreen() {
       setAddNickname('');
       setAddVehicleType('car');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '新增收藏失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '新增收藏失敗'));
     } finally {
       setIsAdding(false);
     }
@@ -135,7 +136,7 @@ export default function SavedPlatesScreen() {
       setShowEditModal(false);
       setEditingPlate(null);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '更新失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '更新失敗'));
     } finally {
       setIsEditing(false);
     }
@@ -156,7 +157,7 @@ export default function SavedPlatesScreen() {
               await savedPlatesApi.delete(plate.id);
               setSavedPlates((prev) => prev.filter((p) => p.id !== plate.id));
             } catch (error: any) {
-              Alert.alert('錯誤', error.response?.data?.message || '刪除失敗');
+              Alert.alert('錯誤', getErrorMessage(error, '刪除失敗'));
             } finally {
               setDeletingId(null);
             }

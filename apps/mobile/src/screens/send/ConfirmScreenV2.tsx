@@ -39,6 +39,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MapLocationPicker from '../../components/MapLocationPicker';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { analytics } from '../../lib/analytics';
+import { getErrorMessage } from '../../lib/error-utils';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'Confirm'>;
 
@@ -445,7 +446,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
       await refreshUser();
       navigation.navigate('Success');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '發送失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '發送失敗'));
     } finally {
       setIsLoading(false);
     }

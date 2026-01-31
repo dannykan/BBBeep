@@ -22,6 +22,7 @@ import type { AuthStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authApi, maskPhone } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import {
   typography,
   spacing,
@@ -50,7 +51,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
       await login(phone, code);
       // 登入成功後會自動導向 Main 或 Onboarding
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '驗證失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '驗證失敗'));
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +63,7 @@ export default function VerifyCodeScreen({ route, navigation }: Props) {
       await authApi.verifyPhone(phone);
       Alert.alert('成功', '驗證碼已重新發送');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '重新發送失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '重新發送失敗'));
     } finally {
       setIsResending(false);
     }

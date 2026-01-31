@@ -540,7 +540,7 @@ export default function MessageEditScreen({ navigation, route }: Props) {
     try {
       const response = await draftsApi.getAll();
       // 只顯示 READY 狀態的草稿
-      const readyDrafts = response.drafts.filter(d => d.status === 'READY');
+      const readyDrafts = (response.drafts || []).filter(d => d.status === 'READY');
       setDrafts(readyDrafts);
     } catch (error) {
       console.error('Failed to load drafts:', error);

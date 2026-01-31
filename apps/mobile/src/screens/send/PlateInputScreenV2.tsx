@@ -35,6 +35,7 @@ import {
 import { formatPlateNumber } from '../../data/vehicleTemplates';
 import { typography, spacing, borderRadius } from '../../theme';
 import type { VehicleType } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 
 type Props = NativeStackScreenProps<SendStackParamList, 'PlateInput'>;
 
@@ -153,7 +154,7 @@ export default function PlateInputScreenV2({ navigation }: Props) {
       setSaveNickname('');
       setIsCurrentPlateSaved(true);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '收藏失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '收藏失敗'));
     } finally {
       setIsSaving(false);
     }

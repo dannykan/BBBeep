@@ -21,6 +21,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import { usersApi, normalizeLicensePlate } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import {
   typography,
   spacing,
@@ -74,7 +75,7 @@ export default function WelcomeScreen({ navigation: _navigation }: Props) {
       // 這會顯示原生的 iOS/Android 權限對話框
       await requestPermissions();
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '完成註冊失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '完成註冊失敗'));
     } finally {
       setIsLoading(false);
     }

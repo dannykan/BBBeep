@@ -19,6 +19,7 @@ import { useOnboarding } from '../../context/OnboardingContext';
 import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
 import { inviteApi } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import {
   typography,
   spacing,
@@ -85,7 +86,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
       Alert.alert('成功', '邀請碼已套用！完成註冊後你和邀請人各得 10 點');
       navigation.navigate('Welcome');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '使用邀請碼失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '使用邀請碼失敗'));
     } finally {
       setIsLoading(false);
     }

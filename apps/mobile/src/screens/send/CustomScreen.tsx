@@ -22,6 +22,7 @@ import { useSend } from '../../context/SendContext';
 import { useTheme } from '../../context/ThemeContext';
 import { SendLayout, StepHeader } from './components';
 import { aiApi, uploadApi } from '@bbbeeep/shared';
+import { getErrorMessage } from '../../lib/error-utils';
 import { typography, spacing, borderRadius } from '../../theme';
 
 const MAX_DURATION = 15; // Maximum recording duration in seconds
@@ -464,7 +465,7 @@ export default function CustomScreen({ navigation }: Props) {
       await checkAiLimit();
       navigation.navigate('AiSuggest');
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || 'AI 改寫失敗');
+      Alert.alert('錯誤', getErrorMessage(error, 'AI 改寫失敗'));
     } finally {
       setIsLoading(false);
     }

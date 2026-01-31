@@ -23,6 +23,7 @@ import type { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { useTheme } from '../../context/ThemeContext';
 import { OnboardingLayout, OnboardingCard, StepHeader } from './components';
+import { getErrorMessage } from '../../lib/error-utils';
 import {
   licensePlateApi,
   uploadApi,
@@ -82,7 +83,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
         navigation.navigate('Nickname');
       }
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '檢查車牌失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '檢查車牌失敗'));
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +183,7 @@ export default function LicensePlateScreen({ navigation }: Props) {
       setShowApplicationDialog(false);
       setShowPendingDialog(true);
     } catch (error: any) {
-      Alert.alert('錯誤', error.response?.data?.message || '提交申請失敗');
+      Alert.alert('錯誤', getErrorMessage(error, '提交申請失敗'));
     } finally {
       setIsLoading(false);
     }
