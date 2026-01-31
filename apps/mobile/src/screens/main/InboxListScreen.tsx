@@ -27,6 +27,7 @@ import { getErrorMessage } from '../../lib/error-utils';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import type { InboxStackParamList } from '../../navigation/types';
 
 const NOTIFICATION_PROMPT_DISMISSED_KEY = 'inbox_notification_prompt_dismissed';
@@ -56,9 +57,13 @@ const getRandomAvatar = () => {
 
 export default function InboxListScreen() {
   const navigation = useNavigation<InboxListNavigationProp>();
+  const { user } = useAuth();
   const { refreshUnreadCount } = useUnread();
   const { colors, isDark } = useTheme();
   const { permissionStatus, requestPermissions } = useNotifications();
+
+  // 檢查是否為行人/腳踏車用戶（沒有車牌，無法收到提醒）
+  const isPedestrianUser = user?.userType !== 'driver';
   const [messages, setMessages] = useState<Message[]>([]);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
@@ -267,15 +272,34 @@ export default function InboxListScreen() {
     );
   };
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="mail-open-outline" size={48} color={colors.text.secondary} />
+  const renderEmpty = () => {
+    // 行人/腳踏車用戶顯示不同的訊息
+    if (isPedestrianUser) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="walk-outline" size={48} color={colors.text.secondary} />
+          </View>
+          <Text style={styles.emptyTitle}>行人/腳踏車模式</Text>
+          <Text style={styles.emptySubtext}>
+            您目前為行人或腳踏車用戶，無法收到車牌提醒訊息。{'\n\n'}
+            如需收到提醒，請至設定頁面綁定您的車牌號碼。
+          </Text>
+        </View>
+      );
+    }
+
+    // 駕駛用戶的空狀態
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="mail-open-outline" size={48} color={colors.text.secondary} />
+        </View>
+        <Text style={styles.emptyTitle}>尚無訊息</Text>
+        <Text style={styles.emptySubtext}>當您收到提醒時，會顯示在這裡</Text>
       </View>
-      <Text style={styles.emptyTitle}>尚無訊息</Text>
-      <Text style={styles.emptySubtext}>當您收到提醒時，會顯示在這裡</Text>
-    </View>
-  );
+    );
+  };
 
   const renderLoading = () => (
     <View style={styles.loadingContainer}>
