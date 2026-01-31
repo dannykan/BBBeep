@@ -638,6 +638,62 @@ POST /points/verify-iap
 3. 可用 Gmail 的 `+` 標籤：`yourname+sandbox@gmail.com`
 4. iPhone 設定：**設定 → Developer → Sandbox Apple Account** 登入
 
+## 強制更新功能 (Force Update)
+
+App 啟動時會檢查版本，若版本過低且後台設定強制更新，會顯示全螢幕 Modal 引導用戶去 App Store 更新。
+
+### 架構
+
+```
+App 啟動 → GET /app/version-check?platform=ios&version=1.0.3
+                    ↓
+         { needsUpdate: true, forceUpdate: true }
+                    ↓
+         顯示 ForceUpdateModal（不可關閉）
+                    ↓
+         用戶點擊「前往更新」→ 開啟 App Store
+```
+
+### API Endpoints
+
+| Endpoint | 說明 | 權限 |
+|----------|------|------|
+| `GET /app/version-check` | 檢查版本 | 公開 |
+| `GET /app/admin/version-configs` | 取得設定 | Admin |
+| `PUT /app/admin/version-configs` | 更新設定 | Admin |
+
+### Admin 管理方式
+
+```bash
+# 查看目前設定
+curl -H "x-admin-token: YOUR_TOKEN" https://api.ubeep.app/app/admin/version-configs
+
+# 開啟 iOS 強制更新（強制用戶更新到 1.0.4）
+curl -X PUT -H "x-admin-token: YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"ios","minVersion":"1.0.4","currentVersion":"1.0.4","forceUpdate":true}' \
+  https://api.ubeep.app/app/admin/version-configs
+
+# 關閉強制更新
+curl -X PUT -H "x-admin-token: YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"ios","forceUpdate":false}' \
+  https://api.ubeep.app/app/admin/version-configs
+```
+
+### 重要設計
+
+- **API 失敗不阻擋 App**：版本檢查失敗時，用戶仍可正常使用
+- **預設不強制更新**：`forceUpdate` 預設為 `false`
+- **雙重條件**：必須 `forceUpdate=true` 且 `needsUpdate=true` 才會顯示 Modal
+
+### Key Files
+
+- `apps/api/src/app-version/` - 後端版本控制模組
+- `apps/mobile/src/components/ForceUpdateModal.tsx` - 強制更新 Modal
+- `apps/mobile/App.tsx` - 啟動時版本檢查邏輯
+- `packages/shared/src/api/services/app-version.ts` - API client
+
 ## iOS Build 注意事項
 
 ### Firebase/CocoaPods 相容性
