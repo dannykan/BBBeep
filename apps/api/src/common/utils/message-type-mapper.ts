@@ -12,9 +12,9 @@ export const MESSAGE_TYPE_MAP = {
 } as const;
 
 export const MESSAGE_TYPE_REVERSE_MAP = {
-  '車況提醒': MessageType.VEHICLE_REMINDER,
-  '行車安全提醒': MessageType.SAFETY_REMINDER,
-  '讚美感謝': MessageType.PRAISE,
+  車況提醒: MessageType.VEHICLE_REMINDER,
+  行車安全提醒: MessageType.SAFETY_REMINDER,
+  讚美感謝: MessageType.PRAISE,
 } as const;
 
 export type MessageTypeChinese = keyof typeof MESSAGE_TYPE_REVERSE_MAP;

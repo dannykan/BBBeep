@@ -13,12 +13,20 @@ export class CreateLicensePlateApplicationDto {
   @IsOptional()
   vehicleType?: VehicleType;
 
-  @ApiProperty({ required: false, example: 'https://example.com/image.jpg', description: '行照照片 URL' })
+  @ApiProperty({
+    required: false,
+    example: 'https://example.com/image.jpg',
+    description: '行照照片 URL',
+  })
   @IsString()
   @IsOptional()
   licenseImage?: string;
 
-  @ApiProperty({ required: false, example: 'user@example.com', description: '申請人 Email（用於通知審核結果）' })
+  @ApiProperty({
+    required: false,
+    example: 'user@example.com',
+    description: '申請人 Email（用於通知審核結果）',
+  })
   @IsEmail()
   @IsOptional()
   email?: string;

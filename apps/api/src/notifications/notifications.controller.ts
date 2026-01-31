@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Delete,
-  Body,
-  Req,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Delete, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { RegisterDeviceDto, UnregisterDeviceDto } from './dto/register-device.dto';
@@ -21,11 +13,7 @@ export class NotificationsController {
   @ApiOperation({ summary: '註冊裝置推播 Token' })
   async registerDevice(@Req() req: any, @Body() dto: RegisterDeviceDto) {
     const userId = req.user.id;
-    await this.notificationsService.registerDevice(
-      userId,
-      dto.token,
-      dto.platform,
-    );
+    await this.notificationsService.registerDevice(userId, dto.token, dto.platform);
     return { message: '裝置註冊成功' };
   }
 

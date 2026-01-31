@@ -218,7 +218,7 @@ export class UploadController {
         '這是台灣人的繁體中文語音',
         '關於行車或交通情況',
       ];
-      const isUnrecognizable = unrecognizablePatterns.some(pattern => text.includes(pattern));
+      const isUnrecognizable = unrecognizablePatterns.some((pattern) => text.includes(pattern));
 
       if (isUnrecognizable || text.trim().length === 0) {
         return {

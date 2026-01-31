@@ -154,7 +154,7 @@ async function runTests() {
   const parser = new VoiceParserService();
 
   console.log('🚗 車牌語音解析測試\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   let passed = 0;
   let failed = 0;
@@ -171,11 +171,20 @@ async function runTests() {
       const plateMatch = topPlate === testCase.expectedPlate;
       const categoryMatch = result.event.category === testCase.expectedCategory;
 
-      console.log(`   識別車牌: ${topPlate || '(無)'} ${plateMatch ? '✅' : '❌'} (期望: ${testCase.expectedPlate || '(無)'})`);
-      console.log(`   識別類別: ${result.event.category} ${categoryMatch ? '✅' : '❌'} (期望: ${testCase.expectedCategory})`);
+      console.log(
+        `   識別車牌: ${topPlate || '(無)'} ${plateMatch ? '✅' : '❌'} (期望: ${testCase.expectedPlate || '(無)'})`,
+      );
+      console.log(
+        `   識別類別: ${result.event.category} ${categoryMatch ? '✅' : '❌'} (期望: ${testCase.expectedCategory})`,
+      );
 
       if (result.plates.length > 1) {
-        console.log(`   其他候選: ${result.plates.slice(1).map((p) => p.plate).join(', ')}`);
+        console.log(
+          `   其他候選: ${result.plates
+            .slice(1)
+            .map((p) => p.plate)
+            .join(', ')}`,
+        );
       }
 
       if (result.suggestedMessage) {
@@ -208,7 +217,7 @@ async function runTests() {
     }
   }
 
-  console.log('\n' + '=' .repeat(60));
+  console.log('\n' + '='.repeat(60));
   console.log('\n📊 測試結果統計\n');
   console.log(`   總測試數: ${testCases.length}`);
   console.log(`   通過: ${passed} (${((passed / testCases.length) * 100).toFixed(1)}%)`);
@@ -219,18 +228,16 @@ async function runTests() {
   console.log(`\n   車牌識別準確率: ${(plateAccuracy * 100).toFixed(1)}%`);
 
   // 首選正確率（第一個候選是正確的）
-  const topPlateCorrect = results.filter(
-    (r) => r.actual === r.expected,
-  ).length;
+  const topPlateCorrect = results.filter((r) => r.actual === r.expected).length;
   console.log(`   首選正確率: ${((topPlateCorrect / results.length) * 100).toFixed(1)}%`);
 
   // 候選包含正確答案的比率
-  const candidatesContainCorrect = results.filter(
-    (r) => r.candidates?.includes(r.expected),
-  ).length;
-  console.log(`   候選包含正確答案: ${((candidatesContainCorrect / results.length) * 100).toFixed(1)}%`);
+  const candidatesContainCorrect = results.filter((r) => r.candidates?.includes(r.expected)).length;
+  console.log(
+    `   候選包含正確答案: ${((candidatesContainCorrect / results.length) * 100).toFixed(1)}%`,
+  );
 
-  console.log('\n' + '=' .repeat(60));
+  console.log('\n' + '='.repeat(60));
 }
 
 // 執行測試

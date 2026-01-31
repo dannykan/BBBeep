@@ -3,11 +3,7 @@
  * 使用 @bbbeeep/shared 的 filterContent 進行內容過濾
  */
 
-import {
-  registerDecorator,
-  ValidationOptions,
-  ValidationArguments,
-} from 'class-validator';
+import { registerDecorator, ValidationOptions, ValidationArguments } from 'class-validator';
 import { filterContent } from '@bbbeeep/shared';
 
 /**

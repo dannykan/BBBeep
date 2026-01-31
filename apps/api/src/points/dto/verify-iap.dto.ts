@@ -19,7 +19,10 @@ export class VerifyIAPDto {
   @IsEnum(IAPPlatformDto)
   platform: IAPPlatformDto;
 
-  @ApiProperty({ description: '收據數據 (iOS: transactionReceipt, Android: purchaseToken)', required: false })
+  @ApiProperty({
+    description: '收據數據 (iOS: transactionReceipt, Android: purchaseToken)',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   receiptData?: string;

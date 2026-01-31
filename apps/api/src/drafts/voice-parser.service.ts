@@ -346,11 +346,7 @@ ${transcript}
     category: string,
   ): 'VEHICLE_REMINDER' | 'SAFETY_REMINDER' | 'PRAISE' | 'OTHER' {
     const normalized = category?.toUpperCase();
-    if (
-      ['VEHICLE_REMINDER', 'SAFETY_REMINDER', 'PRAISE', 'OTHER'].includes(
-        normalized,
-      )
-    ) {
+    if (['VEHICLE_REMINDER', 'SAFETY_REMINDER', 'PRAISE', 'OTHER'].includes(normalized)) {
       return normalized as any;
     }
     return 'OTHER';

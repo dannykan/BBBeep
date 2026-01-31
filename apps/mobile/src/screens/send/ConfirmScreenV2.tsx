@@ -476,8 +476,7 @@ export default function ConfirmScreenV2({ navigation }: Props) {
 
   return (
     <SendLayout currentStep={4} totalSteps={4}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <CompactStepHeader title="確認發送" subtitle="請確認以下資訊" />
+      <CompactStepHeader title="確認發送" subtitle="請確認以下資訊" />
 
         {/* Main info card */}
         <View style={[styles.mainCard, { backgroundColor: colors.card.DEFAULT, borderColor: colors.border }]}>
@@ -985,7 +984,6 @@ export default function ConfirmScreenV2({ navigation }: Props) {
             </>
           )}
         </TouchableOpacity>
-      </ScrollView>
     </SendLayout>
   );
 }

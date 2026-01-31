@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Query,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ActivitiesService, CreateActivityDto } from './activities.service';
@@ -31,7 +23,8 @@ export class ActivitiesController {
   @ApiOperation({ summary: '記錄錄音完成' })
   async recordRecording(
     @Request() req,
-    @Body() data: {
+    @Body()
+    data: {
       voiceUrl: string;
       voiceDuration: number;
       transcript?: string;
@@ -55,7 +48,8 @@ export class ActivitiesController {
   @ApiOperation({ summary: '記錄文字編輯（點擊下一步）' })
   async recordTextEdit(
     @Request() req,
-    @Body() data: {
+    @Body()
+    data: {
       messageText: string;
       targetPlate?: string;
       vehicleType?: string;
@@ -76,7 +70,8 @@ export class ActivitiesController {
   @ApiOperation({ summary: '記錄 AI 優化' })
   async recordAiOptimize(
     @Request() req,
-    @Body() data: {
+    @Body()
+    data: {
       messageText: string;
       voiceUrl?: string;
       voiceDuration?: number;
@@ -98,7 +93,8 @@ export class ActivitiesController {
   @ApiOperation({ summary: '記錄訊息發送成功' })
   async recordSent(
     @Request() req,
-    @Body() data: {
+    @Body()
+    data: {
       messageText: string;
       voiceUrl?: string;
       voiceDuration?: number;

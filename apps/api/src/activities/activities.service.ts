@@ -164,19 +164,14 @@ export class ActivitiesService {
     }
 
     // 基本統計
-    const [
-      totalActivities,
-      totalRecordings,
-      totalTextEdits,
-      totalAiOptimize,
-      totalSent,
-    ] = await Promise.all([
-      this.prisma.userActivity.count({ where }),
-      this.prisma.userActivity.count({ where: { ...where, type: 'RECORDING_COMPLETE' } }),
-      this.prisma.userActivity.count({ where: { ...where, type: 'TEXT_EDIT' } }),
-      this.prisma.userActivity.count({ where: { ...where, type: 'AI_OPTIMIZE' } }),
-      this.prisma.userActivity.count({ where: { ...where, isSent: true } }),
-    ]);
+    const [totalActivities, totalRecordings, totalTextEdits, totalAiOptimize, totalSent] =
+      await Promise.all([
+        this.prisma.userActivity.count({ where }),
+        this.prisma.userActivity.count({ where: { ...where, type: 'RECORDING_COMPLETE' } }),
+        this.prisma.userActivity.count({ where: { ...where, type: 'TEXT_EDIT' } }),
+        this.prisma.userActivity.count({ where: { ...where, type: 'AI_OPTIMIZE' } }),
+        this.prisma.userActivity.count({ where: { ...where, isSent: true } }),
+      ]);
 
     const sendRate = totalActivities > 0 ? (totalSent / totalActivities) * 100 : 0;
 
@@ -203,10 +198,7 @@ export class ActivitiesService {
     const allTexts = await this.prisma.userActivity.findMany({
       where: {
         ...where,
-        OR: [
-          { messageText: { not: null } },
-          { transcript: { not: null } },
-        ],
+        OR: [{ messageText: { not: null } }, { transcript: { not: null } }],
       },
       select: {
         messageText: true,
@@ -219,7 +211,7 @@ export class ActivitiesService {
     for (const item of allTexts) {
       const text = item.messageText || item.transcript || '';
       // 簡單的詞頻統計（可以之後改用更好的 NLP）
-      const words = text.split(/[\s，。！？、]+/).filter(w => w.length >= 2);
+      const words = text.split(/[\s，。！？、]+/).filter((w) => w.length >= 2);
       for (const word of words) {
         phraseCount.set(word, (phraseCount.get(word) || 0) + 1);
       }
@@ -238,11 +230,11 @@ export class ActivitiesService {
       totalSent,
       sendRate: Math.round(sendRate * 100) / 100,
       topPhrases,
-      activitiesByDay: activitiesByDay.map(d => ({
+      activitiesByDay: activitiesByDay.map((d) => ({
         date: d.date,
         count: Number(d.count),
       })),
-      activitiesByType: activitiesByType.map(t => ({
+      activitiesByType: activitiesByType.map((t) => ({
         type: t.type,
         count: t._count.id,
       })),

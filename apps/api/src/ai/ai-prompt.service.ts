@@ -27,10 +27,7 @@ export class AIPromptService {
 
   async getAllPrompts() {
     return this.prisma.aIPrompt.findMany({
-      orderBy: [
-        { vehicleType: 'asc' },
-        { category: 'asc' },
-      ],
+      orderBy: [{ vehicleType: 'asc' }, { category: 'asc' }],
     });
   }
 

@@ -16,7 +16,7 @@ export class MessageTypePipe implements PipeTransform {
         return toPrismaType(value as MessageTypeChinese);
       }
       throw new BadRequestException(
-        `type must be one of: 車況提醒, 行車安全提醒, 讚美感謝. Got: ${value}`
+        `type must be one of: 車況提醒, 行車安全提醒, 讚美感謝. Got: ${value}`,
       );
     }
 

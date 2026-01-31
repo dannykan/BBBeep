@@ -135,7 +135,8 @@ export class AiService {
 
     // 解析 prompt 模板
     // 如果包含 {text}，则替换；否则作为 system message，text 作为 user message
-    let systemPrompt = '你是一個友善的助手，專門將用戶的文字改寫為更溫和、禮貌的語氣。請保持原意，但使用更溫和的表達方式。只返回改寫後的文字，不要添加任何解釋。';
+    let systemPrompt =
+      '你是一個友善的助手，專門將用戶的文字改寫為更溫和、禮貌的語氣。請保持原意，但使用更溫和的表達方式。只返回改寫後的文字，不要添加任何解釋。';
     let userPrompt = `請將以下文字改寫為更溫和的語氣：${text}`;
 
     if (promptTemplate.includes('{text}')) {

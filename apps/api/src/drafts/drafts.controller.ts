@@ -9,12 +9,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DraftsService } from './drafts.service';
 import {
@@ -36,10 +31,7 @@ export class DraftsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '建立語音草稿' })
   @ApiResponse({ status: 201, type: DraftResponseDto })
-  async create(
-    @Request() req,
-    @Body() dto: CreateDraftDto,
-  ): Promise<DraftResponseDto> {
+  async create(@Request() req, @Body() dto: CreateDraftDto): Promise<DraftResponseDto> {
     return this.draftsService.create(req.user.id, dto);
   }
 
@@ -71,10 +63,7 @@ export class DraftsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '取得單一草稿' })
   @ApiResponse({ status: 200, type: DraftResponseDto })
-  async findOne(
-    @Request() req,
-    @Param('id') id: string,
-  ): Promise<DraftResponseDto> {
+  async findOne(@Request() req, @Param('id') id: string): Promise<DraftResponseDto> {
     return this.draftsService.findOne(req.user.id, id);
   }
 

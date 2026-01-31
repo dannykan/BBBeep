@@ -16,8 +16,8 @@ export class PointsController {
   async getBalance(@CurrentUser() user: any) {
     const detail = await this.pointsService.getPointsDetail(user.userId);
     return {
-      points: detail.total,        // 總點數（向下相容）
-      freePoints: detail.free,     // 每日免費點數
+      points: detail.total, // 總點數（向下相容）
+      freePoints: detail.free, // 每日免費點數
       purchasedPoints: detail.purchased, // 購買點數
     };
   }

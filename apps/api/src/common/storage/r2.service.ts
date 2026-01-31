@@ -59,11 +59,7 @@ export class R2Service {
   /**
    * 上傳語音檔案到 R2
    */
-  async uploadVoice(
-    buffer: Buffer,
-    mimetype: string,
-    originalname: string,
-  ): Promise<UploadResult> {
+  async uploadVoice(buffer: Buffer, mimetype: string, originalname: string): Promise<UploadResult> {
     if (!this.s3Client) {
       throw new Error('R2 storage is not configured');
     }
@@ -83,9 +79,7 @@ export class R2Service {
       );
 
       // 構建公開 URL
-      const url = this.publicUrl
-        ? `${this.publicUrl}/${key}`
-        : await this.getSignedUrl(key);
+      const url = this.publicUrl ? `${this.publicUrl}/${key}` : await this.getSignedUrl(key);
 
       this.logger.log(`Voice file uploaded: ${key}`);
 
