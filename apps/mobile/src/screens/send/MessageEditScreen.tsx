@@ -1063,71 +1063,129 @@ export default function MessageEditScreen({ navigation, route }: Props) {
                     </>
                   )}
 
-                  {/* 非模板模式：簡化邏輯 - 永遠顯示發送按鈕，有警告時額外顯示提示 */}
+                  {/* 非模板模式 */}
                   {!effectiveIsUsingTemplate && (
                     <>
-                      {/* Voice option - 有語音時顯示 */}
-                      {hasVoice && (
-                        <TouchableOpacity
-                          style={[styles.submitOption, { backgroundColor: '#10B981' }]}
-                          onPress={handleVoiceSubmit}
-                          activeOpacity={0.8}
-                        >
-                          <View style={styles.optionMain}>
-                            <Ionicons name="volume-high" size={20} color="#FFFFFF" />
-                            <Text style={[styles.optionText, { color: '#FFFFFF' }]}>
-                              使用語音送出
-                            </Text>
-                          </View>
-                          <View style={styles.pointBadge}>
-                            <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>8 點</Text>
-                          </View>
-                        </TouchableOpacity>
+                      {/* ===== 無警告時 ===== */}
+                      {aiModerationPassed && (
+                        <>
+                          {/* 有語音：綠色使用語音送出 */}
+                          {hasVoice && (
+                            <TouchableOpacity
+                              style={[styles.submitOption, { backgroundColor: '#10B981' }]}
+                              onPress={handleVoiceSubmit}
+                              activeOpacity={0.8}
+                            >
+                              <View style={styles.optionMain}>
+                                <Ionicons name="volume-high" size={20} color="#FFFFFF" />
+                                <Text style={[styles.optionText, { color: '#FFFFFF' }]}>
+                                  使用語音送出
+                                </Text>
+                              </View>
+                              <View style={styles.pointBadge}>
+                                <Text style={[styles.pointBadgeText, { color: '#FFFFFF' }]}>8 點</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+
+                          {/* 無語音：藍色使用文字送出 */}
+                          {!hasVoice && (
+                            <TouchableOpacity
+                              style={[styles.submitOption, { backgroundColor: colors.primary.DEFAULT }]}
+                              onPress={handleTextSubmit}
+                              activeOpacity={0.8}
+                            >
+                              <View style={styles.optionMain}>
+                                <Ionicons name="document-text" size={20} color={colors.primary.foreground} />
+                                <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
+                                  使用文字送出
+                                </Text>
+                              </View>
+                              <View style={styles.pointBadge}>
+                                <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        </>
                       )}
 
-                      {/* Text option - 永遠顯示（無語音時）*/}
-                      {!hasVoice && (
-                        <TouchableOpacity
-                          style={[styles.submitOption, { backgroundColor: colors.primary.DEFAULT }]}
-                          onPress={handleTextSubmit}
-                          activeOpacity={0.8}
-                        >
-                          <View style={styles.optionMain}>
-                            <Ionicons name="document-text" size={20} color={colors.primary.foreground} />
-                            <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
-                              使用文字送出
-                            </Text>
-                          </View>
-                          <View style={styles.pointBadge}>
-                            <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
-                          </View>
-                        </TouchableOpacity>
-                      )}
+                      {/* ===== 有警告時 ===== */}
+                      {!aiModerationPassed && (
+                        <>
+                          {/* AI 優化選項 - 推薦，放在最前面 */}
+                          {aiLimit.canUse && (
+                            <TouchableOpacity
+                              style={[
+                                styles.submitOption,
+                                { backgroundColor: colors.primary.DEFAULT },
+                                isOptimizing && styles.buttonDisabled,
+                              ]}
+                              onPress={handleAiSubmit}
+                              activeOpacity={0.8}
+                              disabled={isOptimizing}
+                            >
+                              <View style={styles.optionMain}>
+                                {isOptimizing ? (
+                                  <ActivityIndicator size="small" color={colors.primary.foreground} />
+                                ) : (
+                                  <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
+                                )}
+                                <Text style={[styles.optionText, { color: colors.primary.foreground }]}>
+                                  {isOptimizing ? 'AI 優化中...' : 'AI 優化（推薦）'}
+                                </Text>
+                              </View>
+                              <View style={styles.pointBadge}>
+                                <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
 
-                      {/* AI 優化選項 - 有警告且 AI 可用時顯示 */}
-                      {!aiModerationPassed && aiLimit.canUse && (
-                        <TouchableOpacity
-                          style={[
-                            styles.submitOption,
-                            styles.insistOption,
-                            { borderColor: colors.primary.DEFAULT },
-                            isOptimizing && styles.buttonDisabled,
-                          ]}
-                          onPress={handleAiSubmit}
-                          activeOpacity={0.8}
-                          disabled={isOptimizing}
-                        >
-                          <View style={styles.optionMain}>
-                            {isOptimizing ? (
-                              <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
-                            ) : (
-                              <Ionicons name="sparkles" size={20} color={colors.primary.DEFAULT} />
-                            )}
-                            <Text style={[styles.optionText, { color: colors.primary.DEFAULT }]}>
-                              {isOptimizing ? 'AI 優化中...' : 'AI 優化（推薦）'}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
+                          {/* 有語音：堅持使用語音送出（灰色邊框） */}
+                          {hasVoice && (
+                            <TouchableOpacity
+                              style={[
+                                styles.submitOption,
+                                styles.insistOption,
+                                { borderColor: colors.muted.foreground },
+                              ]}
+                              onPress={handleVoiceSubmit}
+                              activeOpacity={0.8}
+                            >
+                              <View style={styles.optionMain}>
+                                <Ionicons name="volume-high" size={20} color={colors.muted.foreground} />
+                                <Text style={[styles.optionText, { color: colors.muted.foreground }]}>
+                                  堅持使用語音送出
+                                </Text>
+                              </View>
+                              <View style={styles.pointBadge}>
+                                <Text style={[styles.pointBadgeText, { color: colors.muted.foreground }]}>8 點</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+
+                          {/* 無語音：堅持使用文字送出（灰色邊框） */}
+                          {!hasVoice && (
+                            <TouchableOpacity
+                              style={[
+                                styles.submitOption,
+                                styles.insistOption,
+                                { borderColor: colors.muted.foreground },
+                              ]}
+                              onPress={handleTextSubmit}
+                              activeOpacity={0.8}
+                            >
+                              <View style={styles.optionMain}>
+                                <Ionicons name="document-text" size={20} color={colors.muted.foreground} />
+                                <Text style={[styles.optionText, { color: colors.muted.foreground }]}>
+                                  堅持使用文字送出
+                                </Text>
+                              </View>
+                              <View style={styles.pointBadge}>
+                                <Text style={[styles.pointBadgeText, { color: colors.muted.foreground }]}>免費</Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        </>
                       )}
                     </>
                   )}
