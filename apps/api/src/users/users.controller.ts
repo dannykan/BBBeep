@@ -106,4 +106,10 @@ export class UsersController {
   async getTrialStatus(@CurrentUser() user: any) {
     return this.usersService.getTrialStatus(user.userId);
   }
+
+  @Delete('me')
+  @ApiOperation({ summary: '刪除帳戶' })
+  async deleteAccount(@CurrentUser() user: any) {
+    return this.usersService.deleteAccount(user.userId);
+  }
 }

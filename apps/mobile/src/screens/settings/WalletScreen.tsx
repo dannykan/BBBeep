@@ -91,6 +91,7 @@ export default function WalletScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [iapProducts, setIapProducts] = useState<Product[]>([]);
   const [iapConnected, setIapConnected] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [trialStatus, setTrialStatus] = useState<TrialStatusResponse | null>(null);
 
   const loadPointHistory = useCallback(async () => {
@@ -126,8 +127,33 @@ export default function WalletScreen() {
     let purchaseUpdateSubscription: any;
     let purchaseErrorSubscription: any;
     let isSubscribed = true;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 2000;
+
+    const fetchProductsWithRetry = async (): Promise<Product[]> => {
+      while (retryCount < MAX_RETRIES) {
+        try {
+          console.log(`[IAP] Fetching products (attempt ${retryCount + 1}/${MAX_RETRIES}):`, IAP_SKUS);
+          const products = await fetchProducts({ skus: IAP_SKUS! });
+          if (products && products.length > 0) {
+            console.log('[IAP] Products loaded:', products.length, products.map((p) => p.id));
+            return products as Product[];
+          }
+          console.log('[IAP] No products returned, retrying...');
+        } catch (fetchError) {
+          console.log(`[IAP] Fetch attempt ${retryCount + 1} failed:`, fetchError);
+        }
+        retryCount++;
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        }
+      }
+      return [];
+    };
 
     const initIAP = async () => {
+      setIsLoadingProducts(true);
       try {
         const connected = await initConnection();
         console.log('[IAP] Connection result:', connected);
@@ -135,24 +161,19 @@ export default function WalletScreen() {
         if (!isSubscribed) return;
         setIapConnected(true);
 
-        // 獲取產品資訊
+        // 獲取產品資訊（帶重試機制）
         if (IAP_SKUS && IAP_SKUS.length > 0) {
-          console.log('[IAP] Fetching products:', IAP_SKUS);
-          try {
-            const products = await fetchProducts({ skus: IAP_SKUS });
-            if (!isSubscribed) return;
-            if (products && products.length > 0) {
-              console.log('[IAP] Products loaded:', products.length, products.map((p) => p.id));
-              setIapProducts(products as Product[]);
-            }
-          } catch (fetchError) {
-            // 產品獲取失敗（可能是模擬器或未配置 IAP）
-            console.log('[IAP] Fetch products skipped (simulator or not configured)');
-          }
+          const products = await fetchProductsWithRetry();
+          if (!isSubscribed) return;
+          setIapProducts(products);
         }
       } catch (error: any) {
         // IAP 初始化失敗（模擬器或未配置）- 靜默處理
         console.log('[IAP] Init skipped:', error?.message || 'Not available');
+      } finally {
+        if (isSubscribed) {
+          setIsLoadingProducts(false);
+        }
       }
     };
 
@@ -264,11 +285,21 @@ export default function WalletScreen() {
       return;
     }
 
+    // 檢查產品是否正在載入
+    if (isLoadingProducts) {
+      Alert.alert('提示', '產品資訊載入中，請稍等幾秒後再試');
+      return;
+    }
+
     // 檢查產品是否已載入
     const product = iapProducts.find((p) => p.id === option.productId);
     if (!product) {
       console.warn('[IAP] Product not found:', option.productId, 'Available:', iapProducts.map((p) => p.id));
-      Alert.alert('提示', '產品資訊載入中，請稍後再試');
+      Alert.alert(
+        '產品載入失敗',
+        '無法取得產品資訊，請下拉重新整理頁面後再試。',
+        [{ text: '好的' }]
+      );
       return;
     }
 
@@ -426,70 +457,89 @@ export default function WalletScreen() {
 
         {/* Purchase Plans Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>購買點數</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>購買點數</Text>
+            {isLoadingProducts && (
+              <View style={styles.loadingBadge}>
+                <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                <Text style={styles.loadingBadgeText}>載入中</Text>
+              </View>
+            )}
+          </View>
 
           {/* 2x2 Grid */}
           <View style={styles.plansGrid}>
             <View style={styles.plansRow}>
-              {RECHARGE_OPTIONS.slice(0, 2).map((option) => (
-                <TouchableOpacity
-                  key={option.points}
-                  style={[
-                    styles.planCard,
-                    option.popular && styles.planCardPopular,
-                  ]}
-                  onPress={() => handleRecharge(option)}
-                  disabled={isRecharging}
-                  activeOpacity={0.7}
-                >
-                  {isRecharging && selectedOption === option.points ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={colors.primary.DEFAULT}
-                      style={styles.planLoading}
-                    />
-                  ) : (
-                    <>
-                      {option.popular ? (
-                        <View style={styles.popularBadge}>
-                          <Text style={styles.popularBadgeText}>熱門</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.planSpacer} />
-                      )}
-                      <Text style={styles.planPoints}>{option.points}</Text>
-                      <Text style={styles.planPointsLabel}>點</Text>
-                      <Text style={styles.planPrice}>NT$ {option.price}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ))}
+              {RECHARGE_OPTIONS.slice(0, 2).map((option) => {
+                const isProductLoaded = iapProducts.some((p) => p.id === option.productId);
+                const isDisabled = isRecharging || isLoadingProducts;
+                return (
+                  <TouchableOpacity
+                    key={option.points}
+                    style={[
+                      styles.planCard,
+                      option.popular && styles.planCardPopular,
+                      isDisabled && styles.planCardDisabled,
+                    ]}
+                    onPress={() => handleRecharge(option)}
+                    disabled={isDisabled}
+                    activeOpacity={0.7}
+                  >
+                    {isRecharging && selectedOption === option.points ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.primary.DEFAULT}
+                        style={styles.planLoading}
+                      />
+                    ) : (
+                      <>
+                        {option.popular ? (
+                          <View style={styles.popularBadge}>
+                            <Text style={styles.popularBadgeText}>熱門</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.planSpacer} />
+                        )}
+                        <Text style={[styles.planPoints, isDisabled && styles.planTextDisabled]}>{option.points}</Text>
+                        <Text style={[styles.planPointsLabel, isDisabled && styles.planTextDisabled]}>點</Text>
+                        <Text style={[styles.planPrice, isDisabled && styles.planTextDisabled]}>NT$ {option.price}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <View style={styles.plansRow}>
-              {RECHARGE_OPTIONS.slice(2, 4).map((option) => (
-                <TouchableOpacity
-                  key={option.points}
-                  style={styles.planCard}
-                  onPress={() => handleRecharge(option)}
-                  disabled={isRecharging}
-                  activeOpacity={0.7}
-                >
-                  {isRecharging && selectedOption === option.points ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={colors.primary.DEFAULT}
-                      style={styles.planLoading}
-                    />
-                  ) : (
-                    <>
-                      <View style={styles.planSpacer} />
-                      <Text style={styles.planPoints}>{option.points}</Text>
-                      <Text style={styles.planPointsLabel}>點</Text>
-                      <Text style={styles.planPrice}>NT$ {option.price}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ))}
+              {RECHARGE_OPTIONS.slice(2, 4).map((option) => {
+                const isDisabled = isRecharging || isLoadingProducts;
+                return (
+                  <TouchableOpacity
+                    key={option.points}
+                    style={[
+                      styles.planCard,
+                      isDisabled && styles.planCardDisabled,
+                    ]}
+                    onPress={() => handleRecharge(option)}
+                    disabled={isDisabled}
+                    activeOpacity={0.7}
+                  >
+                    {isRecharging && selectedOption === option.points ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.primary.DEFAULT}
+                        style={styles.planLoading}
+                      />
+                    ) : (
+                      <>
+                        <View style={styles.planSpacer} />
+                        <Text style={[styles.planPoints, isDisabled && styles.planTextDisabled]}>{option.points}</Text>
+                        <Text style={[styles.planPointsLabel, isDisabled && styles.planTextDisabled]}>點</Text>
+                        <Text style={[styles.planPrice, isDisabled && styles.planTextDisabled]}>NT$ {option.price}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>
@@ -661,10 +711,28 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     section: {
       gap: 12,
     },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
     sectionTitle: {
       fontSize: 16,
       fontWeight: '600',
       color: colors.text.primary,
+    },
+    loadingBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.muted.DEFAULT,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    loadingBadgeText: {
+      fontSize: 12,
+      color: colors.text.secondary,
     },
 
     // Plans Grid
@@ -689,6 +757,12 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
       backgroundColor: colors.primary.bg,
       borderWidth: 2,
       borderColor: colors.primary.DEFAULT,
+    },
+    planCardDisabled: {
+      opacity: 0.6,
+    },
+    planTextDisabled: {
+      opacity: 0.7,
     },
     planSpacer: {
       height: 18,

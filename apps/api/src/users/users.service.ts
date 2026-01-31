@@ -564,4 +564,80 @@ export class UsersService {
       },
     };
   }
+
+  // 刪除帳戶（用戶自己刪除）
+  async deleteAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    // 刪除用戶相關的所有資料（使用 transaction 確保原子性）
+    await this.prisma.$transaction(async (tx) => {
+      // 1. 刪除點數歷史
+      await tx.pointHistory.deleteMany({
+        where: { userId },
+      });
+
+      // 2. 刪除 AI 使用記錄
+      await tx.aIUsageLog.deleteMany({
+        where: { userId },
+      });
+
+      // 3. 刪除封鎖/被封鎖記錄
+      await tx.blockedUser.deleteMany({
+        where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+      });
+
+      // 4. 刪除拒收記錄
+      await tx.rejectedUser.deleteMany({
+        where: { OR: [{ rejecterId: userId }, { rejectedId: userId }] },
+      });
+
+      // 5. 刪除訊息檢舉記錄
+      await tx.messageReport.deleteMany({
+        where: { reporterId: userId },
+      });
+
+      // 6. 刪除車牌申請
+      await tx.licensePlateApplication.deleteMany({
+        where: { userId },
+      });
+
+      // 7. 刪除語音草稿
+      await tx.voiceDraft.deleteMany({
+        where: { userId },
+      });
+
+      // 8. 刪除收藏車牌
+      await tx.savedPlate.deleteMany({
+        where: { userId },
+      });
+
+      // 9. 刪除 IAP 交易記錄
+      await tx.iAPTransaction.deleteMany({
+        where: { userId },
+      });
+
+      // 10. 刪除通知設定
+      await tx.notificationToken.deleteMany({
+        where: { userId },
+      });
+
+      // 11. 刪除收到的和發送的訊息
+      await tx.message.deleteMany({
+        where: { OR: [{ senderId: userId }, { receiverId: userId }] },
+      });
+
+      // 12. 最後刪除用戶
+      await tx.user.delete({
+        where: { id: userId },
+      });
+    });
+
+    return { success: true, message: '帳戶已成功刪除' };
+  }
 }

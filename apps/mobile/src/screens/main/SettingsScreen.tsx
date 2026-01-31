@@ -19,7 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
 import { useUnreadReply } from '../../context/UnreadReplyContext';
-import { displayLicensePlate } from '@bbbeeep/shared';
+import { displayLicensePlate, usersApi } from '@bbbeeep/shared';
 import VehicleIcon from '../../components/VehicleIcon';
 
 // Menu item configuration with colors
@@ -55,6 +55,44 @@ export default function SettingsScreen() {
       { text: '取消', style: 'cancel' },
       { text: '登出', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '刪除帳戶',
+      '確定要刪除帳戶嗎？此操作無法復原，所有資料將被永久刪除。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '確認刪除',
+          style: 'destructive',
+          onPress: () => {
+            // 二次確認
+            Alert.alert(
+              '最後確認',
+              '刪除後將無法恢復您的帳戶、點數和所有訊息紀錄。確定要繼續嗎？',
+              [
+                { text: '取消', style: 'cancel' },
+                {
+                  text: '永久刪除',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await usersApi.deleteAccount();
+                      Alert.alert('帳戶已刪除', '感謝您使用 UBeep，期待再次相見！', [
+                        { text: '確定', onPress: logout },
+                      ]);
+                    } catch (error: any) {
+                      Alert.alert('刪除失敗', error?.response?.data?.message || '請稍後再試');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleFeedback = async () => {
@@ -257,9 +295,19 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>登出</Text>
         </TouchableOpacity>
 
+        {/* Delete Account Button */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={handleDeleteAccount}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={16} color={colors.text.secondary} />
+          <Text style={styles.deleteAccountText}>刪除帳戶</Text>
+        </TouchableOpacity>
+
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>UBeep v1.0.0</Text>
+          <Text style={styles.footerText}>UBeep v1.0.2</Text>
         </View>
       </ScrollView>
     </View>
@@ -416,6 +464,19 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 15,
       fontWeight: '600',
       color: '#DC2626',
+    },
+
+    // Delete Account Button
+    deleteAccountButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+    },
+    deleteAccountText: {
+      fontSize: 13,
+      color: colors.text.secondary,
     },
 
     // Footer

@@ -65,4 +65,9 @@ export const usersApi = {
     getApiClient()
       .get<TrialStatusResponse>('/users/me/trial-status')
       .then((res) => res.data),
+
+  deleteAccount: () =>
+    getApiClient()
+      .delete<{ success: boolean; message: string }>('/users/me')
+      .then((res) => res.data),
 };
