@@ -276,6 +276,19 @@ This ensures important decisions and patterns are documented for future sessions
 
 ## Business Rules (MUST FOLLOW)
 
+### User Types（用戶類型）
+
+| 類型 | userType | 說明 |
+|------|----------|------|
+| 駕駛 | `driver` | 有車牌，可收到提醒訊息 |
+| 行人/腳踏車 | `pedestrian` | 無車牌，**無法收到**提醒訊息 |
+
+**行人/腳踏車用戶限制：**
+- 無法透過車牌收到提醒訊息
+- InboxListScreen 會顯示專屬空狀態：「行人/腳踏車模式 - 您目前為行人或腳踏車用戶，無法收到車牌提醒訊息」
+- 可以發送訊息給其他駕駛
+- 若要收到訊息，需至設定頁面綁定車牌
+
 ### Point Cost Rules (2026-01-30 更新)
 
 **試用期政策：**
@@ -366,6 +379,31 @@ Admin 修改詞庫 → 版本號遞增 → App 啟動時檢查版本 → 有更�
 - `apps/api/src/profanity/` - 後端模組
 - `apps/web/src/app/BBBeepadmin2026/profanity/page.tsx` - Admin 頁面
 - `packages/shared/src/api/services/profanity.ts` - API client
+
+### Admin 診斷工具 API
+
+用於除錯推播通知等問題的 Admin API。
+
+**檢查用戶 Device Token 狀態：**
+```bash
+curl -H "x-admin-token: YOUR_TOKEN" \
+  https://api.ubeep.app/admin/users/{userId}/device-tokens
+```
+
+回傳：
+```json
+{
+  "user": { "id": "...", "nickname": "...", "userType": "driver" },
+  "deviceTokens": [
+    { "token": "ExponentPushToken[...]", "platform": "ios", "isActive": true }
+  ],
+  "hasActiveToken": true,
+  "totalTokens": 1,
+  "activeTokens": 1
+}
+```
+
+若 `activeTokens` 為 0，代表用戶沒有開啟通知或 token 註冊失敗。
 
 ### Messages API 格式要求 (CRITICAL)
 
