@@ -622,8 +622,8 @@ export class UsersService {
         where: { userId },
       });
 
-      // 10. 刪除通知設定
-      await tx.notificationToken.deleteMany({
+      // 10. 刪除裝置 token
+      await tx.deviceToken.deleteMany({
         where: { userId },
       });
 

@@ -137,6 +137,41 @@ export class AdminService {
     return user;
   }
 
+  /**
+   * 取得用戶的裝置 Token 資訊（用於診斷推播問題）
+   */
+  async getUserDeviceTokens(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, userType: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用戶不存在');
+    }
+
+    const deviceTokens = await this.prisma.deviceToken.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        token: true,
+        platform: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return {
+      user,
+      deviceTokens,
+      hasActiveToken: deviceTokens.some((t) => t.isActive),
+      totalTokens: deviceTokens.length,
+      activeTokens: deviceTokens.filter((t) => t.isActive).length,
+    };
+  }
+
   async updateUser(
     userId: string,
     data: {

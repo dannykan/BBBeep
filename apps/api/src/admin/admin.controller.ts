@@ -526,6 +526,21 @@ export class AdminController {
 
   // ========== 應用程式內容管理 ==========
 
+  // ========== 裝置 Token 診斷 ==========
+
+  @Get('users/:id/device-tokens')
+  @ApiOperation({ summary: '取得用戶的裝置 Token 狀態（用於診斷推播問題）' })
+  @ApiHeader({ name: 'x-admin-token', required: true })
+  async getUserDeviceTokens(@Headers('x-admin-token') token: string, @Param('id') id: string) {
+    const isValid = await this.adminService.verifyToken(token);
+    if (!isValid) {
+      throw new UnauthorizedException('無效的管理員 token');
+    }
+    return this.adminService.getUserDeviceTokens(id);
+  }
+
+  // ========== 應用程式內容管理 ==========
+
   @Get('app-content')
   @ApiOperation({ summary: '取得應用程式內容（Landing Page、首頁標題等）' })
   @ApiHeader({ name: 'x-admin-token', required: true })
