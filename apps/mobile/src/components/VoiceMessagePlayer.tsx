@@ -167,7 +167,19 @@ export function VoiceMessagePlayer({
           animationRef.current.stop();
         }
       } else if (sound) {
-        // 音訊已預載，直接播放（無延遲）
+        // 檢查是否在結尾位置，如果是則從頭開始
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          const isAtEnd = status.durationMillis &&
+            status.positionMillis >= status.durationMillis - 100; // 容許 100ms 誤差
+          if (isAtEnd) {
+            await sound.setPositionAsync(0);
+            setPosition(0);
+            progressAnim.setValue(0);
+            lastProgress.current = 0;
+          }
+        }
+        // 播放
         await sound.playAsync();
         setIsPlaying(true);
       }
