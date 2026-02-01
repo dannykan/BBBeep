@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "features": "功能特色",
+    "about": "關於我們",
+    "download": "下載應用"
+  },
+  "hero": {
+    "badge": "全新道路溝通體驗",
+    "title1": "路上不用對立",
+    "title2": "也可以好好說話",
+    "subtitle1": "UBeep 讓提醒變得私密、即時、不擴散",
+    "subtitle2": "為道路留一點善意",
+    "drivers": "駕駛",
+    "riders": "騎士",
+    "cyclists": "腳踏車騎士",
+    "pedestrians": "行人"
+  },
+  "features": {
+    "title": "為什麼選擇 UBeep？",
+    "anonymous": {
+      "title": "匿名傳送",
+      "subtitle": "不用知道你是誰",
+      "description": "不留下身份、不建立關係\n只把該說的話，安全送達"
+    },
+    "realtime": {
+      "title": "即時提醒",
+      "subtitle": "當下就能收到",
+      "description": "不用加好友、不用等回覆\n提醒只存在當下那一刻"
+    },
+    "civil": {
+      "title": "保持善意",
+      "subtitle": "不吵架，只提醒",
+      "description": "我們不鼓勵指責\n只留下剛剛好的提醒與感謝"
+    }
+  },
+  "howItWorks": {
+    "badge": "HOW IT WORKS",
+    "title": "三步驟，輕鬆完成",
+    "subtitle": "你不用承擔後續風險",
+    "step1": {
+      "number": "01",
+      "title": "輸入車牌",
+      "subtitle": "只需要車牌號碼",
+      "description": "完全匿名，對方不會知道你是誰"
+    },
+    "step2": {
+      "number": "02",
+      "title": "編輯訊息",
+      "subtitle": "模板一鍵套用",
+      "description": "語音、文字都支援"
+    },
+    "step3": {
+      "number": "03",
+      "title": "一鍵送出",
+      "subtitle": "提醒完就結束",
+      "description": "不會變成聊天室、不會被回追"
+    },
+    "badge2": "匿名、安全、無後顧之憂"
+  },
+  "useCases": {
+    "title": "真實情境，真實解決方案",
+    "case1": {
+      "title": "感謝禮讓",
+      "description": "有人為你禮讓？在事後發送感謝訊息。",
+      "tag": "感恩"
+    },
+    "case2": {
+      "title": "提醒危險駕駛",
+      "description": "被插隊或逼車？發送冷靜的語音提醒，而不是路怒。",
+      "tag": "安全"
+    },
+    "case3": {
+      "title": "文明表達不滿",
+      "description": "有人違規？讓他們知道，而不用大吼或按喇叭。",
+      "tag": "表達"
+    }
+  },
+  "cta": {
+    "title": "下一次，不用忍",
+    "subtitle": "下載 UBeep\n讓提醒有出口，情緒不爆炸"
+  },
+  "footer": {
+    "description": "UBeep 是道路溝通平台，讓駕駛、騎士、腳踏車騎士和行人匿名溝通。",
+    "company": "公司",
+    "features": "功能特色",
+    "aboutUs": "關於我們",
+    "privacyPolicy": "隱私政策",
+    "terms": "服務條款",
+    "contact": "聯絡我們",
+    "email": "電子郵件",
+    "download": "下載應用",
+    "copyright": "© 2025 UBeep. 版權所有。"
+  }
+}

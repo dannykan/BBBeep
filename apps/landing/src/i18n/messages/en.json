@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "features": "Features",
+    "about": "About",
+    "download": "Download"
+  },
+  "hero": {
+    "badge": "A New Way to Communicate on the Road",
+    "title1": "No Need for Confrontation",
+    "title2": "Just Communicate Better",
+    "subtitle1": "UBeep makes reminders private, instant, and contained",
+    "subtitle2": "Leave some kindness on the road",
+    "drivers": "Drivers",
+    "riders": "Riders",
+    "cyclists": "Cyclists",
+    "pedestrians": "Pedestrians"
+  },
+  "features": {
+    "title": "Why Choose UBeep?",
+    "anonymous": {
+      "title": "Anonymous",
+      "subtitle": "No identity revealed",
+      "description": "No identity exposed, no relationship built\nJust deliver your message safely"
+    },
+    "realtime": {
+      "title": "Real-time",
+      "subtitle": "Instant delivery",
+      "description": "No friend request needed, no reply expected\nThe reminder exists only in that moment"
+    },
+    "civil": {
+      "title": "Stay Civil",
+      "subtitle": "Remind, don't argue",
+      "description": "We don't encourage blame\nJust the right amount of reminder and thanks"
+    }
+  },
+  "howItWorks": {
+    "badge": "HOW IT WORKS",
+    "title": "Three Simple Steps",
+    "subtitle": "No follow-up risks for you",
+    "step1": {
+      "number": "01",
+      "title": "Enter Plate",
+      "subtitle": "Just the license plate",
+      "description": "Completely anonymous, they won't know who you are"
+    },
+    "step2": {
+      "number": "02",
+      "title": "Compose",
+      "subtitle": "One-tap templates",
+      "description": "Voice and text supported"
+    },
+    "step3": {
+      "number": "03",
+      "title": "Send",
+      "subtitle": "Done after sending",
+      "description": "No chat threads, no follow-ups"
+    },
+    "badge2": "Anonymous, safe, worry-free"
+  },
+  "useCases": {
+    "title": "Real Scenarios, Real Solutions",
+    "case1": {
+      "title": "Say Thanks",
+      "description": "Someone let you pass? Send a thank you message afterward.",
+      "tag": "Gratitude"
+    },
+    "case2": {
+      "title": "Report Dangerous Driving",
+      "description": "Got cut off or tailgated? Send a calm voice reminder instead of road rage.",
+      "tag": "Safety"
+    },
+    "case3": {
+      "title": "Express Concerns Civilly",
+      "description": "Someone violated rules? Let them know without yelling or honking.",
+      "tag": "Expression"
+    }
+  },
+  "cta": {
+    "title": "Next Time, Don't Hold Back",
+    "subtitle": "Download UBeep\nLet your feelings out, without explosion"
+  },
+  "footer": {
+    "description": "UBeep is a road communication platform that lets drivers, riders, cyclists, and pedestrians communicate anonymously.",
+    "company": "Company",
+    "features": "Features",
+    "aboutUs": "About Us",
+    "privacyPolicy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact Us",
+    "email": "Email",
+    "download": "Download App",
+    "copyright": "© 2025 UBeep. All rights reserved."
+  }
+}

@@ -169,28 +169,30 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // Handle notification response (user tapped on notification)
   const handleNotificationResponse = useCallback(
     (response: Notifications.NotificationResponse) => {
-      console.log('Notification response:', response);
+      console.log('[Notification] Response received:', JSON.stringify(response.notification.request.content.data));
 
       const data = response.notification.request.content.data;
 
-      if (data?.type === 'message' && data?.messageId) {
-        // Navigate to message detail
-        navigation.navigate('Main', {
-          screen: 'Inbox',
-          params: {
-            screen: 'MessageDetail',
-            params: { messageId: data.messageId },
-          },
-        });
-      } else if (data?.type === 'reply' && data?.messageId) {
-        // Navigate to sent screen with the reply message
-        navigation.navigate('Main', {
-          screen: 'Settings',
-          params: {
-            screen: 'Sent',
-            params: { selectedMessageId: data.messageId },
-          },
-        });
+      try {
+        if (data?.type === 'message' && data?.messageId) {
+          console.log('[Notification] Navigating to message:', data.messageId);
+          // Navigate to message detail
+          navigation.navigate('Main', {
+            screen: 'Inbox',
+            params: {
+              screen: 'MessageDetail',
+              params: { messageId: data.messageId },
+            },
+          });
+        } else if (data?.type === 'reply' && data?.messageId) {
+          console.log('[Notification] Navigating to reply:', data.messageId);
+          // Navigate to sent screen with the reply message
+          navigation.navigate('Sent' as any, { selectedMessageId: data.messageId });
+        } else {
+          console.log('[Notification] Unknown notification type:', data?.type);
+        }
+      } catch (error) {
+        console.error('[Notification] Navigation error:', error);
       }
     },
     [navigation]
@@ -205,6 +207,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       Notifications.addNotificationResponseReceivedListener(
         handleNotificationResponse
       );
+
+    // 檢查 App 是否從通知啟動（App 被殺掉後點擊通知的情況）
+    const checkInitialNotification = async () => {
+      const response = await Notifications.getLastNotificationResponseAsync();
+      if (response) {
+        console.log('App launched from notification:', response);
+        // 延遲一下確保 navigation 已經準備好
+        setTimeout(() => {
+          handleNotificationResponse(response);
+        }, 500);
+      }
+    };
+    checkInitialNotification();
 
     return () => {
       if (notificationListener.current) {

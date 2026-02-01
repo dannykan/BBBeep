@@ -107,7 +107,27 @@
       "Bash(brew list:*)",
       "Bash(python3:*)",
       "Bash(# Don''t overwrite splash-icon.png since user said they already updated it # Copy back the original splash-icon if needed - but let''s check what the user has # Also copy the playstore icon cp \"\"/Users/dannykan/Downloads/UBeep Logo_new/android/playstore-icon.png\"\" /Users/dannykan/BBBeep/apps/mobile/android/app/src/main/playstore-icon.png || echo \"\"playstore icon location may vary\"\" echo \"\"Done! Verifying iOS icons:\"\" ls -la /Users/dannykan/BBBeep/apps/mobile/ios/UBeep/Images.xcassets/AppIcon.appiconset/)",
-      "Bash(/usr/libexec/PlistBuddy:*)"
+      "Bash(/usr/libexec/PlistBuddy:*)",
+      "Bash(pnpm --filter @bbbeeep/api lint:*)",
+      "Bash(npx expo export:*)",
+      "Bash(git revert:*)",
+      "Bash(__NEW_LINE_7ba2608cf490d2fa__ echo \"\")",
+      "Bash(railway logs --help:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway status:*)",
+      "Bash(railway run:*)",
+      "Bash(railway redeploy:*)",
+      "Bash(railway up)",
+      "Bash(eas env:update:*)",
+      "Bash(eas secret:list:*)",
+      "Bash(git status:*)",
+      "Bash(eas secret:delete:*)",
+      "Bash(PGPASSWORD=\"vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp\" psql:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:vvwPjtlWWHJtuyStLOUvsWsqzLkzhjzp@switchyard.proxy.rlwy.net:34823/railway\" npx prisma migrate:*)",
+      "Bash(echo:*)",
+      "Bash(pnpm --filter @bbbeeep/mobile lint:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm dev)"
     ]
   }
 }
