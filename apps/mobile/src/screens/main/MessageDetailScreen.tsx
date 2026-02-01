@@ -22,8 +22,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { messagesApi, usersApi, aiApi, getTotalPoints } from '@bbbeeep/shared';
-import type { Message, AiLimitResponse } from '@bbbeeep/shared';
+import { messagesApi, usersApi, aiApi, filterContent } from '@bbbeeep/shared';
+import type { Message, AiLimitResponse, AiModerationResponse } from '@bbbeeep/shared';
+import { checkProfanityFromSync } from '../../lib/profanitySync';
 import { useAuth } from '../../context/AuthContext';
 import { useUnread } from '../../context/UnreadContext';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
@@ -54,6 +55,10 @@ export default function MessageDetailScreen() {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [aiLimit, setAiLimit] = useState<AiLimitResponse>({ canUse: true, remaining: 5 });
+
+  // AI moderation states for reply content
+  const [aiModeration, setAiModeration] = useState<AiModerationResponse | null>(null);
+  const [isAiModerating, setIsAiModerating] = useState(false);
 
   // Block/Report states
   const [showBlockModal, setShowBlockModal] = useState(false);
@@ -102,7 +107,81 @@ export default function MessageDetailScreen() {
     setShowCustomReply(false);
     setCustomReplyText('');
     setAiSuggestion(null);
+    setAiModeration(null);
   };
+
+  // Check reply content moderation (local filter + AI)
+  // 重要：任何審核錯誤都 fallback 到允許，不阻擋用戶
+  const checkReplyModeration = useCallback(async (text: string) => {
+    if (text.trim().length < 5) {
+      setAiModeration(null);
+      setIsAiModerating(false);
+      return;
+    }
+
+    try {
+      // 先用本地過濾器快速檢查
+      const localFilterResult = filterContent(text);
+      if (!localFilterResult.isValid) {
+        const violation = localFilterResult.violations[0];
+        setAiModeration({
+          isAppropriate: false,
+          reason: violation?.message || '內容包含不當用語',
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        });
+        setIsAiModerating(false);
+        return;
+      }
+
+      // 再用同步詞庫檢查
+      const syncedResult = checkProfanityFromSync(text);
+      if (syncedResult.hasIssue) {
+        setAiModeration({
+          isAppropriate: false,
+          reason: `內容包含不當用語：${syncedResult.matchedWord}`,
+          category: 'emotional',
+          suggestion: '建議使用 AI 優化功能改善訊息內容',
+        });
+        setIsAiModerating(false);
+        return;
+      }
+
+      // 最後用 AI API 檢查
+      setIsAiModerating(true);
+      const result = await aiApi.moderate(text);
+      setAiModeration(result);
+    } catch (error) {
+      // 任何錯誤都 fallback 到允許內容，不阻擋用戶
+      console.warn('[Reply Moderation] Error, allowing content:', error);
+      setAiModeration({ isAppropriate: true, reason: null, category: 'ok', suggestion: null });
+    } finally {
+      setIsAiModerating(false);
+    }
+  }, []);
+
+  // Debounced moderation check for custom reply text
+  const moderationTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (showCustomReply && customReplyText.trim().length >= 5 && !aiSuggestion) {
+      if (moderationTimeoutRef.current) {
+        clearTimeout(moderationTimeoutRef.current);
+      }
+      moderationTimeoutRef.current = setTimeout(() => {
+        checkReplyModeration(customReplyText);
+      }, 500);
+    } else {
+      setAiModeration(null);
+    }
+    return () => {
+      if (moderationTimeoutRef.current) {
+        clearTimeout(moderationTimeoutRef.current);
+      }
+    };
+  }, [customReplyText, showCustomReply, aiSuggestion, checkReplyModeration]);
+
+  // Helper: check if content has warning
+  const hasContentWarning = aiModeration && !aiModeration.isAppropriate;
 
   const getQuickReplyText = () => {
     return message?.type === '讚美感謝' ? '收到，謝謝！' : '收到，感謝提醒！';
@@ -143,16 +222,12 @@ export default function MessageDetailScreen() {
     }
   };
 
-  const handleCustomReply = async (useAi: boolean) => {
+  const handleCustomReply = async (useAi: boolean, insist: boolean = false) => {
     if (!message) return;
 
     const replyText = useAi && aiSuggestion ? aiSuggestion : customReplyText;
-    const requiredPoints = useAi ? 2 : 4;
 
-    if (getTotalPoints(user) < requiredPoints) {
-      Alert.alert('點數不足', `需要 ${requiredPoints} 點才能送出回覆`);
-      return;
-    }
+    // 回覆現在是免費的，不需要點數檢查
 
     setIsReplying(true);
     try {
@@ -262,8 +337,6 @@ export default function MessageDetailScreen() {
         return colors.primary.DEFAULT;
     }
   };
-
-  const canAfford = (points: number) => getTotalPoints(user) >= points;
 
   const openLocationInMaps = (location: string) => {
     const encodedLocation = encodeURIComponent(location);
@@ -453,7 +526,7 @@ export default function MessageDetailScreen() {
                 </Text>
                 {!isReplying && (
                   <View style={styles.freeBadge}>
-                    <Text style={styles.freeBadgeText}>0 點</Text>
+                    <Text style={styles.freeBadgeText}>免費</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -511,6 +584,24 @@ export default function MessageDetailScreen() {
 
               {customReplyText.trim().length >= 5 && (
                 <>
+                  {/* 內容警示訊息 */}
+                  {hasContentWarning && !isAiModerating && (
+                    <View style={styles.warningCard}>
+                      <Ionicons name="warning" size={16} color="#D97706" />
+                      <Text style={styles.warningText}>
+                        內容可能有法律風險，送出前請三思。建議使用 AI 優化讓訊息更友善。
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* 審核中提示 */}
+                  {isAiModerating && (
+                    <View style={styles.moderatingCard}>
+                      <ActivityIndicator size="small" color={colors.primary.DEFAULT} />
+                      <Text style={styles.moderatingText}>審核中...</Text>
+                    </View>
+                  )}
+
                   {aiLimit.canUse ? (
                     <TouchableOpacity
                       style={[styles.aiAssistButton, isLoadingAi && styles.buttonDisabled]}
@@ -520,7 +611,7 @@ export default function MessageDetailScreen() {
                       <View style={styles.buttonContent}>
                         <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
                         <Text style={styles.primaryButtonText}>
-                          {isLoadingAi ? '處理中...' : 'AI 協助改寫'}
+                          {isLoadingAi ? '處理中...' : hasContentWarning ? 'AI 優化（推薦）' : 'AI 協助改寫'}
                         </Text>
                       </View>
                       <View style={styles.remainingBadge}>
@@ -537,7 +628,8 @@ export default function MessageDetailScreen() {
                     </View>
                   )}
 
-                  {canAfford(4) ? (
+                  {/* 直接送出按鈕 - 無警示時顯示正常按鈕，有警示時顯示「堅持送出」 */}
+                  {!hasContentWarning ? (
                     <TouchableOpacity
                       style={[styles.secondaryButton, isReplying && styles.buttonDisabled]}
                       onPress={() => handleCustomReply(false)}
@@ -546,14 +638,23 @@ export default function MessageDetailScreen() {
                       <Text style={styles.secondaryButtonText}>
                         {isReplying ? '處理中...' : '直接送出'}
                       </Text>
-                      <View style={styles.pointBadgeSecondary}>
-                        <Text style={styles.pointBadgeSecondaryText}>4 點</Text>
+                      <View style={styles.freeBadge}>
+                        <Text style={styles.freeBadgeText}>免費</Text>
                       </View>
                     </TouchableOpacity>
                   ) : (
-                    <View style={styles.insufficientCard}>
-                      <Text style={styles.insufficientText}>直接送出需要 4 點（點數不足）</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={[styles.insistButton, isReplying && styles.buttonDisabled]}
+                      onPress={() => handleCustomReply(false, true)}
+                      disabled={isReplying}
+                    >
+                      <Text style={styles.insistButtonText}>
+                        {isReplying ? '處理中...' : '堅持送出'}
+                      </Text>
+                      <View style={[styles.freeBadge, { backgroundColor: colors.muted.DEFAULT }]}>
+                        <Text style={[styles.freeBadgeText, { color: colors.muted.foreground }]}>免費</Text>
+                      </View>
+                    </TouchableOpacity>
                   )}
                 </>
               )}
@@ -562,20 +663,10 @@ export default function MessageDetailScreen() {
                 <Text style={styles.cancelText}>取消</Text>
               </TouchableOpacity>
 
-              {/* Points Info */}
-              <View style={styles.pointsInfoCard}>
-                <View style={styles.pointsRow}>
-                  <Text style={styles.pointsLabel}>快速回覆</Text>
-                  <Text style={styles.pointsFree}>0 點</Text>
-                </View>
-                <View style={styles.pointsRow}>
-                  <Text style={styles.pointsLabel}>自訂回覆（AI 協助）</Text>
-                  <Text style={styles.pointsValue}>2 點</Text>
-                </View>
-                <View style={styles.pointsRow}>
-                  <Text style={styles.pointsLabel}>自訂回覆（不用 AI）</Text>
-                  <Text style={styles.pointsValue}>4 點</Text>
-                </View>
+              {/* 回覆免費說明 */}
+              <View style={styles.freeInfoCard}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.muted.foreground} />
+                <Text style={styles.freeInfoText}>所有回覆都免費</Text>
               </View>
             </View>
           ) : showCustomReply && aiSuggestion ? (
@@ -599,53 +690,35 @@ export default function MessageDetailScreen() {
                 </View>
               </View>
 
-              {/* Actions */}
-              {canAfford(2) ? (
-                <TouchableOpacity
-                  style={[styles.primaryButton, isReplying && styles.buttonDisabled]}
-                  onPress={() => handleCustomReply(true)}
-                  disabled={isReplying}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
-                    <Text style={styles.primaryButtonText}>
-                      {isReplying ? '處理中...' : '用 AI 版送出'}
-                    </Text>
-                  </View>
-                  <View style={styles.pointBadgePrimary}>
-                    <Text style={styles.pointBadgePrimaryText}>2 點</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.insufficientCard}>
-                  <View style={styles.insufficientRow}>
-                    <Ionicons name="alert-circle" size={16} color="#DC2626" />
-                    <Text style={styles.insufficientTitle}>點數不足</Text>
-                  </View>
-                  <Text style={styles.insufficientDetail}>
-                    目前剩餘 {getTotalPoints(user)} 點，使用 AI 協助需要 2 點
+              {/* Actions - 所有回覆都免費 */}
+              <TouchableOpacity
+                style={[styles.primaryButton, isReplying && styles.buttonDisabled]}
+                onPress={() => handleCustomReply(true)}
+                disabled={isReplying}
+              >
+                <View style={styles.buttonContent}>
+                  <Ionicons name="sparkles" size={20} color={colors.primary.foreground} />
+                  <Text style={styles.primaryButtonText}>
+                    {isReplying ? '處理中...' : '用 AI 版送出'}
                   </Text>
                 </View>
-              )}
+                <View style={styles.freeBadgePrimary}>
+                  <Text style={styles.freeBadgePrimaryText}>免費</Text>
+                </View>
+              </TouchableOpacity>
 
-              {canAfford(4) ? (
-                <TouchableOpacity
-                  style={[styles.secondaryButton, isReplying && styles.buttonDisabled]}
-                  onPress={() => handleCustomReply(false)}
-                  disabled={isReplying}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {isReplying ? '處理中...' : '用原版送出'}
-                  </Text>
-                  <View style={styles.pointBadgeSecondary}>
-                    <Text style={styles.pointBadgeSecondaryText}>4 點</Text>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.insufficientCard}>
-                  <Text style={styles.insufficientText}>原版需要 4 點（點數不足）</Text>
+              <TouchableOpacity
+                style={[styles.secondaryButton, isReplying && styles.buttonDisabled]}
+                onPress={() => handleCustomReply(false)}
+                disabled={isReplying}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {isReplying ? '處理中...' : '用原版送出'}
+                </Text>
+                <View style={styles.freeBadge}>
+                  <Text style={styles.freeBadgeText}>免費</Text>
                 </View>
-              )}
+              </TouchableOpacity>
 
               <TouchableOpacity style={styles.cancelButton} onPress={resetCustomReply}>
                 <Text style={styles.cancelText}>取消</Text>
@@ -1138,6 +1211,88 @@ const createStyles = (colors: ThemeColors, isDark: boolean) =>
     },
     buttonDisabled: {
       opacity: 0.5,
+    },
+
+    // Warning Card (for content moderation warnings)
+    warningCard: {
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A',
+      borderRadius: 12,
+      padding: 14,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+    },
+    warningText: {
+      flex: 1,
+      fontSize: 13,
+      color: isDark ? '#FBBF24' : '#D97706',
+      lineHeight: 18,
+    },
+
+    // Moderating Card
+    moderatingCard: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+      borderRadius: 12,
+      padding: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    moderatingText: {
+      fontSize: 13,
+      color: colors.primary.DEFAULT,
+    },
+
+    // Insist Button (灰色邊框，用於堅持送出)
+    insistButton: {
+      position: 'relative',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.card.DEFAULT,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+    },
+    insistButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.muted.foreground,
+    },
+
+    // Free Info Card
+    freeInfoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      paddingTop: 8,
+    },
+    freeInfoText: {
+      fontSize: 12,
+      color: colors.muted.foreground,
+    },
+
+    // Free Badge (Primary - white text on button)
+    freeBadgePrimary: {
+      position: 'absolute',
+      right: 16,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    freeBadgePrimaryText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
 
     // AI Exhausted

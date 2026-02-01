@@ -751,7 +751,7 @@ export default function CustomScreen({ navigation }: Props) {
                         </Text>
                       </View>
                       <View style={styles.pointBadge}>
-                        <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>2 點</Text>
+                        <Text style={[styles.pointBadgeText, { color: colors.primary.foreground }]}>免費</Text>
                       </View>
                     </>
                   )}
@@ -775,7 +775,7 @@ export default function CustomScreen({ navigation }: Props) {
                     <Text style={[styles.optionText, { color: colors.foreground }]}>使用文字</Text>
                   </View>
                   <View style={[styles.pointBadge, { backgroundColor: colors.muted.DEFAULT }]}>
-                    <Text style={[styles.pointBadgeText, { color: colors.muted.foreground }]}>4 點</Text>
+                    <Text style={[styles.pointBadgeText, { color: colors.muted.foreground }]}>免費</Text>
                   </View>
                 </TouchableOpacity>
               )}
