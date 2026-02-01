@@ -63,6 +63,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
+  const processedNotificationIds = useRef<Set<string>>(new Set());
+  const pendingNotificationRef = useRef<Notifications.NotificationResponse | null>(null);
 
   // Get permission status
   const checkPermissions = useCallback(async () => {
@@ -168,10 +170,31 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Handle notification response (user tapped on notification)
   const handleNotificationResponse = useCallback(
-    (response: Notifications.NotificationResponse) => {
-      console.log('[Notification] Response received:', JSON.stringify(response.notification.request.content.data));
-
+    (response: Notifications.NotificationResponse, isInitial: boolean = false) => {
+      const notificationId = response.notification.request.identifier;
       const data = response.notification.request.content.data;
+
+      console.log('[Notification] Response received:', {
+        id: notificationId,
+        data,
+        isInitial,
+      });
+
+      // 防止重複處理同一個通知
+      if (processedNotificationIds.current.has(notificationId)) {
+        console.log('[Notification] Already processed, skipping:', notificationId);
+        return;
+      }
+
+      // 如果用戶未登入或未完成 onboarding，先儲存通知稍後處理
+      if (!isAuthenticated || !user?.hasCompletedOnboarding) {
+        console.log('[Notification] User not ready, saving for later');
+        pendingNotificationRef.current = response;
+        return;
+      }
+
+      // 標記為已處理
+      processedNotificationIds.current.add(notificationId);
 
       try {
         if (data?.type === 'message' && data?.messageId) {
@@ -195,33 +218,46 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         console.error('[Notification] Navigation error:', error);
       }
     },
-    [navigation]
+    [navigation, isAuthenticated, user?.hasCompletedOnboarding]
   );
 
   // Setup notification listeners
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     notificationListener.current =
       Notifications.addNotificationReceivedListener(handleNotification);
 
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener(
-        handleNotificationResponse
+        (response) => handleNotificationResponse(response, false)
       );
 
     // 檢查 App 是否從通知啟動（App 被殺掉後點擊通知的情況）
     const checkInitialNotification = async () => {
-      const response = await Notifications.getLastNotificationResponseAsync();
-      if (response) {
-        console.log('App launched from notification:', response);
-        // 延遲一下確保 navigation 已經準備好
-        setTimeout(() => {
-          handleNotificationResponse(response);
-        }, 500);
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response && isMounted) {
+          console.log('[Notification] App launched from notification:', response.notification.request.identifier);
+          // 延遲一下確保 navigation 已經準備好
+          timeoutId = setTimeout(() => {
+            if (isMounted) {
+              handleNotificationResponse(response, true);
+            }
+          }, 800);
+        }
+      } catch (error) {
+        console.error('[Notification] Error checking initial notification:', error);
       }
     };
     checkInitialNotification();
 
     return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       if (notificationListener.current) {
         notificationListener.current.remove();
       }
@@ -235,6 +271,27 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   useEffect(() => {
     checkPermissions();
   }, [checkPermissions]);
+
+  // 處理待處理的通知（當用戶登入並完成 onboarding 後）
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (isAuthenticated && user?.hasCompletedOnboarding && pendingNotificationRef.current) {
+      console.log('[Notification] Processing pending notification after auth');
+      const pendingResponse = pendingNotificationRef.current;
+      pendingNotificationRef.current = null;
+      // 延遲確保導航已準備好
+      timeoutId = setTimeout(() => {
+        handleNotificationResponse(pendingResponse, true);
+      }, 500);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isAuthenticated, user?.hasCompletedOnboarding, handleNotificationResponse]);
 
   // Register push token when authenticated, has completed onboarding, and permission is granted
   // This acts as a fallback for app restarts when the user already has permission
