@@ -49,7 +49,6 @@ export default function QuickRecordScreen() {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const hasStartedRef = useRef(false);
   const stopRecordingRef = useRef<(() => void) | null>(null);
-  const startRecordingRef = useRef<(() => void) | null>(null);
 
   // 音量動畫
   const volumeAnim = useRef(new Animated.Value(1)).current;
@@ -107,78 +106,94 @@ export default function QuickRecordScreen() {
     };
   }, [voiceUri, step]);
 
-  // 進入頁面時：先請求所有權限，再開始錄音
+  // 用於追蹤組件是否已卸載
+  const isMountedRef = useRef(true);
+  // 用於追蹤是否需要開始錄音（等待 App 回到前台）
+  const pendingStartRef = useRef(false);
+  // 用於保存最新的 startRecording 函數引用
+  const startRecordingRef = useRef<(() => void) | null>(null);
+
+  // 組件卸載時標記
   useEffect(() => {
-    if (!hasStartedRef.current) {
-      hasStartedRef.current = true;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-      const initializeAndStart = async () => {
-        if (AppState.currentState !== 'active') {
-          console.log('[Recording] App not active, skipping');
-          navigation.goBack();
-          return;
-        }
-
-        try {
-          // 1. 先請求麥克風權限
-          console.log('[Recording] Requesting microphone permission...');
-          const { status: micStatus } = await Audio.requestPermissionsAsync();
-
-          if (micStatus !== 'granted') {
-            Alert.alert(
-              '需要麥克風權限',
-              '請在設定中開啟麥克風權限以使用語音功能',
-              [{ text: '確定', onPress: () => navigation.goBack() }]
-            );
-            return;
-          }
-          console.log('[Recording] Microphone permission granted');
-
-          // 2. 請求位置權限（發送時需要位置資訊）
-          const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-          console.log('[Recording] Location permission:', locStatus);
-
-          if (locStatus !== 'granted') {
-            // 位置權限被拒絕，詢問用戶是否繼續
-            Alert.alert(
-              '位置權限未開啟',
-              '發送語音提醒需要地點資訊。您可以繼續錄音，稍後手動輸入地點。',
-              [
-                {
-                  text: '返回',
-                  style: 'cancel',
-                  onPress: () => navigation.goBack(),
-                },
-                {
-                  text: '繼續錄音',
-                  onPress: async () => {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    if (AppState.currentState === 'active') {
-                      startRecordingRef.current?.();
-                    }
-                  },
-                },
-              ]
-            );
-            return;
-          }
-
-          // 3. 短暫延遲後開始錄音（讓 UI 穩定）
-          await new Promise(resolve => setTimeout(resolve, 200));
-
-          if (AppState.currentState === 'active') {
-            console.log('[Recording] Starting recording...');
+  // 監聽 AppState 變化，當 App 回到前台時檢查是否需要開始錄音
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && pendingStartRef.current && isMountedRef.current) {
+        console.log('[Recording] App became active, starting recording...');
+        pendingStartRef.current = false;
+        // 短暫延遲確保 UI 完全就緒
+        setTimeout(() => {
+          if (isMountedRef.current) {
             startRecordingRef.current?.();
           }
-        } catch (err) {
-          console.error('[Recording] Permission error:', err);
+        }, 100);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // 進入頁面時：只請求麥克風權限，位置權限延後到錄音完成後
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+
+    const requestMicrophonePermission = async () => {
+      try {
+        // 只請求麥克風權限
+        console.log('[Recording] Requesting microphone permission...');
+        const { status: micStatus } = await Audio.requestPermissionsAsync();
+
+        // 檢查組件是否已卸載
+        if (!isMountedRef.current) return;
+
+        if (micStatus !== 'granted') {
+          Alert.alert(
+            '需要麥克風權限',
+            '請在設定中開啟麥克風權限以使用語音功能',
+            [{ text: '確定', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+        console.log('[Recording] Microphone permission granted');
+
+        // 麥克風權限通過，開始錄音
+        triggerStartRecording();
+      } catch (err) {
+        console.error('[Recording] Permission error:', err);
+        if (isMountedRef.current) {
           Alert.alert('錯誤', '無法取得必要權限');
           navigation.goBack();
         }
-      };
+      }
+    };
 
-      initializeAndStart();
-    }
+    // 觸發開始錄音的邏輯
+    const triggerStartRecording = () => {
+      // 短暫延遲讓權限對話框完全關閉
+      setTimeout(() => {
+        if (!isMountedRef.current) return;
+
+        if (AppState.currentState === 'active') {
+          console.log('[Recording] Starting recording immediately...');
+          startRecordingRef.current?.();
+        } else {
+          // App 還沒回到前台，設置 pending 標記，等待 AppState 變化
+          console.log('[Recording] App not active, waiting for foreground...');
+          pendingStartRef.current = true;
+        }
+      }, 300);
+    };
+
+    requestMicrophonePermission();
   }, [navigation]);
 
   // 清理
@@ -232,7 +247,11 @@ export default function QuickRecordScreen() {
       });
 
       if (uri && duration >= 1) {
-        // 直接進入選擇畫面，不再顯示「處理中」
+        // 錄音完成後請求位置權限
+        await requestLocationPermission();
+        // 檢查組件是否已卸載
+        if (!isMountedRef.current) return;
+        // 進入選擇畫面
         setStep('choose');
       } else {
         Alert.alert('錄音太短', '請至少錄製 1 秒');
@@ -245,6 +264,39 @@ export default function QuickRecordScreen() {
     }
   };
 
+  // 請求位置權限（錄音完成後調用）
+  const requestLocationPermission = async () => {
+    try {
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
+
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+
+      // 如果已經有權限，直接取得位置
+      if (existingStatus === 'granted') {
+        await getLocation();
+        return;
+      }
+
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
+
+      // 請求位置權限
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
+
+      if (status === 'granted') {
+        await getLocation();
+      }
+      // 如果被拒絕，不阻擋流程，用戶可以稍後手動輸入地點
+    } catch (err) {
+      console.warn('[Recording] Location permission error:', err);
+      // 位置權限錯誤不阻擋流程
+    }
+  };
+
   // 儲存 stopRecording ref
   stopRecordingRef.current = handleStopRecording;
 
@@ -253,8 +305,10 @@ export default function QuickRecordScreen() {
     try {
       console.log('[Recording] Starting...');
 
+      // 如果 App 不在前台，設置 pending 標記等待回到前台
       if (AppState.currentState !== 'active') {
-        console.log('[Recording] App not active, waiting...');
+        console.log('[Recording] App not active, setting pending flag...');
+        pendingStartRef.current = true;
         return;
       }
 
@@ -316,8 +370,7 @@ export default function QuickRecordScreen() {
       setIsRecording(true);
       setRecordingDuration(0);
 
-      // 同時取得位置
-      getLocation();
+      // 位置權限改到錄音完成後請求，這裡不再取得位置
 
       let duration = 0;
       durationInterval.current = setInterval(() => {
@@ -344,28 +397,36 @@ export default function QuickRecordScreen() {
     }
   };
 
+  // 保存 startRecording 函數引用，供 AppState 監聽器使用
   startRecordingRef.current = startRecording;
 
-  // 取得位置（權限已在進入頁面時請求過）
+  // 取得位置（由 requestLocationPermission 調用）
   const getLocation = async () => {
     try {
-      const { status } = await Location.getForegroundPermissionsAsync();
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
 
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setLatitude(loc.coords.latitude);
-        setLongitude(loc.coords.longitude);
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
 
-        const [addr] = await Location.reverseGeocodeAsync({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-        if (addr) {
-          const addressStr = [addr.city, addr.district, addr.street].filter(Boolean).join('');
-          setAddress(addressStr);
-        }
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
+
+      setLatitude(loc.coords.latitude);
+      setLongitude(loc.coords.longitude);
+
+      const [addr] = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      // 檢查組件是否已卸載
+      if (!isMountedRef.current) return;
+
+      if (addr) {
+        const addressStr = [addr.city, addr.district, addr.street].filter(Boolean).join('');
+        setAddress(addressStr);
       }
     } catch (err) {
       console.warn('Could not get location:', err);

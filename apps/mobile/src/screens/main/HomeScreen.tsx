@@ -181,27 +181,25 @@ export default function HomeScreen() {
     );
   }, []);
 
-  // 點擊快速錄音按鈕 - 先檢查權限再導航到錄音頁面
+  // 點擊快速錄音按鈕 - 只在永久拒絕時阻擋，其他情況讓 QuickRecordScreen 統一處理
   const handleQuickRecordPress = useCallback(async () => {
     try {
+      // 只檢查是否已被永久拒絕（不會觸發權限對話框）
       const { status: existingStatus, canAskAgain } = await Audio.getPermissionsAsync();
 
-      if (existingStatus === 'granted') {
-        navigation.navigate('QuickRecord');
+      if (existingStatus === 'denied' && !canAskAgain) {
+        // 只有在永久拒絕時才在這裡阻擋，引導用戶去設定
+        showMicPermissionDeniedAlert();
         return;
       }
 
-      if (canAskAgain) {
-        const { status } = await Audio.requestPermissionsAsync();
-        if (status === 'granted') {
-          navigation.navigate('QuickRecord');
-        }
-      } else {
-        showMicPermissionDeniedAlert();
-      }
+      // 其他情況（granted 或可以再請求）都直接導航
+      // 讓 QuickRecordScreen 統一處理權限請求和錄音邏輯
+      navigation.navigate('QuickRecord');
     } catch (error) {
       console.error('Permission check failed:', error);
-      Alert.alert('錯誤', '無法檢查麥克風權限');
+      // 檢查失敗也嘗試導航，讓錄音頁面處理
+      navigation.navigate('QuickRecord');
     }
   }, [navigation, showMicPermissionDeniedAlert]);
 

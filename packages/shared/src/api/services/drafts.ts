@@ -74,6 +74,7 @@ export interface CreateDraftRequest {
 export interface UpdateDraftRequest {
   selectedPlate?: string;
   vehicleType?: string;
+  transcript?: string;
 }
 
 export interface SendFromDraftRequest {
