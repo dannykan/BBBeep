@@ -23,6 +23,9 @@ import {
   Animated,
   LayoutChangeEvent,
   ActivityIndicator,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,12 +55,32 @@ export function VoiceMessagePlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [position, setPosition] = useState(0);
   const [totalDuration, setTotalDuration] = useState(duration);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekPosition, setSeekPosition] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const trackWidth = useRef(0);
+  const trackX = useRef(0);
   const lastProgress = useRef(0);
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const usedCacheRef = useRef(false);
+  const wasPlayingBeforeSeek = useRef(false);
+  const isLoadingRef = useRef(true);
+  const isPlayingRef = useRef(false);
+  const totalDurationRef = useRef(duration);
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    totalDurationRef.current = totalDuration;
+  }, [totalDuration]);
 
   // 載入音訊（優先使用全域快取，支援串流播放）
   useEffect(() => {
@@ -161,6 +184,9 @@ export function VoiceMessagePlayer({
         setTotalDuration(status.durationMillis / 1000);
       }
 
+      // 拖曳中不更新進度（讓用戶控制）
+      if (isSeeking) return;
+
       const currentDuration = status.durationMillis || totalDuration * 1000;
       const progress = currentDuration > 0
         ? status.positionMillis / currentDuration
@@ -189,10 +215,84 @@ export function VoiceMessagePlayer({
         lastProgress.current = 0;
       }
     }
-  }, [totalDuration, progressAnim]);
+  }, [totalDuration, progressAnim, isSeeking]);
+
+  // PanResponder 處理拖曳手勢
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !isLoadingRef.current,
+      onMoveShouldSetPanResponder: () => !isLoadingRef.current,
+      onPanResponderGrant: async (evt: GestureResponderEvent) => {
+        // 開始拖曳
+        setIsSeeking(true);
+        wasPlayingBeforeSeek.current = isPlayingRef.current;
+
+        // 暫停播放
+        if (isPlayingRef.current && soundRef.current) {
+          await soundRef.current.pauseAsync();
+          setIsPlaying(false);
+        }
+
+        // 停止動畫
+        if (animationRef.current) {
+          animationRef.current.stop();
+        }
+
+        // 計算初始位置
+        const relativeX = evt.nativeEvent.pageX - trackX.current;
+        const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
+        setSeekPosition(progress);
+        progressAnim.setValue(progress);
+      },
+      onPanResponderMove: (evt: GestureResponderEvent) => {
+        // 拖曳中，更新進度
+        const relativeX = evt.nativeEvent.pageX - trackX.current;
+        const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
+        setSeekPosition(progress);
+        progressAnim.setValue(progress);
+      },
+      onPanResponderRelease: async (evt: GestureResponderEvent) => {
+        // 拖曳結束
+        const relativeX = evt.nativeEvent.pageX - trackX.current;
+        const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
+
+        // 跳轉到新位置
+        if (soundRef.current) {
+          try {
+            const newPositionMs = progress * (totalDurationRef.current || 1) * 1000;
+            await soundRef.current.setPositionAsync(newPositionMs);
+            progressAnim.setValue(progress);
+            lastProgress.current = progress;
+          } catch (err) {
+            console.error('Seek error:', err);
+          }
+        }
+
+        setIsSeeking(false);
+
+        // 如果之前正在播放，繼續播放
+        if (wasPlayingBeforeSeek.current && soundRef.current) {
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+        }
+      },
+      onPanResponderTerminate: async () => {
+        // 手勢被中斷
+        setIsSeeking(false);
+        if (wasPlayingBeforeSeek.current && soundRef.current) {
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+        }
+      },
+    })
+  ).current;
 
   const onTrackLayout = (e: LayoutChangeEvent) => {
     trackWidth.current = e.nativeEvent.layout.width;
+    // 獲取進度條的絕對位置
+    e.target.measure((x, y, width, height, pageX, pageY) => {
+      trackX.current = pageX;
+    });
   };
 
   const buttonSize = compact ? 44 : 48;
@@ -235,20 +335,40 @@ export function VoiceMessagePlayer({
           </View>
         )}
 
-        {/* Progress bar */}
+        {/* Progress bar with seekable slider */}
         <View
-          style={[styles.progressTrack, { backgroundColor: colors.border }]}
-          onLayout={onTrackLayout}
+          style={styles.progressContainer}
+          {...panResponder.panHandlers}
         >
+          <View
+            style={[styles.progressTrack, { backgroundColor: colors.border }]}
+            onLayout={onTrackLayout}
+          >
+            <Animated.View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: colors.primary.DEFAULT,
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
+          </View>
+          {/* Seekable thumb/knob */}
           <Animated.View
             style={[
-              styles.progressFill,
+              styles.progressThumb,
               {
                 backgroundColor: colors.primary.DEFAULT,
-                width: progressAnim.interpolate({
+                left: progressAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: ['0%', '100%'],
                 }),
+                // 拖曳時放大滑塊
+                transform: [{ scale: isSeeking ? 1.3 : 1 }],
               },
             ]}
           />
@@ -298,6 +418,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  progressContainer: {
+    height: 24, // 增加觸摸區域
+    justifyContent: 'center',
+    position: 'relative',
+  },
   progressTrack: {
     height: 4,
     borderRadius: 2,
@@ -306,6 +431,19 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  progressThumb: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginLeft: -7, // 讓圓心對齊進度位置
+    top: 5, // (24 - 14) / 2 = 5，垂直置中
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   timeRow: {
     flexDirection: 'row',
