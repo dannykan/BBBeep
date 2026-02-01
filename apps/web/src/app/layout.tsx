@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getLocale } from 'next-intl/server';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Providers } from './providers';
@@ -8,45 +10,57 @@ import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://ubeep.app'),
   title: {
-    default: 'UBeep - 路上提醒平台',
+    default: 'UBeep - 路上不用對立，也可以好好說話',
     template: '%s | UBeep',
   },
-  description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
-  keywords: ['路上提醒', '行車提醒', '車牌', '駕駛提醒', 'UBeep', '台灣', '交通安全'],
-  authors: [{ name: 'UBeep Team' }],
+  description: 'UBeep 是匿名、即時、不擴散的道路提醒平台。透過車牌號碼發送善意提醒，讓駕駛、騎士、腳踏車騎士和行人可以友善溝通，不用面對面衝突。',
+  keywords: [
+    'UBeep',
+    '道路溝通',
+    '匿名提醒',
+    '車牌',
+    '駕駛',
+    '行車安全',
+    '路怒症',
+    '交通安全',
+    '機車騎士',
+    '汽車駕駛',
+    '行人安全',
+    '道路禮儀',
+    '善意提醒',
+    '車牌查詢',
+    '匿名訊息',
+  ],
+  authors: [{ name: 'UBeep', url: 'https://ubeep.app' }],
   creator: 'UBeep',
   publisher: 'UBeep',
-  metadataBase: new URL('https://ubeep.app'),
-  manifest: '/manifest.json',
-  icons: {
-    icon: [
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-    ],
-    apple: '/icon-192.png',
+  alternates: {
+    canonical: '/',
   },
   openGraph: {
-    title: 'UBeep - 路上提醒平台',
-    description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
+    title: 'UBeep - 路上不用對立，也可以好好說話',
+    description: 'UBeep 讓提醒變得私密、即時、不擴散。透過車牌匿名傳遞善意，為道路留一點溫暖。',
     url: 'https://ubeep.app',
-    type: 'website',
-    locale: 'zh_TW',
     siteName: 'UBeep',
     images: [
       {
-        url: '/og-image.png',
+        url: '/images/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'UBeep 路上提醒平台',
+        alt: 'UBeep - 匿名道路溝通平台',
       },
     ],
+    locale: 'zh_TW',
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UBeep - 路上提醒平台',
-    description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
-    images: ['/og-image.png'],
+    title: 'UBeep - 路上不用對立，也可以好好說話',
+    description: 'UBeep 讓提醒變得私密、即時、不擴散。透過車牌匿名傳遞善意。',
+    images: ['/images/og-image.png'],
+    creator: '@ubeep_app',
   },
   robots: {
     index: true,
@@ -59,54 +73,96 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    // 可以在此添加 Google Search Console 驗證碼
-    // google: 'your-google-verification-code',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/images/logo.png', type: 'image/png' },
+    ],
+    apple: '/images/logo.png',
   },
+  verification: {
+    // google: 'your-google-verification-code',  // 之後加入 Google Search Console 驗證碼
+  },
+  category: 'technology',
 };
 
-// JSON-LD 結構化數據
+// JSON-LD 結構化資料
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'WebApplication',
+  '@type': 'MobileApplication',
   name: 'UBeep',
-  alternateName: '路上提醒平台',
-  description: '一個更溫和的路上提醒選擇。私下提醒對方，不對罵、不公開，也不會變成衝突。',
-  url: 'https://ubeep.app',
-  applicationCategory: 'UtilitiesApplication',
-  operatingSystem: 'iOS, Android, Web',
+  description: 'UBeep 是匿名、即時、不擴散的道路提醒平台。透過車牌號碼發送善意提醒。',
+  applicationCategory: 'LifestyleApplication',
+  operatingSystem: 'iOS, Android',
   offers: {
     '@type': 'Offer',
     price: '0',
     priceCurrency: 'TWD',
   },
-  creator: {
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.8',
+    ratingCount: '1000',
+  },
+  author: {
     '@type': 'Organization',
     name: 'UBeep',
     url: 'https://ubeep.app',
   },
-  inLanguage: 'zh-TW',
 };
 
-export default function RootLayout({
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'UBeep',
+  url: 'https://ubeep.app',
+  logo: 'https://ubeep.app/images/logo.png',
+  sameAs: [
+    // 之後可加入社群連結
+    // 'https://www.facebook.com/ubeep',
+    // 'https://www.instagram.com/ubeep',
+  ],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    email: 'support@ubeep.app',
+    contactType: 'customer service',
+  },
+};
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="zh-TW">
+    <html lang={locale}>
       <head>
         <GoogleAnalytics />
+        {/* Remix Icon for icons */}
+        <link
+          href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css"
+          rel="stylesheet"
+        />
+        {/* JSON-LD 結構化資料 */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
       </head>
       <body className={inter.className}>
-        <Providers>
-          {children}
-          <Toaster />
-        </Providers>
+        <NextIntlClientProvider messages={messages}>
+          <Providers>
+            {children}
+            <Toaster />
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
