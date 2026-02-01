@@ -223,9 +223,18 @@ export function VoiceMessagePlayer({
       onStartShouldSetPanResponder: () => !isLoadingRef.current,
       onMoveShouldSetPanResponder: () => !isLoadingRef.current,
       onPanResponderGrant: async (evt: GestureResponderEvent) => {
+        // 立即提取事件數據（避免事件池回收問題）
+        const pageX = evt.nativeEvent.pageX;
+
         // 開始拖曳
         setIsSeeking(true);
         wasPlayingBeforeSeek.current = isPlayingRef.current;
+
+        // 計算初始位置（在 async 操作前）
+        const relativeX = pageX - trackX.current;
+        const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
+        setSeekPosition(progress);
+        progressAnim.setValue(progress);
 
         // 暫停播放
         if (isPlayingRef.current && soundRef.current) {
@@ -237,12 +246,6 @@ export function VoiceMessagePlayer({
         if (animationRef.current) {
           animationRef.current.stop();
         }
-
-        // 計算初始位置
-        const relativeX = evt.nativeEvent.pageX - trackX.current;
-        const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
-        setSeekPosition(progress);
-        progressAnim.setValue(progress);
       },
       onPanResponderMove: (evt: GestureResponderEvent) => {
         // 拖曳中，更新進度
@@ -252,8 +255,11 @@ export function VoiceMessagePlayer({
         progressAnim.setValue(progress);
       },
       onPanResponderRelease: async (evt: GestureResponderEvent) => {
-        // 拖曳結束
-        const relativeX = evt.nativeEvent.pageX - trackX.current;
+        // 立即提取事件數據（避免事件池回收問題）
+        const pageX = evt.nativeEvent.pageX;
+
+        // 拖曳結束，計算最終位置
+        const relativeX = pageX - trackX.current;
         const progress = Math.max(0, Math.min(1, relativeX / trackWidth.current));
 
         // 跳轉到新位置
